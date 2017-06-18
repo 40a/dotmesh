@@ -1,0 +1,7 @@
+(c) 2017 Luke Marsden. All rights reserved.
+
+Libraries in the "vendor" directories have their own licenses.
+
+Other code that has been forked from open source code have such LICENSE files
+in their respective directories and licenses in the source files, such as
+cmd/dm/pkg/{cert,pki}.
