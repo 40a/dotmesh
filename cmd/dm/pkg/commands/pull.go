@@ -37,7 +37,9 @@ cluster 'backups':
 				if err != nil {
 					return err
 				}
-				transferId, err := dm.RequestTransfer("pull", peer, filesystemName, branchName)
+				transferId, err := dm.RequestTransfer(
+					"pull", peer, filesystemName, branchName, "", "",
+				)
 				if err != nil {
 					return err
 				}

@@ -47,14 +47,26 @@ func resolveTransferArgs(args []string) (string, string, string, error) {
 		)
 	}
 
-	filesystemName, err := dm.CurrentVolume()
-	if err != nil {
-		return "", "", "", err
-	}
+	var filesystemName, branchName string
 
-	branchName, err := dm.CurrentBranch(filesystemName)
-	if err != nil {
-		return "", "", "", err
+	if len(args) == 1 {
+		// dm push
+		filesystemName, err = dm.CurrentVolume()
+		if err != nil {
+			return "", "", "", err
+		}
+		branchName, err = dm.CurrentBranch(filesystemName)
+		if err != nil {
+			return "", "", "", err
+		}
+	} else if len(args) == 2 {
+		// dm clone foo
+		filesystemName = args[1]
+		branchName = remotes.DEFAULT_BRANCH
+	} else if len(args) == 3 {
+		// dm pull foo branch
+		filesystemName = args[1]
+		branchName = args[2]
 	}
 
 	return args[0], filesystemName, branchName, nil

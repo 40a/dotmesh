@@ -505,17 +505,40 @@ type TransferRequest struct {
 // the reason for supporting both directions is that the "current" is often
 // behind NAT from its peer, and so it must initiate the connection.
 func (dm *DatameshAPI) RequestTransfer(
-	direction, peer, filesystemName, branchName string,
+	direction, peer,
+	filesystemName, branchName,
+	remoteFilesystemName, remoteBranchName string,
 ) (string, error) {
 	connectionInitiator := dm.Configuration.CurrentRemote
-	currentVolume, err := dm.Configuration.CurrentVolume()
-	if err != nil {
-		return "", err
+
+	var err error
+	var currentVolume string
+
+	if remoteFilesystemName == "" {
+		currentVolume, err = dm.Configuration.CurrentVolume()
+		if err != nil {
+			return "", err
+		}
+	} else {
+		currentVolume = remoteFilesystemName
 	}
-	currentBranch, err := dm.Configuration.CurrentBranch()
-	if err != nil {
-		return "", err
+
+	if remoteBranchName != "" && remoteFilesystemName == "" {
+		return "", fmt.Errorf(
+			"It's dubious to specify a remote branch name " +
+				"without specifying a remote filesystem name.",
+		)
 	}
+	var currentBranch string
+	if remoteBranchName == "" {
+		currentBranch, err = dm.Configuration.CurrentBranch()
+		if err != nil {
+			return "", err
+		}
+	} else {
+		currentBranch = remoteBranchName
+	}
+
 	// connect to connectionInitiator
 	client, err := dm.Configuration.ClusterFromRemote(connectionInitiator)
 	if err != nil {

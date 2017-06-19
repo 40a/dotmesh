@@ -275,3 +275,10 @@ func castToMetadata(val interface{}) metadata {
 type Prelude struct {
 	SnapshotProperties []*snapshot
 }
+
+type transferFn func(
+	f *fsMachine,
+	fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId string,
+	transferRequestId string, pollResult *TransferPollResult,
+	client *JsonRpcClient, transferRequest *TransferRequest,
+) (*Event, stateFn)

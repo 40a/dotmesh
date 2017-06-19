@@ -1264,7 +1264,10 @@ func receivingState(f *fsMachine) stateFn {
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("http://%s:6969/filesystems/%s/%s/%s", peerAddress, f.filesystemId, fromSnap, snapRange.toSnap.Id),
+		fmt.Sprintf(
+			"http://%s:6969/filesystems/%s/%s/%s", peerAddress,
+			f.filesystemId, fromSnap, snapRange.toSnap.Id,
+		),
 		nil,
 	)
 	if err != nil {
@@ -1278,7 +1281,10 @@ func receivingState(f *fsMachine) stateFn {
 		log.Printf("Attempting to pull %s got %s", f.filesystemId, err)
 		return backoffState
 	}
-	log.Printf("Debug: curl -u admin:[pw] http://%s:6969/filesystems/%s/%s/%s", peerAddress, f.filesystemId, fromSnap, snapRange.toSnap.Id)
+	log.Printf(
+		"Debug: curl -u admin:[pw] http://%s:6969/filesystems/%s/%s/%s",
+		peerAddress, f.filesystemId, fromSnap, snapRange.toSnap.Id,
+	)
 
 	f.transitionedTo("receiving", "starting")
 	cmd := exec.Command("zfs", "recv", fq(f.filesystemId))
@@ -1321,7 +1327,10 @@ func receivingState(f *fsMachine) stateFn {
 	f.transitionedTo("receiving", "finished pipe")
 
 	if err != nil {
-		log.Printf("Got error %s when running zfs recv for %s, check zfs-recv-stderr.log", err, f.filesystemId)
+		log.Printf(
+			"Got error %s when running zfs recv for %s, check zfs-recv-stderr.log",
+			err, f.filesystemId,
+		)
 		return backoffState
 	} else {
 		log.Printf("Successfully received %s => %s for %s", fromSnap, snapRange.toSnap.Id)
@@ -1361,6 +1370,40 @@ func updatePollResult(transferRequestId string, pollResult TransferPollResult) e
 	return err
 }
 
+func TransferPollResultFromTransferRequest(
+	transferRequestId string,
+	transferRequest TransferRequest,
+	nodeId string,
+	index, total int,
+	status string,
+) TransferPollResult {
+	return TransferPollResult{
+		TransferRequestId: transferRequestId,
+		Peer:              transferRequest.Peer,
+		User:              transferRequest.User,
+		ApiKey:            transferRequest.ApiKey,
+		Direction:         transferRequest.Direction,
+
+		LocalFilesystemName:  transferRequest.LocalFilesystemName,
+		LocalCloneName:       transferRequest.LocalCloneName,
+		RemoteFilesystemName: transferRequest.RemoteFilesystemName,
+		RemoteCloneName:      transferRequest.RemoteCloneName,
+
+		// XXX filesystemId varies over the lifetime of a transferRequestId...
+		// this is certainly a hack, and may be problematic. in particular, it
+		// may result in different clones being pushed to different hosts, in
+		// the case of a multi-host target cluster, possibly...
+		FilesystemId:    "",
+		InitiatorNodeId: nodeId,
+		// XXX re-inventing a wheel here? Maybe we can just use the state
+		// "status" fields for this? We're using that already for inter-cluster
+		// replication.
+		Index:  index,
+		Total:  total,
+		Status: status,
+	}
+}
+
 func pushInitiatorState(f *fsMachine) stateFn {
 	// Deduce the latest snapshot in
 	// f.lastTransferRequest.LocalFilesystemName:LocalCloneName
@@ -1380,31 +1423,10 @@ func pushInitiatorState(f *fsMachine) stateFn {
 		return backoffState
 	}
 
-	pollResult := TransferPollResult{
-		TransferRequestId: transferRequestId,
-		Peer:              transferRequest.Peer,
-		User:              transferRequest.User,
-		ApiKey:            transferRequest.ApiKey,
-		Direction:         transferRequest.Direction,
-
-		LocalFilesystemName:  transferRequest.LocalFilesystemName,
-		LocalCloneName:       transferRequest.LocalCloneName,
-		RemoteFilesystemName: transferRequest.RemoteFilesystemName,
-		RemoteCloneName:      transferRequest.RemoteCloneName,
-
-		// XXX filesystemId varies over the lifetime of a transferRequestId...
-		// this is certainly a hack, and may be problematic. in particular, it
-		// may result in different clones being pushed to different hosts, in
-		// the case of a multi-host target cluster, possibly...
-		FilesystemId:    "",
-		InitiatorNodeId: f.state.myNodeId,
-		// XXX re-inventing a wheel here? Maybe we can just use the state
-		// "status" fields for this? We're using that already for inter-cluster
-		// replication.
-		Index:  1,
-		Total:  1 + len(path.Clones),
-		Status: "syncing metadata",
-	}
+	pollResult := TransferPollResultFromTransferRequest(
+		transferRequestId, transferRequest, f.state.myNodeId,
+		1, 1+len(path.Clones), "syncing metadata",
+	)
 	f.lastPollResult = &pollResult
 
 	err = updatePollResult(transferRequestId, pollResult)
@@ -1428,129 +1450,17 @@ func pushInitiatorState(f *fsMachine) stateFn {
 	// retryPush takes filesystem id to push, and final snapshot id (or ""
 	// for "up to latest")
 
-	// for each clone, ensure its origin snapshot exists on the remote. if it
-	// doesn't, push it.
-
-	/*
-
-		Case 1: single master filesystem
-		--------------------------------
-
-		TopLevelFilesystemId: <master branch filesystem id>
-		TopLevelFilesystemName: foo
-		Clones: []
-
-		retryPush("", "", "<master branch filesystem id>", "")
-
-		Case 2: branch-of-branch-of-master (for example)
-		------------------------------------------------
-
-		TopLevelFilesystemId: <master branch filesystem id>
-		TopLevelFilesystemName: foo
-		Clones: []Clone{
-			Clone{
-				FilesystemId: <branch1 filesystem id>,
-				Origin: {
-					FilesystemId: <master branch filesystem id>,
-					SnapshotId: <snapshot that is origin on master branch>,
-				}
-			},
-			Clone{
-				FilesystemId: <branch2 filesystem id>,
-				Origin: {
-					FilesystemId: <branch1 filesystem id>,
-					SnapshotId: <snapshot that is origin on branch1 branch>,
-				}
-			},
-		}
-
-		Required actions:
-
-		push master branch from:
-			beginning to:
-				snapshot that is origin on master branch
-		push branch1 from:
-			snapshot that is origin on master branch, to:
-				snapshot that is origin on branch1 branch
-		push branch2 from:
-			snapshot that is origin on branch1 branch, to:
-				latest snapshot on branch2
-
-		Examples:
-
-		retryPush("", "", "<master branch filesystem id>", "<origin snapshot on master>")
-
-		push master branch from:
-			beginning to:
-				snapshot that is origin on master branch
-
-		retryPush("<master branch filesystem id>", "<origin snapshot on master>", "<branch1 filesystem id>", "<origin snapshot on branch1>")
-
-		push branch1 from:
-			snapshot that is origin on master branch, to:
-				snapshot that is origin on branch1 branch
-
-		retryPush("<branch1 branch filesystem id>", "<origin snapshot on branch1>", "<branch2 filesystem id>", "")
-
-		push branch2 from:
-			snapshot that is origin on branch1 branch, to:
-				latest snapshot on branch2
-	*/
-
-	var responseEvent *Event
-	var nextState stateFn
-	var firstSnapshot string
-	if len(path.Clones) == 0 {
-		// just pushing a master branch to its latest snapshot
-		// do a push with empty origin and empty target snapshot
-		// TODO parametrize "push to snapshot" and expose in the UI
-		firstSnapshot = ""
-	} else {
-		// push the master branch up to the first snapshot
-		firstSnapshot = path.Clones[0].Clone.Origin.SnapshotId
-	}
-	responseEvent, nextState = f.retryPush(
-		"", "", path.TopLevelFilesystemId, firstSnapshot,
-		transferRequestId, &pollResult, client, &transferRequest,
-	)
-	if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
-		return f.errorDuringTransfer(
-			"error-in-attempting-push",
-			fmt.Errorf("Response event != finished-push or peer-up-to-date: %s", responseEvent),
+	// TODO tidy up argument passing here.
+	responseEvent, nextState := f.applyPath(path, func(f *fsMachine,
+		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId string,
+		transferRequestId string, pollResult *TransferPollResult,
+		client *JsonRpcClient, transferRequest *TransferRequest,
+	) (*Event, stateFn) {
+		return f.retryPush(
+			fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId,
+			transferRequestId, pollResult, client, transferRequest,
 		)
-	}
-	err = f.incrementPollResultIndex(transferRequestId, &pollResult)
-	if err != nil {
-		return f.errorDuringTransfer("error-incrementing-poll-result", err)
-	}
-
-	for i, clone := range path.Clones {
-		// default empty-strings is fine
-		nextOrigin := Origin{}
-		// is there a next (i+1'th) item? (i is zero-indexed)
-		if len(path.Clones) > i+1 {
-			// example: path.Clones is 2 items long, and we're on the second
-			// one; i=1, len(path.Clones) = 2; 2 > 2 is false; so we're on the
-			// last item so the guard evaluates to false; if we're on the first
-			// item, 2 > 1 is true, so guard is true.
-			nextOrigin = path.Clones[i+1].Clone.Origin
-		}
-		responseEvent, nextState = f.retryPush(
-			clone.Clone.Origin.FilesystemId, clone.Clone.Origin.SnapshotId,
-			clone.Clone.FilesystemId, nextOrigin.SnapshotId,
-			transferRequestId, &pollResult, client, &transferRequest,
-		)
-		if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
-			return f.errorDuringTransfer(
-				"error-in-attempting-push",
-				fmt.Errorf("Response event != finished-push or peer-up-to-date: %s", responseEvent),
-			)
-		}
-		err = f.incrementPollResultIndex(transferRequestId, &pollResult)
-		if err != nil {
-			return f.errorDuringTransfer("error-incrementing-poll-result", err)
-		}
-	}
+	}, transferRequestId, &pollResult, client, &transferRequest)
 
 	f.innerResponses <- responseEvent
 	if nextState == nil {
@@ -1574,6 +1484,16 @@ func (f *fsMachine) retryPush(
 	client *JsonRpcClient, transferRequest *TransferRequest,
 ) (*Event, stateFn) {
 	// Let's go!
+	// Interpret empty toSnapshotId as "push to the latest snapshot"
+	if toSnapshotId == "" {
+		snaps, err := f.state.snapshotsForCurrentMaster(toFilesystemId)
+		if err != nil {
+			return &Event{
+				Name: "failed-getting-local-snapshots", Args: &EventArgs{"err": err},
+			}, backoffState
+		}
+		toSnapshotId = snaps[len(snaps)-1].Id
+	}
 	log.Printf(
 		"[retryPush] from (%s, %s) to (%s, %s), pollResult: %s",
 		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId, pollResult,
@@ -1587,7 +1507,7 @@ func (f *fsMachine) retryPush(
 	)
 	if err != nil {
 		return &Event{
-			Name: "failed-getting-snapshots", Args: &EventArgs{"err": err},
+			Name: "failed-getting-remote-snapshots", Args: &EventArgs{"err": err},
 		}, backoffState
 	}
 	fsMachine, err := f.state.maybeFilesystem(toFilesystemId)
@@ -1631,7 +1551,6 @@ func (f *fsMachine) retryPush(
 			Name: "error-in-canapply-when-pushing", Args: &EventArgs{"err": err},
 		}, backoffState
 	}
-	// TODO opentracing
 	// TODO peer may error out of pushPeerState, wouldn't we like to get them
 	// back into it somehow? we could attempt to do that with by sending a new
 	// RegisterTransfer rpc if necessary. or they could retry also.
@@ -1736,6 +1655,232 @@ func (f *fsMachine) updateTransfer(status, message string) {
 	}
 }
 
+func (f *fsMachine) pull(
+	fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId string,
+	snapRange *snapshotRange,
+	transferRequest *TransferRequest,
+	transferRequestId *string,
+	pollResult *TransferPollResult,
+	client *JsonRpcClient,
+) (responseEvent *Event, nextState stateFn) {
+	pollResult.Status = "calculating size"
+	err := updatePollResult(*transferRequestId, *pollResult)
+	if err != nil {
+		return &Event{
+			Name: "push-initiator-cant-write-to-etcd",
+			Args: &EventArgs{"err": err},
+		}, backoffState
+	}
+
+	// 1. Do an RPC to estimate the send size and update pollResult
+	// accordingly.
+	var size int64
+	err = client.CallRemote(context.Background(),
+		"DatameshRPC.PredictSize", map[string]interface{}{
+			"FromFilesystemId": fromFilesystemId,
+			"FromSnapshotId":   fromSnapshotId,
+			"ToFilesystemId":   toFilesystemId,
+			"ToSnapshotId":     toSnapshotId,
+		},
+		&size,
+	)
+	if err != nil {
+		return &Event{
+			Name: "error-rpc-predict-size",
+			Args: &EventArgs{"err": err},
+		}, backoffState
+	}
+	log.Printf("[pull] size: %d", size)
+	pollResult.Size = size
+	pollResult.Status = "pulling"
+	err = updatePollResult(*transferRequestId, *pollResult)
+	if err != nil {
+		return &Event{
+			Name: "push-initiator-cant-write-to-etcd",
+			Args: &EventArgs{"err": err},
+		}, backoffState
+	}
+
+	// 2. Perform GET, as receivingState does. Update as we go, similar to how
+	// push does it.
+	url := fmt.Sprintf(
+		"http://%s:6969/filesystems/%s/%s/%s",
+		transferRequest.Peer,
+		toFilesystemId,
+		fromSnapshotId,
+		toSnapshotId,
+	)
+	log.Printf("Pulling from %s", url)
+	req, err := http.NewRequest(
+		"GET", url, nil,
+	)
+	req.SetBasicAuth(
+		transferRequest.User,
+		transferRequest.ApiKey,
+	)
+	getClient := new(http.Client)
+	resp, err := getClient.Do(req)
+	if err != nil {
+		log.Printf("Attempting to pull %s got %s", fromFilesystemId, err)
+		return &Event{
+			Name: "get-failed-pull",
+			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
+		}, backoffState
+	}
+	log.Printf(
+		"Debug: curl -u admin:[pw] http://%s:6969/filesystems/%s/%s/%s",
+		transferRequest.Peer, fromFilesystemId, fromSnapshotId, toSnapshotId,
+	)
+	// TODO finish rewriting return values and update pollResult as the transfer happens...
+	cmd := exec.Command("zfs", "recv", fq(f.filesystemId))
+	pipeReader, pipeWriter := io.Pipe()
+	defer pipeReader.Close()
+	defer pipeWriter.Close()
+
+	cmd.Stdin = pipeReader
+	cmd.Stdout = getLogfile("zfs-recv-stdout")
+	cmd.Stderr = getLogfile("zfs-recv-stderr")
+
+	finished := make(chan bool)
+
+	go pipe(
+		resp.Body, fmt.Sprintf("http response body for %s", f.filesystemId),
+		pipeWriter, "stdin of zfs recv",
+		finished,
+		f.innerRequests,
+		// put the event back on the channel in the cancellation case
+		func(e *Event, c chan *Event) { c <- e },
+		func(bytes int64, t int64) {
+			f.transitionedTo("receiving",
+				fmt.Sprintf(
+					"transferred %.2fMiB in %.2fs (%.2fMiB/s)...",
+					// bytes => mebibytes       nanoseconds => seconds
+					float64(bytes)/(1024*1024), float64(t)/(1000*1000*1000),
+					// mib/sec
+					(float64(bytes)/(1024*1024))/(float64(t)/(1000*1000*1000)),
+				),
+			)
+		},
+		"decompress",
+	)
+
+	err = cmd.Run()
+	f.transitionedTo("receiving", "finished zfs recv")
+	pipeReader.Close()
+	pipeWriter.Close()
+	_ = <-finished
+	f.transitionedTo("receiving", "finished pipe")
+
+	if err != nil {
+		log.Printf(
+			"Got error %s when running zfs recv for %s, check zfs-recv-stderr.log",
+			err, f.filesystemId,
+		)
+		return &Event{
+			Name: "get-failed-pull",
+			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
+		}, backoffState
+	} else {
+		log.Printf("Successfully received %s => %s for %s", fromSnapshotId, toSnapshotId)
+	}
+	return &Event{
+		Name: "finished-pull",
+	}, discoveringState
+}
+
+func calculateSendArgs(
+	fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId string,
+) []string {
+
+	// toFilesystemId
+	// snapRange.toSnap.Id
+	// snapRange.fromSnap == nil?  --> fromSnapshotId == ""?
+	// snapRange.fromSnap.Id
+
+	var sendArgs []string
+	var fromSnap string
+	if fromSnapshotId == "" {
+		fromSnap = "START"
+		if fromFilesystemId != "" { // XXX wtf
+			// This is a clone-origin based send
+			fromSnap = fmt.Sprintf(
+				"%s@%s", fromFilesystemId, fromSnapshotId,
+			)
+		}
+	} else {
+		fromSnap = fromSnapshotId
+	}
+	if fromSnap == "START" {
+		// -R sends interim snapshots as well
+		sendArgs = []string{
+			"-p", "-R", fq(toFilesystemId) + "@" + toSnapshotId,
+		}
+	} else {
+		// in clone case, fromSnap must be fully qualified
+		if strings.Contains(fromSnap, "@") {
+			// send a clone, so make it fully qualified
+			fromSnap = fq(fromSnap)
+		}
+		sendArgs = []string{
+			"-p", "-I", fromSnap, fq(toFilesystemId) + "@" + toSnapshotId,
+		}
+	}
+	return sendArgs
+}
+
+/*
+		Discover total number of bytes in replication stream by asking nicely:
+
+			luke@hostess:/foo$ sudo zfs send -nP pool/foo@now2
+			full    pool/foo@now2   105050056
+			size    105050056
+			luke@hostess:/foo$ sudo zfs send -nP -I pool/foo@now pool/foo@now2
+			incremental     now     pool/foo@now2   105044936
+			size    105044936
+
+	   -n
+
+		   Do a dry-run ("No-op") send.  Do not generate any actual send
+		   data.  This is useful in conjunction with the -v or -P flags to
+		   determine what data will be sent.
+
+	   -P
+
+		   Print machine-parsable verbose information about the stream
+		   package generated.
+*/
+func predictSize(
+	fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId string,
+) (int64, error) {
+	sendArgs := calculateSendArgs(fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId)
+	predictArgs := []string{"send", "-nP"}
+	predictArgs = append(predictArgs, sendArgs...)
+
+	sizeCmd := exec.Command("zfs", predictArgs...)
+
+	log.Printf("[predictSize] predict command: %s", strings.Join(predictArgs, " "))
+
+	out, err := sizeCmd.CombinedOutput()
+	if err != nil {
+		return 0, err
+	}
+	shrap := strings.Split(string(out), "\n")
+	if len(shrap) < 2 {
+		return 0, fmt.Errorf("Not enough lines in output %v", string(out))
+	}
+	sizeLine := shrap[len(shrap)-2]
+	shrap = strings.Fields(sizeLine)
+	if len(shrap) < 2 {
+		return 0, fmt.Errorf("Not enough fields in %v", sizeLine)
+	}
+
+	size, err := strconv.ParseInt(shrap[1], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
+}
+
 // TODO this method shouldn't really be on a fsMachine, because it is
 // parameterized by filesystemId (implicitly in pollResult, which varies over
 // phases of a multi-filesystem push)
@@ -1747,30 +1892,15 @@ func (f *fsMachine) push(
 	pollResult *TransferPollResult,
 	client *JsonRpcClient,
 ) (responseEvent *Event, nextState stateFn) {
-
 	filesystemId := pollResult.FilesystemId
 
 	pollResult.Status = "calculating size"
-
 	err := updatePollResult(*transferRequestId, *pollResult)
 	if err != nil {
 		return &Event{
 			Name: "push-initiator-cant-write-to-etcd",
 			Args: &EventArgs{"err": err},
 		}, backoffState
-	}
-
-	var fromSnap string
-	if snapRange.fromSnap == nil {
-		fromSnap = "START"
-		if fromFilesystemId != "" {
-			// This is a clone-origin based send
-			fromSnap = fmt.Sprintf(
-				"%s@%s", fromFilesystemId, fromSnapshotId,
-			)
-		}
-	} else {
-		fromSnap = snapRange.fromSnap.Id
 	}
 
 	postReader, postWriter := io.Pipe()
@@ -1782,7 +1912,7 @@ func (f *fsMachine) push(
 		"http://%s:6969/filesystems/%s/%s/%s",
 		transferRequest.Peer,
 		filesystemId,
-		fromSnap,
+		fromSnapshotId,
 		snapRange.toSnap.Id,
 	)
 	log.Printf("Pushing to %s", url)
@@ -1801,7 +1931,6 @@ func (f *fsMachine) push(
 	// TODO remove duplication (with replication.go)
 	// command writes into pipe
 	var cmd *exec.Cmd
-	var sendArgs []string
 	var prelude Prelude
 	// https://github.com/lukemarsden/datamesh/issues/34
 	// https://github.com/zfsonlinux/zfs/pull/5189
@@ -1832,87 +1961,29 @@ func (f *fsMachine) push(
 			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
 		}, backoffState
 	}
-	if fromSnap == "START" {
-		// -R sends interim snapshots as well
-		sendArgs = []string{
-			"-p", "-R", fq(filesystemId) + "@" + snapRange.toSnap.Id,
-		}
-	} else {
-		// in clone case, fromSnap must be fully qualified
-		if strings.Contains(fromSnap, "@") {
-			// send a clone, so make it fully qualified
-			fromSnap = fq(fromSnap)
-		}
-		sendArgs = []string{
-			"-p", "-I", fromSnap, fq(filesystemId) + "@" + snapRange.toSnap.Id,
-		}
-	}
-	// XXX this doesn't need to happen every push(), just once above.
-	// also, factor it out into its own function.
-	/*
-			Discover total number of bytes in replication stream by asking nicely:
 
-				luke@hostess:/foo$ sudo zfs send -nP pool/foo@now2
-				full    pool/foo@now2   105050056
-				size    105050056
-				luke@hostess:/foo$ sudo zfs send -nP -I pool/foo@now pool/foo@now2
-				incremental     now     pool/foo@now2   105044936
-				size    105044936
-
-		   -n
-
-			   Do a dry-run ("No-op") send.  Do not generate any actual send data.  This is useful in conjunction with the -v or -P flags to determine what data will be sent.
-
-		   -P
-
-			   Print machine-parsable verbose information about the stream package generated.
-	*/
-
-	predictArgs := []string{"send", "-nP"}
-	predictArgs = append(predictArgs, sendArgs...)
-
+	// TODO test whether toFilesystemId and toSnapshotId are set correctly,
+	// and consistently with snapRange?
+	sendArgs := calculateSendArgs(
+		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId,
+	)
 	realArgs := []string{"send"}
 	realArgs = append(realArgs, sendArgs...)
 
-	sizeCmd := exec.Command("zfs", predictArgs...)
-
-	log.Printf("[actualPush] predict command: %s", strings.Join(predictArgs, " "))
-
-	out, err := sizeCmd.CombinedOutput()
+	// XXX this doesn't need to happen every push(), just once above.
+	size, err := predictSize(
+		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId,
+	)
 	if err != nil {
 		return &Event{
-			Name: "error-from-send-nP",
-			Args: &EventArgs{"err": err, "output": string(out)},
-		}, backoffState
-	}
-	shrap := strings.Split(string(out), "\n")
-	if len(shrap) < 2 {
-		return &Event{
-			Name: "not-enough-lines",
-			Args: &EventArgs{"output": string(out)},
-		}, backoffState
-	}
-	sizeLine := shrap[len(shrap)-2]
-	shrap = strings.Fields(sizeLine)
-	if len(shrap) < 2 {
-		return &Event{
-			Name: "not-enough-fields",
-			Args: &EventArgs{"output": sizeLine},
-		}, backoffState
-	}
-
-	size, err := strconv.ParseInt(shrap[1], 10, 64)
-	if err != nil {
-		return &Event{
-			Name: "cant-cast-size-to-int",
-			Args: &EventArgs{"err": err, "output": string(out), "piece": shrap[1]},
+			Name: "error-predicting",
+			Args: &EventArgs{"err": err},
 		}, backoffState
 	}
 
 	log.Printf("[actualPush] size: %d", size)
 	pollResult.Size = size
 	pollResult.Status = "pushing"
-
 	err = updatePollResult(*transferRequestId, *pollResult)
 	if err != nil {
 		return &Event{
@@ -1967,7 +2038,10 @@ func (f *fsMachine) push(
 		"compress",
 	)
 
-	log.Printf("[actualPush] Writing prelude of %d bytes (encoded): %s", len(preludeEncoded), preludeEncoded)
+	log.Printf(
+		"[actualPush] Writing prelude of %d bytes (encoded): %s",
+		len(preludeEncoded), preludeEncoded,
+	)
 	pipeWriter.Write(preludeEncoded)
 
 	req.SetBasicAuth(
@@ -1988,7 +2062,7 @@ func (f *fsMachine) push(
 	go func() {
 		log.Printf(
 			"[actualPush] About to Run() for %s %s => %s",
-			filesystemId, fromSnap, snapRange.toSnap.Id,
+			filesystemId, fromSnapshotId, toSnapshotId,
 		)
 		runErr := cmd.Run()
 
@@ -2043,12 +2117,12 @@ func (f *fsMachine) push(
 	err = <-errch
 	log.Printf(
 		"[actualPush] Finished Run() for %s %s => %s: %s",
-		filesystemId, fromSnap, snapRange.toSnap.Id, err,
+		filesystemId, fromSnapshotId, toSnapshotId, err,
 	)
 	if err != nil {
 		log.Printf(
 			"[actualPush] Error from zfs send of %s from %s => %s: %s, check zfs-send-errors.log",
-			filesystemId, fromSnap, snapRange.toSnap.Id, err,
+			filesystemId, fromSnapshotId, toSnapshotId, err,
 		)
 		return &Event{
 			Name: "error-from-zfs-send",
@@ -2076,41 +2150,7 @@ func (f *fsMachine) push(
 	return &Event{
 		Name: "finished-push",
 		Args: &EventArgs{},
-	}, backoffState // TODO should this be discoveryState? No need to wait a second here.
-}
-
-func pullInitiatorState(f *fsMachine) stateFn {
-	f.transitionedTo("pullInitiatorState", "requesting")
-	// this is a write state. refuse to act if containers are running
-
-	// refuse to pull if we have any containers running
-	// TODO stop any containers being started, somehow. (by acquiring a lock?)
-	containers, err := f.containersRunning()
-	if err != nil {
-		log.Printf(
-			"Can't pull into filesystem while we can't list whether containers are using it",
-		)
-		f.innerResponses <- &Event{
-			Name: "error-listing-containers-during-pull",
-			Args: &EventArgs{"err": err},
-		}
-		return backoffState
-	}
-	if len(containers) > 0 {
-		log.Printf("Can't pull into filesystem while containers are using it")
-		f.innerResponses <- &Event{
-			Name: "cannot-pull-while-containers-running",
-			Args: &EventArgs{"containers": containers},
-		}
-		return backoffState
-	}
-
-	// TODO
-	f.innerResponses <- &Event{
-		Name: "i-dont-work-yet",
-		Args: &EventArgs{},
-	}
-	return backoffState
+	}, discoveringState
 }
 
 func pushPeerState(f *fsMachine) stateFn {
@@ -2277,8 +2317,379 @@ func pushPeerState(f *fsMachine) stateFn {
 	}
 }
 
+func pullInitiatorState(f *fsMachine) stateFn {
+	f.transitionedTo("pullInitiatorState", "requesting")
+	// this is a write state. refuse to act if containers are running
+
+	// refuse to pull if we have any containers running
+	// TODO stop any containers being started, somehow. (by acquiring a lock?)
+	containers, err := f.containersRunning()
+	if err != nil {
+		log.Printf(
+			"Can't pull into filesystem while we can't list whether containers are using it",
+		)
+		f.innerResponses <- &Event{
+			Name: "error-listing-containers-during-pull",
+			Args: &EventArgs{"err": err},
+		}
+		return backoffState
+	}
+	if len(containers) > 0 {
+		log.Printf("Can't pull into filesystem while containers are using it")
+		f.innerResponses <- &Event{
+			Name: "cannot-pull-while-containers-running",
+			Args: &EventArgs{"containers": containers},
+		}
+		return backoffState
+	}
+
+	transferRequest := f.lastTransferRequest
+	transferRequestId := f.lastTransferRequestId
+
+	// TODO dedupe what follows wrt pushInitiatorState!
+	client := NewJsonRpcClient(
+		transferRequest.User,
+		transferRequest.Peer,
+		transferRequest.ApiKey,
+	)
+
+	var path PathToTopLevelFilesystem
+	// XXX Not propagating context here; not needed for auth, but would be nice
+	// for inter-cluster opentracing.
+	err = client.CallRemote(context.Background(),
+		"DatameshRPC.DeducePathToTopLevelFilesystem", map[string]interface{}{
+			"RemoteFilesystemName": transferRequest.RemoteFilesystemName,
+			"RemoteCloneName":      transferRequest.RemoteCloneName,
+		},
+		&path,
+	)
+	if err != nil {
+		f.innerResponses <- &Event{
+			Name: "cant-rpc-deduce-path",
+			Args: &EventArgs{"err": err},
+		}
+		return backoffState
+	}
+
+	// register a poll result object.
+	pollResult := TransferPollResultFromTransferRequest(
+		transferRequestId, transferRequest, f.state.myNodeId,
+		1, 1+len(path.Clones), "syncing metadata",
+	)
+	f.lastPollResult = &pollResult
+
+	err = updatePollResult(transferRequestId, pollResult)
+	if err != nil {
+		f.innerResponses <- &Event{
+			Name: "pull-initiator-cant-write-to-etcd",
+			Args: &EventArgs{"err": err},
+		}
+		return backoffState
+	}
+
+	// iterate over the path, attempting to pull each clone in turn.
+	responseEvent, nextState := f.applyPath(path, func(f *fsMachine,
+		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId string,
+		transferRequestId string, pollResult *TransferPollResult,
+		client *JsonRpcClient, transferRequest *TransferRequest,
+	) (*Event, stateFn) {
+		return f.retryPull(
+			fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId,
+			transferRequestId, pollResult, client, transferRequest,
+		)
+	}, transferRequestId, &pollResult, client, &transferRequest)
+	f.innerResponses <- responseEvent
+	return nextState
+}
+
+func (f *fsMachine) retryPull(
+	fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId string,
+	transferRequestId string, pollResult *TransferPollResult,
+	client *JsonRpcClient, transferRequest *TransferRequest,
+) (*Event, stateFn) {
+	// TODO refactor the following with respect to retryPush!
+
+	// Let's go!
+	log.Printf(
+		"[retryPull] from (%s, %s) to (%s, %s), pollResult: %s",
+		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId, pollResult,
+	)
+	var remoteSnaps []*snapshot
+	err := client.CallRemote(
+		context.Background(),
+		"DatameshRPC.SnapshotsById",
+		toFilesystemId,
+		&remoteSnaps,
+	)
+	if err != nil {
+		return &Event{
+			Name: "failed-getting-snapshots", Args: &EventArgs{"err": err},
+		}, backoffState
+	}
+	fsMachine, err := f.state.maybeFilesystem(toFilesystemId)
+	if err != nil {
+		return &Event{
+			Name: "retry-pull-cant-find-filesystem-id",
+			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
+		}, backoffState
+	}
+	fsMachine.snapshotsLock.Lock()
+	localSnaps := fsMachine.filesystem.snapshots
+	fsMachine.snapshotsLock.Unlock()
+	// if we're given a target snapshot, restrict f.filesystem.snapshots to
+	// that snapshot
+	remoteSnaps, err = restrictSnapshots(remoteSnaps, toSnapshotId)
+	if err != nil {
+		return &Event{
+			Name: "restrict-snapshots-error",
+			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
+		}, backoffState
+	}
+	snapRange, err := canApply(remoteSnaps, localSnaps)
+	if err != nil {
+		switch err.(type) {
+		case *ToSnapsUpToDate:
+			// no action, we're up-to-date for this filesystem
+			pollResult.Status = "finished"
+			pollResult.Message = "remote already up-to-date, nothing to do"
+
+			e := updatePollResult(transferRequestId, *pollResult)
+			if e != nil {
+				return &Event{
+					Name: "pull-initiator-cant-write-to-etcd", Args: &EventArgs{"err": e},
+				}, backoffState
+			}
+			return &Event{
+				Name: "peer-up-to-date",
+			}, backoffState
+		}
+		return &Event{
+			Name: "error-in-canapply-when-pulling", Args: &EventArgs{"err": err},
+		}, backoffState
+	}
+	var fromSnap string
+	// XXX dedupe this wrt calculateSendArgs/predictSize
+	if snapRange.fromSnap == nil {
+		fromSnap = "START"
+		if fromFilesystemId != "" {
+			// This is a receive from a clone origin
+			fromSnap = fmt.Sprintf(
+				"%s@%s", fromFilesystemId, fromSnapshotId,
+			)
+		}
+	} else {
+		fromSnap = snapRange.fromSnap.Id
+	}
+
+	pollResult.FilesystemId = toFilesystemId
+	pollResult.StartingSnapshot = fromSnap
+	pollResult.TargetSnapshot = snapRange.toSnap.Id
+
+	err = updatePollResult(transferRequestId, *pollResult)
+	if err != nil {
+		return &Event{
+			Name: "pull-initiator-cant-write-to-etcd", Args: &EventArgs{"err": err},
+		}, backoffState
+	}
+
+	err = updatePollResult(transferRequestId, *pollResult)
+	if err != nil {
+		return &Event{
+			Name: "pull-initiator-cant-write-to-etcd", Args: &EventArgs{"err": err},
+		}, backoffState
+	}
+
+	var retry int
+	var responseEvent *Event
+	var nextState stateFn
+	for retry < 5 {
+		responseEvent, nextState = f.pull(
+			fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId,
+			snapRange, transferRequest, &transferRequestId, pollResult, client,
+		)
+		if responseEvent.Name == "finished-pull" {
+			log.Printf("[actualPull] Successful pull!")
+			return responseEvent, nextState
+		}
+		retry++
+		f.updateTransfer(
+			fmt.Sprintf("retry %d", retry),
+			fmt.Sprintf("Attempting to pull %s got %s", f.filesystemId, responseEvent),
+		)
+		log.Printf(
+			"[retry attempt %d] squashing and retrying in %ds because we "+
+				"got a %s (which tried to put us into %s)...",
+			retry, retry, responseEvent, nextState,
+		)
+		time.Sleep(time.Duration(retry) * time.Second)
+	}
+	log.Printf(
+		"[actualPull] Maximum retry attempts exceeded, "+
+			"returning latest error: %s (to move into state %s)",
+		responseEvent, nextState,
+	)
+	return &Event{
+		Name: "maximum-retry-attempts-exceeded", Args: &EventArgs{"responseEvent": responseEvent},
+	}, backoffState
+}
+
 func pullPeerState(f *fsMachine) stateFn {
-	f.transitionedTo("pullPeerState", "running")
-	// TODO
-	return backoffState
+	// This is kind-of a boring state. An authenticated user can GET a
+	// filesystem whenever. So arguably a valid implementation of pullPeerState
+	// is just to immediately go back to discoveringState. In the future, it
+	// might be nicer for observability to synchronize staying in this state
+	// until our peer has what it needs. And maybe we want to block some other
+	// events while this is happening? (Although I think we want to do that for
+	// GETs in general?)
+	f.transitionedTo("pullPeerState", "immediate-return")
+	return discoveringState
+}
+
+// for each clone, ensure its origin snapshot exists on the remote. if it
+// doesn't, transfer it.
+func (f *fsMachine) applyPath(
+	path PathToTopLevelFilesystem, transferFn transferFn,
+	transferRequestId string, pollResult *TransferPollResult,
+	client *JsonRpcClient, transferRequest *TransferRequest,
+) (*Event, stateFn) {
+	/*
+		Case 1: single master filesystem
+		--------------------------------
+
+		TopLevelFilesystemId: <master branch filesystem id>
+		TopLevelFilesystemName: foo
+		Clones: []
+
+		transferFn("", "", "<master branch filesystem id>", "")
+
+		Case 2: branch-of-branch-of-master (for example)
+		------------------------------------------------
+
+		TopLevelFilesystemId: <master branch filesystem id>
+		TopLevelFilesystemName: foo
+		Clones: []Clone{
+			Clone{
+				FilesystemId: <branch1 filesystem id>,
+				Origin: {
+					FilesystemId: <master branch filesystem id>,
+					SnapshotId: <snapshot that is origin on master branch>,
+				}
+			},
+			Clone{
+				FilesystemId: <branch2 filesystem id>,
+				Origin: {
+					FilesystemId: <branch1 filesystem id>,
+					SnapshotId: <snapshot that is origin on branch1 branch>,
+				}
+			},
+		}
+
+		Required actions:
+
+		push master branch from:
+			beginning to:
+				snapshot that is origin on master branch
+		push branch1 from:
+			snapshot that is origin on master branch, to:
+				snapshot that is origin on branch1 branch
+		push branch2 from:
+			snapshot that is origin on branch1 branch, to:
+				latest snapshot on branch2
+
+		Examples:
+
+		transferFn("", "", "<master branch filesystem id>", "<origin snapshot on master>")
+
+		push master branch from:
+			beginning to:
+				snapshot that is origin on master branch
+
+		transferFn(
+			"<master branch filesystem id>", "<origin snapshot on master>",
+			"<branch1 filesystem id>", "<origin snapshot on branch1>",
+		)
+
+		push branch1 from:
+			snapshot that is origin on master branch, to:
+				snapshot that is origin on branch1 branch
+
+		transferFn(
+			"<branch1 branch filesystem id>", "<origin snapshot on branch1>",
+			"<branch2 filesystem id>", "",
+		)
+
+		push branch2 from:
+			snapshot that is origin on branch1 branch, to:
+				latest snapshot on branch2
+	*/
+
+	var responseEvent *Event
+	var nextState stateFn
+	var firstSnapshot string
+	if len(path.Clones) == 0 {
+		// just pushing a master branch to its latest snapshot
+		// do a push with empty origin and empty target snapshot
+		// TODO parametrize "push to snapshot" and expose in the UI
+		firstSnapshot = ""
+	} else {
+		// push the master branch up to the first snapshot
+		firstSnapshot = path.Clones[0].Clone.Origin.SnapshotId
+	}
+	log.Printf(
+		"[applyPath,b] calling transferFn with fF=%v, fS=%v, tF=%v, tS=%v",
+		"", "", path.TopLevelFilesystemId, firstSnapshot,
+	)
+	responseEvent, nextState = transferFn(f,
+		"", "", path.TopLevelFilesystemId, firstSnapshot,
+		transferRequestId, pollResult, client, transferRequest,
+	)
+	if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
+		return &Event{Name: "error-in-attempting-push",
+			Args: &EventArgs{
+				"error": fmt.Errorf(
+					"Response event != finished-push or peer-up-to-date: %s", responseEvent,
+				),
+			},
+		}, backoffState
+	}
+	err := f.incrementPollResultIndex(transferRequestId, pollResult)
+	if err != nil {
+		return &Event{Name: "error-incrementing-poll-result",
+			Args: &EventArgs{"error": err}}, backoffState
+	}
+
+	for i, clone := range path.Clones {
+		// default empty-strings is fine
+		nextOrigin := Origin{}
+		// is there a next (i+1'th) item? (i is zero-indexed)
+		if len(path.Clones) > i+1 {
+			// example: path.Clones is 2 items long, and we're on the second
+			// one; i=1, len(path.Clones) = 2; 2 > 2 is false; so we're on the
+			// last item so the guard evaluates to false; if we're on the first
+			// item, 2 > 1 is true, so guard is true.
+			nextOrigin = path.Clones[i+1].Clone.Origin
+		}
+		log.Printf(
+			"[applyPath,i] calling transferFn with fF=%v, fS=%v, tF=%v, tS=%v",
+			clone.Clone.Origin.FilesystemId, clone.Clone.Origin.SnapshotId,
+			clone.Clone.FilesystemId, nextOrigin.SnapshotId,
+		)
+		responseEvent, nextState = transferFn(f,
+			clone.Clone.Origin.FilesystemId, clone.Clone.Origin.SnapshotId,
+			clone.Clone.FilesystemId, nextOrigin.SnapshotId,
+			transferRequestId, pollResult, client, transferRequest,
+		)
+		if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
+			err := fmt.Errorf("Response event != finished-push or peer-up-to-date: %s", responseEvent)
+			return &Event{Name: "error-in-attempting-push",
+					Args: &EventArgs{"error": fmt.Sprintf("%+v", err)}},
+				f.errorDuringTransfer("error-in-attempting-push", err)
+		}
+		err = f.incrementPollResultIndex(transferRequestId, pollResult)
+		if err != nil {
+			return &Event{Name: "error-incrementing-poll-result"},
+				backoffState
+		}
+	}
+	return responseEvent, nextState
 }

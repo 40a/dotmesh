@@ -15,6 +15,25 @@ in the datamesh discovery service. After the initial setup and priming of
 docker images, which takes quite some time, it should take ~60 seconds to spin
 up a 2 node datamesh cluster to run a test.
 
+You should put the following docker config in /etc/docker/daemon.json:
+
+{
+    "storage-driver": "overlay2",
+    "insecure-registry": "$(hostname).local:80"
+}
+
+Replacing $(hostname) with your hostname, and then `systemctl restart docker`.
+
+You need to be running a local registry, available as part of the
+github.com/lukemarsden/datamesh-instrumentation pack.
+
+Finally, you need to be running github.com/lukemarsden/discovery.data-mesh.io
+on port 8087:
+
+	git clone git@github.com:lukemarsden/discovery.data-mesh.io
+	cd discovery.data-mesh.io
+	./start-local.sh
+
 You have to do some one-off setup and priming of docker images before these
 tests will run:
 
@@ -48,25 +67,6 @@ tests will run:
 	cd etcd-browser
 	docker build -t $(hostname).local:80/lukemarsden/etcd-browser:v1 .
 	docker push $(hostname).local:80/lukemarsden/etcd-browser:v1
-
-You should put the following docker config in /etc/docker/daemon.json:
-
-{
-    "storage-driver": "overlay2",
-    "insecure-registry": "$(hostname).local:80"
-}
-
-Replacing $(hostname) with your hostname, and then `systemctl restart docker`.
-
-You need to be running a local registry, available as part of the
-github.com/lukemarsden/datamesh-instrumentation pack.
-
-Finally, you need to be running github.com/lukemarsden/discovery.data-mesh.io
-on port 8087:
-
-	git clone git@github.com:lukemarsden/discovery.data-mesh.io
-	cd discovery.data-mesh.io
-	./start-local.sh
 
 */
 
@@ -617,6 +617,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		`ifconfig eth0 | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1`,
 	)
 	fmt.Printf("IP of node1: %s\n", node1IP)
+
 	config := s(t,
 		node1,
 		"cat /root/.datamesh/config",
@@ -628,24 +629,67 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 	}{}
 	json.Unmarshal([]byte(config), &m)
 
+	type Node struct {
+		Name      string
+		Container string
+		IP        string
+		ApiKey    string
+	}
+	type Pair struct {
+		From Node
+		To   Node
+	}
+	node1node := Node{
+		Name:      "node1",
+		Container: node1,
+		IP:        node1IP,
+		ApiKey:    m.Remotes.Local.ApiKey,
+	}
+
+	node2IP := s(t,
+		node2,
+		`ifconfig eth0 | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1`,
+	)
+	fmt.Printf("IP of node2: %s\n", node2IP)
+
+	config = s(t,
+		node2,
+		"cat /root/.datamesh/config",
+	)
+	fmt.Printf("dm config on node2: %s\n", config)
+
+	// re-use m
+	json.Unmarshal([]byte(config), &m)
+	node2node := Node{
+		Name:      "node2",
+		Container: node2,
+		IP:        node2IP,
+		ApiKey:    m.Remotes.Local.ApiKey,
+	}
+
 	remoteAdd := func(t *testing.T) {
-		found := false
-		for _, remote := range strings.Split(s(t, node2, "dm remote"), "\n") {
-			if remote == "node1" {
-				found = true
+		for _, pair := range []Pair{
+			Pair{From: node1node, To: node2node},
+			Pair{From: node2node, To: node1node}} {
+			found := false
+			for _, remote := range strings.Split(s(t, pair.From.Container, "dm remote"), "\n") {
+				if remote == pair.To.Name {
+					found = true
+				}
 			}
-		}
-		if !found {
-			d(t, node2, fmt.Sprintf(
-				"echo %s |dm remote add node1 admin@%s",
-				m.Remotes.Local.ApiKey,
-				node1IP,
-			))
-			res := s(t, node2, "dm remote -v")
-			if !strings.Contains(res, "node1") {
-				t.Error("can't find node1 in node2's remote config")
+			if !found {
+				d(t, pair.From.Container, fmt.Sprintf(
+					"echo %s |dm remote add %s admin@%s",
+					pair.To.ApiKey,
+					pair.To.Name,
+					pair.To.IP,
+				))
+				res := s(t, pair.From.Container, "dm remote -v")
+				if !strings.Contains(res, pair.To.Name) {
+					t.Errorf("can't find %s in %s's remote config", pair.To.Name, pair.From.Name)
+				}
+				d(t, pair.From.Container, "dm remote switch local")
 			}
-			d(t, node2, "dm remote switch local")
 		}
 	}
 
@@ -830,14 +874,55 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 	})
 	t.Run("PushToAuthorizedUser", func(t *testing.T) {
+		// TODO
 		// create a user on the second cluster. on the first cluster, push a
 		// volume that user's account.
 	})
 	t.Run("NoPushToUnauthorizedUser", func(t *testing.T) {
+		// TODO
 		// a user can't push to a volume they're not authorized to push to.
 	})
 	t.Run("PushToCollaboratorVolume", func(t *testing.T) {
+		// TODO
 		// after adding another user as a collaborator, it's possible to push
 		// to their volume.
+	})
+	t.Run("Clone", func(t *testing.T) {
+		remoteAdd(t)
+		fsname := uniqName()
+		d(t, node2, dockerRun(fsname)+" touch /foo/X")
+		d(t, node2, "dm switch "+fsname)
+		d(t, node2, "dm commit -m 'hello'")
+		// XXX 'dm clone' currently tries to pull the named filesystem into the
+		// _current active filesystem name_. instead, it should pull it into a
+		// new filesystem with the same name. if the same named filesystem
+		// already exists, it should error (and instruct the user to 'dm switch
+		// foo; dm pull foo' instead).
+		d(t, node1, "dm clone node2 "+fsname)
+		/*
+			d(t, node1, "dm switch "+fsname)
+			resp := s(t, node1, "dm log")
+			if !strings.Contains(resp, "hello") {
+				t.Error("unable to find commit message remote's log output")
+			}
+			// test incremental pull
+			d(t, node2, "dm commit -m 'again'")
+			d(t, node1, "dm clone node1 "+fsname)
+
+			resp = s(t, node1, "dm log")
+			if !strings.Contains(resp, "again") {
+				t.Error("unable to find commit message remote's log output")
+			}
+			// test pulling branch with extant base
+			d(t, node2, "dm checkout -b newbranch")
+			d(t, node2, "dm commit -m 'branchy'")
+			d(t, node1, "dm pull node1 "+fsname+" newbranch")
+
+			d(t, node1, "dm checkout newbranch")
+			resp = s(t, node1, "dm log")
+			if !strings.Contains(resp, "branchy") {
+				t.Error("unable to find commit message remote's log output")
+			}
+		*/
 	})
 }

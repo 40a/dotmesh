@@ -514,7 +514,7 @@ func (d *DatameshRPC) RegisterFilesystem(
 	result *bool,
 ) error {
 	if !args.BecomeMasterIfNotExists {
-		panic("can't not become master in RegisterFilesystem rpc")
+		panic("can't not become master in RegisterFilesystem inter-cluster rpc")
 	}
 	err := d.registerFilesystemBecomeMaster(
 		r.Context(),
@@ -598,6 +598,8 @@ func (d *DatameshRPC) Transfer(
 ) error {
 	client := NewJsonRpcClient(args.User, args.Peer, args.ApiKey)
 
+	log.Printf("[Transfer] starting with %+v", safeArgs(*args))
+
 	var remoteFilesystemId string
 	err := client.CallRemote(r.Context(),
 		"DatameshRPC.Exists", map[string]string{
@@ -625,14 +627,31 @@ func (d *DatameshRPC) Transfer(
 		return fmt.Errorf("Can't pull when remote doesn't exist")
 	}
 
-	path, err := d.state.registry.deducePathToTopLevelFilesystem(
-		args.LocalFilesystemName, args.LocalCloneName,
-	)
-	if err != nil {
-		return fmt.Errorf(
-			"Can't deduce path to top level filesystem for %s,%s: %s",
-			args.LocalFilesystemName, args.LocalCloneName, err,
+	var path PathToTopLevelFilesystem
+	if args.Direction == "push" {
+		path, err = d.state.registry.deducePathToTopLevelFilesystem(
+			args.LocalFilesystemName, args.LocalCloneName,
 		)
+		if err != nil {
+			return fmt.Errorf(
+				"Can't deduce path to top level filesystem for %s,%s: %s",
+				args.LocalFilesystemName, args.LocalCloneName, err,
+			)
+		}
+	} else if args.Direction == "pull" {
+		err := client.CallRemote(r.Context(),
+			"DatameshRPC.DeducePathToTopLevelFilesystem", map[string]interface{}{
+				"RemoteFilesystemName": args.RemoteFilesystemName,
+				"RemoteCloneName":      args.RemoteCloneName,
+			},
+			&path,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"Can't deduce path to top level filesystem for %s,%s: %s",
+				args.RemoteFilesystemName, args.RemoteCloneName, err,
+			)
+		}
 	}
 
 	var filesystemId string
@@ -672,8 +691,8 @@ func (d *DatameshRPC) Transfer(
 		filesystemId = remoteFilesystemId
 	} else if remoteExists && localExists && remoteFilesystemId != localFilesystemId {
 		return fmt.Errorf(
-			"Cannot reconcile filesystems with different ids, remote=%s, local=%s",
-			remoteFilesystemId, localFilesystemId,
+			"Cannot reconcile filesystems with different ids, remote=%s, local=%s, args=%+v",
+			remoteFilesystemId, localFilesystemId, safeArgs(*args),
 		)
 	} else if remoteExists && localExists && remoteFilesystemId == localFilesystemId {
 		filesystemId = localFilesystemId
@@ -771,6 +790,11 @@ func (d *DatameshRPC) Transfer(
 
 	*result = requestId
 	return nil
+}
+
+func safeArgs(t TransferRequest) TransferRequest {
+	t.ApiKey = "<redacted>"
+	return t
 }
 
 func (a ByAddress) Len() int      { return len(a) }
@@ -900,5 +924,43 @@ func (d *DatameshRPC) AddCollaborator(
 		return err
 	}
 	*result = true
+	return nil
+}
+
+func (d *DatameshRPC) DeducePathToTopLevelFilesystem(
+	r *http.Request,
+	args *struct {
+		RemoteFilesystemName string
+		RemoteCloneName      string
+	},
+	result *PathToTopLevelFilesystem,
+) error {
+	res, err := d.state.registry.deducePathToTopLevelFilesystem(
+		args.RemoteFilesystemName, args.RemoteCloneName,
+	)
+	if err != nil {
+		return err
+	}
+	*result = res
+	return nil
+}
+
+func (d *DatameshRPC) PredictSize(
+	r *http.Request,
+	args *struct {
+		FromFilesystemId string
+		FromSnapshotId   string
+		ToFilesystemId   string
+		ToSnapshotId     string
+	},
+	result *int64,
+) error {
+	size, err := predictSize(
+		args.FromFilesystemId, args.FromSnapshotId, args.ToFilesystemId, args.ToSnapshotId,
+	)
+	if err != nil {
+		return err
+	}
+	*result = size
 	return nil
 }

@@ -285,12 +285,12 @@ func (s *InMemoryState) currentMaster(filesystemId string) (string, error) {
 	return master, nil
 }
 
-func (s *InMemoryState) snapshotsForCurrentMaster(filesystem string) ([]snapshot, error) {
-	master, err := s.currentMaster(filesystem)
+func (s *InMemoryState) snapshotsForCurrentMaster(filesystemId string) ([]snapshot, error) {
+	master, err := s.currentMaster(filesystemId)
 	if err != nil {
 		return []snapshot{}, err
 	}
-	return s.snapshotsFor(master, filesystem)
+	return s.snapshotsFor(master, filesystemId)
 }
 
 func (s *InMemoryState) snapshotsFor(server string, filesystemId string) ([]snapshot, error) {
