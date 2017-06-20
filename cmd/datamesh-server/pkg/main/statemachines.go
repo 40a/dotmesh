@@ -2683,7 +2683,7 @@ func (f *fsMachine) applyPath(
 			err := fmt.Errorf("Response event != finished-push or peer-up-to-date: %s", responseEvent)
 			return &Event{Name: "error-in-attempting-push",
 					Args: &EventArgs{"error": fmt.Sprintf("%+v", err)}},
-				f.errorDuringTransfer("error-in-attempting-push", err)
+				backoffState
 		}
 		err = f.incrementPollResultIndex(transferRequestId, pollResult)
 		if err != nil {
