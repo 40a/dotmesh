@@ -955,6 +955,7 @@ func (d *DatameshRPC) PredictSize(
 	},
 	result *int64,
 ) error {
+	log.Printf("[PredictSize] got args %+v", args)
 	size, err := predictSize(
 		args.FromFilesystemId, args.FromSnapshotId, args.ToFilesystemId, args.ToSnapshotId,
 	)

@@ -313,8 +313,8 @@ func (j *JsonRpcClient) CallRemote(
 	}
 	err = json2.DecodeClientResponse(bytes.NewBuffer(b), &result)
 	if err != nil {
-		span.SetTag("error", fmt.Sprintf("Couldn't decode response '%s': %s", string(b), err))
-		return fmt.Errorf("Couldn't decode response '%s': %s", string(b), err)
+		span.SetTag("error", fmt.Sprintf("Response '%s' yields error %s", string(b), err))
+		return fmt.Errorf("Response '%s' yields error %s", string(b), err)
 	}
 	return nil
 }
