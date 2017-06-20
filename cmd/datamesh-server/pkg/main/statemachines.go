@@ -2654,12 +2654,14 @@ func (f *fsMachine) applyPath(
 		transferRequestId, pollResult, client, transferRequest,
 	)
 	if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
+		msg := fmt.Sprintf(
+			"Response event != finished-push or peer-up-to-date: %s", responseEvent,
+		)
+		f.updateTransfer("error", msg)
 		return &Event{
 			Name: "error-in-attempting-push",
 			Args: &EventArgs{
-				"error": fmt.Sprintf(
-					"Response event != finished-push or peer-up-to-date: %s", responseEvent,
-				),
+				"error": msg,
 			},
 		}, backoffState
 	}
@@ -2691,12 +2693,14 @@ func (f *fsMachine) applyPath(
 			transferRequestId, pollResult, client, transferRequest,
 		)
 		if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
+			msg := fmt.Sprintf(
+				"Response event != finished-push or peer-up-to-date: %s", responseEvent,
+			)
+			f.updateTransfer("error", msg)
 			return &Event{
 					Name: "error-in-attempting-push",
 					Args: &EventArgs{
-						"error": fmt.Sprintf(
-							"Response event != finished-push or peer-up-to-date: %s", responseEvent,
-						),
+						"error": msg,
 					},
 				},
 				backoffState
