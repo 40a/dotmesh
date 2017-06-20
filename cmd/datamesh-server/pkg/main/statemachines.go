@@ -1766,7 +1766,13 @@ func (f *fsMachine) pull(
 		// put the event back on the channel in the cancellation case
 		func(e *Event, c chan *Event) { c <- e },
 		func(bytes int64, t int64) {
-			f.transitionedTo("receiving",
+			pollResult.Sent = bytes
+			pollResult.NanosecondsElapsed = t
+			err = updatePollResult(*transferRequestId, *pollResult)
+			if err != nil {
+				log.Printf("Error updating poll result: %s", err)
+			}
+			f.transitionedTo("pull",
 				fmt.Sprintf(
 					"transferred %.2fMiB in %.2fs (%.2fMiB/s)...",
 					// bytes => mebibytes       nanoseconds => seconds
@@ -1796,7 +1802,14 @@ func (f *fsMachine) pull(
 			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
 		}, backoffState
 	} else {
-		// TODO update pollResult to indicate & report success
+		pollResult.Status = "finished"
+		err = updatePollResult(*transferRequestId, *pollResult)
+		if err != nil {
+			return &Event{
+				Name: "error-updating-poll-result",
+				Args: &EventArgs{"err": err},
+			}, backoffState
+		}
 		log.Printf("Successfully received %s => %s for %s", fromSnapshotId, toSnapshotId)
 	}
 	return &Event{
