@@ -1492,6 +1492,12 @@ func (f *fsMachine) retryPush(
 				Name: "failed-getting-local-snapshots", Args: &EventArgs{"err": err},
 			}, backoffState
 		}
+		if len(snaps) == 0 {
+			return &Event{
+				Name: "no-snapshots-of-that-filesystem",
+				Args: &EventArgs{"filesystemId": toFilesystemId},
+			}, backoffState
+		}
 		toSnapshotId = snaps[len(snaps)-1].Id
 	}
 	log.Printf(
@@ -1671,6 +1677,12 @@ func (f *fsMachine) pull(
 			Args: &EventArgs{"err": err},
 		}, backoffState
 	}
+
+	// TODO dedupe wrt push
+	// XXX This shouldn't be deduced here _and_ passed in as an argument (which
+	// is then thrown away), it just makes the code confusing.
+	toFilesystemId = pollResult.FilesystemId
+	fromSnapshotId = pollResult.StartingSnapshot
 
 	// 1. Do an RPC to estimate the send size and update pollResult
 	// accordingly.
@@ -2420,10 +2432,6 @@ func (f *fsMachine) retryPull(
 	// TODO refactor the following with respect to retryPush!
 
 	// Let's go!
-	log.Printf(
-		"[retryPull] from (%s, %s) to (%s, %s), pollResult: %s",
-		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId, pollResult,
-	)
 	var remoteSnaps []*snapshot
 	err := client.CallRemote(
 		context.Background(),
@@ -2436,6 +2444,23 @@ func (f *fsMachine) retryPull(
 			Name: "failed-getting-snapshots", Args: &EventArgs{"err": err},
 		}, backoffState
 	}
+
+	// Interpret empty toSnapshotId as "push to the latest snapshot" _on the
+	// remote_
+	if toSnapshotId == "" {
+		if len(remoteSnaps) == 0 {
+			return &Event{
+				Name: "no-snapshots-of-remote-filesystem",
+				Args: &EventArgs{"filesystemId": toFilesystemId},
+			}, backoffState
+		}
+		toSnapshotId = remoteSnaps[len(remoteSnaps)-1].Id
+	}
+	log.Printf(
+		"[retryPull] from (%s, %s) to (%s, %s), pollResult: %s",
+		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId, pollResult,
+	)
+
 	fsMachine, err := f.state.maybeFilesystem(toFilesystemId)
 	if err != nil {
 		return &Event{
@@ -2653,9 +2678,10 @@ func (f *fsMachine) applyPath(
 		"", "", path.TopLevelFilesystemId, firstSnapshot,
 		transferRequestId, pollResult, client, transferRequest,
 	)
-	if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
+	if !(responseEvent.Name == "finished-push" ||
+		responseEvent.Name == "finished-pull" || responseEvent.Name == "peer-up-to-date") {
 		msg := fmt.Sprintf(
-			"Response event != finished-push or peer-up-to-date: %s", responseEvent,
+			"Response event != finished-{push,pull} or peer-up-to-date: %s", responseEvent,
 		)
 		f.updateTransfer("error", msg)
 		return &Event{
@@ -2692,9 +2718,10 @@ func (f *fsMachine) applyPath(
 			clone.Clone.FilesystemId, nextOrigin.SnapshotId,
 			transferRequestId, pollResult, client, transferRequest,
 		)
-		if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
+		if !(responseEvent.Name == "finished-push" ||
+			responseEvent.Name == "finished-pull" || responseEvent.Name == "peer-up-to-date") {
 			msg := fmt.Sprintf(
-				"Response event != finished-push or peer-up-to-date: %s", responseEvent,
+				"Response event != finished-{push,pull} or peer-up-to-date: %s", responseEvent,
 			)
 			f.updateTransfer("error", msg)
 			return &Event{
