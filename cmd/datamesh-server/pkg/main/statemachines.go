@@ -1669,6 +1669,8 @@ func (f *fsMachine) pull(
 	pollResult *TransferPollResult,
 	client *JsonRpcClient,
 ) (responseEvent *Event, nextState stateFn) {
+	// TODO if we just created the filesystem, become the master for it. (or
+	// maybe this belongs in the metadata prenegotiation phase)
 	pollResult.Status = "calculating size"
 	err := updatePollResult(*transferRequestId, *pollResult)
 	if err != nil {
@@ -1755,6 +1757,7 @@ func (f *fsMachine) pull(
 
 	finished := make(chan bool)
 
+	// TODO: make this update the pollResult
 	go pipe(
 		resp.Body, fmt.Sprintf("http response body for %s", f.filesystemId),
 		pipeWriter, "stdin of zfs recv",
@@ -1793,6 +1796,7 @@ func (f *fsMachine) pull(
 			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
 		}, backoffState
 	} else {
+		// TODO update pollResult to indicate & report success
 		log.Printf("Successfully received %s => %s for %s", fromSnapshotId, toSnapshotId)
 	}
 	return &Event{
