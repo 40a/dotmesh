@@ -1892,7 +1892,12 @@ func (f *fsMachine) push(
 	pollResult *TransferPollResult,
 	client *JsonRpcClient,
 ) (responseEvent *Event, nextState stateFn) {
+
 	filesystemId := pollResult.FilesystemId
+
+	// XXX This shouldn't be deduced here _and_ passed in as an argument (which
+	// is then thrown away), it just makes the code confusing.
+	fromSnapshotId = pollResult.StartingSnapshot
 
 	pollResult.Status = "calculating size"
 	err := updatePollResult(*transferRequestId, *pollResult)
@@ -2103,7 +2108,12 @@ func (f *fsMachine) push(
 	if resp.StatusCode != 200 {
 		return &Event{
 			Name: "error-pushing-posting",
-			Args: &EventArgs{"err": string(responseBody)},
+			Args: &EventArgs{
+				"requestURL":      url,
+				"responseBody":    string(responseBody),
+				"statusCode":      fmt.Sprintf("%d", resp.StatusCode),
+				"responseHeaders": fmt.Sprintf("%+v", resp.Header),
+			},
 		}, backoffState
 	}
 
@@ -2644,9 +2654,10 @@ func (f *fsMachine) applyPath(
 		transferRequestId, pollResult, client, transferRequest,
 	)
 	if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
-		return &Event{Name: "error-in-attempting-push",
+		return &Event{
+			Name: "error-in-attempting-push",
 			Args: &EventArgs{
-				"error": fmt.Errorf(
+				"error": fmt.Sprintf(
 					"Response event != finished-push or peer-up-to-date: %s", responseEvent,
 				),
 			},
@@ -2680,9 +2691,14 @@ func (f *fsMachine) applyPath(
 			transferRequestId, pollResult, client, transferRequest,
 		)
 		if !(responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date") {
-			err := fmt.Errorf("Response event != finished-push or peer-up-to-date: %s", responseEvent)
-			return &Event{Name: "error-in-attempting-push",
-					Args: &EventArgs{"error": fmt.Sprintf("%+v", err)}},
+			return &Event{
+					Name: "error-in-attempting-push",
+					Args: &EventArgs{
+						"error": fmt.Sprintf(
+							"Response event != finished-push or peer-up-to-date: %s", responseEvent,
+						),
+					},
+				},
 				backoffState
 		}
 		err = f.incrementPollResultIndex(transferRequestId, pollResult)
