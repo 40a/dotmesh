@@ -556,7 +556,7 @@ func NewCmdBranch(out io.Writer) *cobra.Command {
 					} else {
 						branch = "  " + branch
 					}
-					fmt.Fprintf(out, "%\n", branch)
+					fmt.Fprintf(out, "%s\n", branch)
 				}
 				return nil
 			}()
