@@ -11,6 +11,7 @@ sync_github:
         - git log
         - git remote add github git@github.com:lukemarsden/datamesh || true
         - git checkout -b $CI_BUILD_REF_NAME || true
+        - pwd
         - git push github $CI_BUILD_REF_NAME
 
 before_script:
