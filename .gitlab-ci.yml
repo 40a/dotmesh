@@ -8,6 +8,7 @@ sync_github:
     # push all commits to all branches to github for safe keeping
     stage: sync
     script:
+        - git log
         - git remote add github git@github.com:lukemarsden/datamesh || true
         - git checkout -b $CI_BUILD_REF_NAME || true
         - git push github $CI_BUILD_REF_NAME
