@@ -70,10 +70,12 @@ tests will run:
 	docker build -t $(hostname).local:80/lukemarsden/etcd-browser:v1 .
 	docker push $(hostname).local:80/lukemarsden/etcd-browser:v1
 
-Now install some deps (for tests only):
+Now install some deps (for tests only; as root):
 
 	go get github.com/tools/godep
 	apt install zfsutils-linux
+	echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
+	sysctl vm.max_map_count=262144
 
 You can now run tests, like:
 
