@@ -70,9 +70,13 @@ tests will run:
 	docker build -t $(hostname).local:80/lukemarsden/etcd-browser:v1 .
 	docker push $(hostname).local:80/lukemarsden/etcd-browser:v1
 
-You can now run tests, like:
+Now install some deps (for tests only):
 
 	go get github.com/tools/godep
+	apt install zfsutils-linux
+
+You can now run tests, like:
+
 	./mark-cleanup.sh; ./rebuild.sh && ./test.sh -run TestTwoSingleNodeClusters
 
 */
