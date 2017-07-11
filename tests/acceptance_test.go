@@ -25,7 +25,8 @@ You should put the following docker config in /etc/docker/daemon.json:
 Replacing $(hostname) with your hostname, and then `systemctl restart docker`.
 
 You need to be running a local registry, available as part of the
-github.com/lukemarsden/datamesh-instrumentation pack.
+github.com/lukemarsden/datamesh-instrumentation pack, which requires
+docker-compose (run up.sh with a password as the first argument).
 
 Finally, you need to be running github.com/lukemarsden/discovery.data-mesh.io
 on port 8087:
@@ -46,6 +47,7 @@ tests will run:
 	dind/dind-cluster.sh bare prime-images
 	docker rm -f prime-images
 	cd $GOPATH/src/github.com/lukemarsden/datamesh/cmd/datamesh-server
+	./rebuild.sh
 	docker build -t $(hostname).local:80/lukemarsden/datamesh-server:pushpull .
 	docker push $(hostname).local:80/lukemarsden/datamesh-server:pushpull
 
