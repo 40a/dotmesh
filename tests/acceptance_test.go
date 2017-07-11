@@ -19,7 +19,7 @@ You should put the following docker config in /etc/docker/daemon.json:
 
 {
     "storage-driver": "overlay2",
-    "insecure-registry": "$(hostname).local:80"
+    "insecure-registries": ["$(hostname).local:80"]
 }
 
 Replacing $(hostname) with your hostname, and then `systemctl restart docker`.
