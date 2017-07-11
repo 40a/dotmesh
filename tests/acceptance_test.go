@@ -70,6 +70,11 @@ tests will run:
 	docker build -t $(hostname).local:80/lukemarsden/etcd-browser:v1 .
 	docker push $(hostname).local:80/lukemarsden/etcd-browser:v1
 
+You can now run tests, like:
+
+	go get github.com/tools/godep
+	./mark-cleanup.sh; ./rebuild.sh && ./test.sh -run TestTwoSingleNodeClusters
+
 */
 
 import (
