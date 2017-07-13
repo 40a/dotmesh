@@ -54,6 +54,18 @@ func (z ZFSSender) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// command writes into pipe
 	var cmd *exec.Cmd
+
+	prelude, err := z.state.calculatePrelude(z.filesystem, z.toSnap)
+	if err != nil {
+		log.Printf(
+			"Error calculating prelude in from zfs send of %s from %s => %s: %s",
+			z.filesystem, z.fromSnap, z.toSnap, err,
+		)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Unable to calculate prelude: %s\n", err)))
+		return
+	}
+
 	if z.fromSnap == "START" {
 		cmd = exec.Command(
 			// TODO copy prelude code from statemachines.go here (ideally,
@@ -103,7 +115,7 @@ func (z ZFSSender) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"About to Run() for %s %s => %s",
 		z.filesystem, z.fromSnap, z.toSnap,
 	)
-	err := cmd.Run()
+	err = cmd.Run()
 	log.Printf(
 		"Finished Run() for %s %s => %s: %s",
 		z.filesystem, z.fromSnap, z.toSnap, err,

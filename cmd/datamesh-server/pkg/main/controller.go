@@ -62,6 +62,24 @@ func NewInMemoryState(localPoolId string) *InMemoryState {
 	return s
 }
 
+func (s *InMemoryState) calculatePrelude(toFilesystemId, toSnapshotId string) (Prelude, error) {
+	var prelude Prelude
+	snaps, err := s.snapshotsFor(s.myNodeId, toFilesystemId)
+	if err != nil {
+		return prelude, err
+	}
+	pointerSnaps := []*snapshot{}
+	for _, s := range snaps {
+		pointerSnaps = append(pointerSnaps, &s)
+	}
+
+	prelude.SnapshotProperties, err = restrictSnapshots(pointerSnaps, toSnapshotId)
+	if err != nil {
+		return prelude, err
+	}
+	return prelude, nil
+}
+
 func (s *InMemoryState) getOne(ctx context.Context, fs string) (DatameshVolume, error) {
 	// TODO simplify this by refactoring it into multiple functions,
 	// simplifying locking in the process.

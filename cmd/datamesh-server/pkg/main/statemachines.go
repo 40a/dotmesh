@@ -1965,7 +1965,6 @@ func (f *fsMachine) push(
 	// TODO remove duplication (with replication.go)
 	// command writes into pipe
 	var cmd *exec.Cmd
-	var prelude Prelude
 	// https://github.com/lukemarsden/datamesh/issues/34
 	// https://github.com/zfsonlinux/zfs/pull/5189
 	//
@@ -1976,22 +1975,10 @@ func (f *fsMachine) push(
 	// Workaround this limitation by include the missing information in
 	// JSON format in a "prelude" section of the ZFS send stream.
 	//
-	snaps, err := f.state.snapshotsFor(f.state.myNodeId, toFilesystemId)
+	prelude, err := f.state.calculatePrelude(toFilesystemId, toSnapshotId)
 	if err != nil {
 		return &Event{
-			Name: "error-fetching-snapshots",
-			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
-		}, backoffState
-	}
-	pointerSnaps := []*snapshot{}
-	for _, s := range snaps {
-		pointerSnaps = append(pointerSnaps, &s)
-	}
-
-	prelude.SnapshotProperties, err = restrictSnapshots(pointerSnaps, toSnapshotId)
-	if err != nil {
-		return &Event{
-			Name: "error-restricting-snapshots",
+			Name: "error-calculating-prelude",
 			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
 		}, backoffState
 	}
