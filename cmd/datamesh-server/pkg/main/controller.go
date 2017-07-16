@@ -62,6 +62,39 @@ func NewInMemoryState(localPoolId string) *InMemoryState {
 	return s
 }
 
+func (s *InMemoryState) maybeMountFilesystem(filesystemId string) error {
+	// We have been given a hint that a ZFS filesystem may now exist locally
+	// which may need to be mounted to match up with its desired mount state
+	// (as indicated by the "masters" state in etcd).
+
+	s.filesystemsLock.Lock()
+	defer s.filesystemsLock.Unlock()
+
+	fs, ok := (*s.filesystems)[filesystemId]
+	if !ok {
+		log.Printf(
+			"[maybeMountFilesystem] not doing anything - cannot find %v in fsMachines",
+			filesystemId,
+		)
+		return nil
+	}
+	log.Printf(
+		"[maybeMountFilesystem] called for %v; masterFor=%v, myNodeId=%v; mounted=%b",
+		filesystemId,
+		s.masterFor(filesystemId),
+		s.myNodeId,
+		fs.filesystem.mounted,
+	)
+
+	if s.masterFor(filesystemId) == s.myNodeId && !fs.filesystem.mounted {
+		responseEvent, _ := fs.mount()
+		if responseEvent.Name != "mounted" {
+			return fmt.Errorf("Couldn't mount filesystem: %v", responseEvent)
+		}
+	}
+	return nil
+}
+
 func (s *InMemoryState) calculatePrelude(toFilesystemId, toSnapshotId string) (Prelude, error) {
 	var prelude Prelude
 	snaps, err := s.snapshotsFor(s.myNodeId, toFilesystemId)

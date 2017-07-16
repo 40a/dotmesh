@@ -918,19 +918,20 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 			// TODO fix this failure by sending prelude in intercluster case also
 			t.Error("unable to find commit message remote's log output")
 		}
-		/*
-			// test incremental pull
-			d(t, node2, "dm commit -m 'again'")
-			d(t, node1, "dm pull node1 "+fsname)
+		// test incremental pull
+		d(t, node2, "dm commit -m 'again'")
+		d(t, node1, "dm pull node2 "+fsname)
 
-			resp = s(t, node1, "dm log")
-			if !strings.Contains(resp, "again") {
-				t.Error("unable to find commit message remote's log output")
-			}
+		resp = s(t, node1, "dm log")
+		if !strings.Contains(resp, "again") {
+			t.Error("unable to find commit message remote's log output")
+		}
+		/*
+			TODO make this work
 			// test pulling branch with extant base
 			d(t, node2, "dm checkout -b newbranch")
 			d(t, node2, "dm commit -m 'branchy'")
-			d(t, node1, "dm pull node1 "+fsname+" newbranch")
+			d(t, node1, "dm pull node2 "+fsname+" newbranch")
 
 			d(t, node1, "dm checkout newbranch")
 			resp = s(t, node1, "dm log")

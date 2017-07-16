@@ -48,7 +48,7 @@ func (z ZFSSender) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf(
-		"Starting to send replication stream for %s from %s => %s",
+		"[ZFSSender:ServeHTTP] Starting to send replication stream for %s from %s => %s",
 		z.filesystem, z.fromSnap, z.toSnap,
 	)
 
@@ -58,7 +58,7 @@ func (z ZFSSender) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	prelude, err := z.state.calculatePrelude(z.filesystem, z.toSnap)
 	if err != nil {
 		log.Printf(
-			"Error calculating prelude in from zfs send of %s from %s => %s: %s",
+			"[ZFSSender:ServeHTTP] Error calculating prelude in from zfs send of %s from %s => %s: %s",
 			z.filesystem, z.fromSnap, z.toSnap, err,
 		)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -68,9 +68,6 @@ func (z ZFSSender) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if z.fromSnap == "START" {
 		cmd = exec.Command(
-			// TODO copy prelude code from statemachines.go here (ideally,
-			// refactor to remove duplication)
-			//
 			// -R sends interim snapshots as well
 			"zfs", "send", "-p", "-R", fq(z.filesystem)+"@"+z.toSnap,
 		)
@@ -97,6 +94,13 @@ func (z ZFSSender) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer pipeWriter.Close()
 	defer pipeReader.Close()
 
+	preludeEncoded, err := encodePrelude(prelude)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Can't encode prelude: %s\n", err)))
+		return
+	}
+
 	cmd.Stdout = pipeWriter
 	cmd.Stderr = getLogfile("zfs-send-errors")
 
@@ -112,29 +116,35 @@ func (z ZFSSender) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 
 	log.Printf(
-		"About to Run() for %s %s => %s",
+		"[ZFSSender:ServeHTTP] Writing prelude of %d bytes (encoded): %s",
+		len(preludeEncoded), preludeEncoded,
+	)
+	pipeWriter.Write(preludeEncoded)
+
+	log.Printf(
+		"[ZFSSender:ServeHTTP] About to Run() for %s %s => %s",
 		z.filesystem, z.fromSnap, z.toSnap,
 	)
 	err = cmd.Run()
 	log.Printf(
-		"Finished Run() for %s %s => %s: %s",
+		"[ZFSSender:ServeHTTP] Finished Run() for %s %s => %s: %s",
 		z.filesystem, z.fromSnap, z.toSnap, err,
 	)
 	if err != nil {
 		log.Printf(
-			"Error from zfs send of %s from %s => %s: %s, check zfs-send-errors.log",
+			"[ZFSSender:ServeHTTP] Error from zfs send of %s from %s => %s: %s, check zfs-send-errors.log",
 			z.filesystem, z.fromSnap, z.toSnap, err,
 		)
 	}
 	// XXX Adding the log messages below seemed to stop a deadlock, not sure
 	// why. For now, let's just leave them in...
-	log.Printf("Closing pipes...")
+	log.Printf("[ZFSSender:ServeHTTP] Closing pipes...")
 	pipeWriter.Close()
 	pipeReader.Close()
 
-	log.Printf("Waiting for finish signal...")
+	log.Printf("[ZFSSender:ServeHTTP] Waiting for finish signal...")
 	_ = <-finished
-	log.Printf("Done!")
+	log.Printf("[ZFSSender:ServeHTTP] Done!")
 
 }
 
@@ -182,12 +192,6 @@ func (z ZFSReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cmd.Stderr = &errBuffer
 	finished := make(chan bool)
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Unable to parse prelude for %s: %s\n", z.filesystem, err)))
-		return
-	}
-
 	go pipe(
 		r.Body, fmt.Sprintf("http request body for %s", z.filesystem),
 		pipeWriter, "zfs recv stdin", finished,
@@ -209,7 +213,15 @@ func (z ZFSReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"decompress",
 	)
 
+	log.Printf("[ZFSReceiver] about to start consuming prelude on %v", pipeReader)
 	prelude, err := consumePrelude(pipeReader)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("Unable to parse prelude for %s: %s\n", z.filesystem, err)))
+		return
+	}
+	log.Printf("[ZFSReceiver] Got prelude %v", prelude)
+
 	err = cmd.Run()
 	if err != nil {
 		log.Printf(

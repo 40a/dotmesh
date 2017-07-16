@@ -23,10 +23,10 @@ import (
 var END_DATAMESH_PRELUDE []byte = []byte("!!END_PRELUDE!!")
 
 func consumePrelude(r io.Reader) (Prelude, error) {
-	// called when we know that there's a prelude to read from r.  TODO - split
-	// this out into a prelude-reader and a zfs snapshot metadata applier.
+	// called when we know that there's a prelude to read from r.
 
-	// read a byte at a time
+	// read a byte at a time, so that we leave the reader ready for someone
+	// else.
 	b := make([]byte, 1)
 	finished := false
 	buf := []byte{}

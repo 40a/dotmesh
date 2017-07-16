@@ -1318,6 +1318,7 @@ func receivingState(f *fsMachine) stateFn {
 		},
 		"decompress",
 	)
+	// TODO add parsing prelude here
 
 	err = cmd.Run()
 	f.transitionedTo("receiving", "finished zfs recv")
@@ -1785,12 +1786,24 @@ func (f *fsMachine) pull(
 		"decompress",
 	)
 
+	log.Printf("[pull] about to start consuming prelude on %v", pipeReader)
+	prelude, err := consumePrelude(pipeReader)
+	if err != nil {
+		return &Event{
+			Name: "consule-prelude-failed",
+			Args: &EventArgs{"err": err, "filesystemId": f.filesystemId},
+		}, backoffState
+	}
+	log.Printf("[pull] Got prelude %v", prelude)
+
 	err = cmd.Run()
 	f.transitionedTo("receiving", "finished zfs recv")
 	pipeReader.Close()
 	pipeWriter.Close()
 	_ = <-finished
 	f.transitionedTo("receiving", "finished pipe")
+
+	// XXX why f.filesystemId used and sometimes fromFilesystemId?
 
 	if err != nil {
 		log.Printf(
@@ -1801,17 +1814,24 @@ func (f *fsMachine) pull(
 			Name: "get-failed-pull",
 			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
 		}, backoffState
-	} else {
-		pollResult.Status = "finished"
-		err = updatePollResult(*transferRequestId, *pollResult)
-		if err != nil {
-			return &Event{
-				Name: "error-updating-poll-result",
-				Args: &EventArgs{"err": err},
-			}, backoffState
-		}
-		log.Printf("Successfully received %s => %s for %s", fromSnapshotId, toSnapshotId)
 	}
+	log.Printf("[pull] about to start consuming prelude on %v", pipeReader)
+	err = applyPrelude(prelude, fq(f.filesystemId))
+	if err != nil {
+		return &Event{
+			Name: "failed-applying-prelude",
+			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
+		}, backoffState
+	}
+	pollResult.Status = "finished"
+	err = updatePollResult(*transferRequestId, *pollResult)
+	if err != nil {
+		return &Event{
+			Name: "error-updating-poll-result",
+			Args: &EventArgs{"err": err},
+		}, backoffState
+	}
+	log.Printf("Successfully received %s => %s for %s", fromSnapshotId, toSnapshotId)
 	return &Event{
 		Name: "finished-pull",
 	}, discoveringState
@@ -2424,6 +2444,7 @@ func pullInitiatorState(f *fsMachine) stateFn {
 			transferRequestId, pollResult, client, transferRequest,
 		)
 	}, transferRequestId, &pollResult, client, &transferRequest)
+
 	f.innerResponses <- responseEvent
 	return nextState
 }
@@ -2449,7 +2470,7 @@ func (f *fsMachine) retryPull(
 		}, backoffState
 	}
 
-	// Interpret empty toSnapshotId as "push to the latest snapshot" _on the
+	// Interpret empty toSnapshotId as "pull up to the latest snapshot" _on the
 	// remote_
 	if toSnapshotId == "" {
 		if len(remoteSnaps) == 0 {
@@ -2689,13 +2710,20 @@ func (f *fsMachine) applyPath(
 		)
 		f.updateTransfer("error", msg)
 		return &Event{
-			Name: "error-in-attempting-push",
+			Name: "error-in-attempting-apply-path",
 			Args: &EventArgs{
 				"error": msg,
 			},
 		}, backoffState
 	}
-	err := f.incrementPollResultIndex(transferRequestId, pollResult)
+	err := f.state.maybeMountFilesystem(path.TopLevelFilesystemId)
+	if err != nil {
+		return &Event{
+			Name: "error-maybe-mounting-filesystem",
+			Args: &EventArgs{"error": err, "filesystemId": path.TopLevelFilesystemId},
+		}, backoffState
+	}
+	err = f.incrementPollResultIndex(transferRequestId, pollResult)
 	if err != nil {
 		return &Event{Name: "error-incrementing-poll-result",
 			Args: &EventArgs{"error": err}}, backoffState
@@ -2729,12 +2757,19 @@ func (f *fsMachine) applyPath(
 			)
 			f.updateTransfer("error", msg)
 			return &Event{
-					Name: "error-in-attempting-push",
+					Name: "error-in-attempting-apply-path",
 					Args: &EventArgs{
 						"error": msg,
 					},
 				},
 				backoffState
+		}
+		err := f.state.maybeMountFilesystem(clone.Clone.FilesystemId)
+		if err != nil {
+			return &Event{
+				Name: "error-maybe-mounting-filesystem",
+				Args: &EventArgs{"error": err, "filesystemId": clone.Clone.FilesystemId},
+			}, backoffState
 		}
 		err = f.incrementPollResultIndex(transferRequestId, pollResult)
 		if err != nil {
