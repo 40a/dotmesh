@@ -12,6 +12,6 @@ docker rm -f datamesh-builder
 docker build -t "${IMAGE}" .
 
 # allow disabling of registry push
-#if [ -z "${NO_PUSH}" ]; then
-#  docker push ${IMAGE}
-#fi
+if [ -z "${NO_PUSH}" ]; then
+  docker push ${IMAGE}
+fi
