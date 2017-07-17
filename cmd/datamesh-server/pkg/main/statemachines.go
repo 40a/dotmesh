@@ -1322,10 +1322,7 @@ func receivingState(f *fsMachine) stateFn {
 	log.Printf("[pull] about to start consuming prelude on %v", pipeReader)
 	prelude, err := consumePrelude(pipeReader)
 	if err != nil {
-		return &Event{
-			Name: "consume-prelude-failed",
-			Args: &EventArgs{"err": err, "filesystemId": f.filesystemId},
-		}, backoffState
+		return backoffState
 	}
 	log.Printf("[pull] Got prelude %v", prelude)
 
@@ -1348,10 +1345,7 @@ func receivingState(f *fsMachine) stateFn {
 	log.Printf("[pull] about to start applying prelude on %v", pipeReader)
 	err = applyPrelude(prelude, fq(f.filesystemId))
 	if err != nil {
-		return &Event{
-			Name: "failed-applying-prelude",
-			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
-		}, backoffState
+		return backoffState
 	}
 	return discoveringState
 }
