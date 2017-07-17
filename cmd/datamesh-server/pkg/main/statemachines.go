@@ -1318,7 +1318,16 @@ func receivingState(f *fsMachine) stateFn {
 		},
 		"decompress",
 	)
-	// TODO add parsing prelude here
+
+	log.Printf("[pull] about to start consuming prelude on %v", pipeReader)
+	prelude, err := consumePrelude(pipeReader)
+	if err != nil {
+		return &Event{
+			Name: "consume-prelude-failed",
+			Args: &EventArgs{"err": err, "filesystemId": f.filesystemId},
+		}, backoffState
+	}
+	log.Printf("[pull] Got prelude %v", prelude)
 
 	err = cmd.Run()
 	f.transitionedTo("receiving", "finished zfs recv")
@@ -1335,6 +1344,14 @@ func receivingState(f *fsMachine) stateFn {
 		return backoffState
 	} else {
 		log.Printf("Successfully received %s => %s for %s", fromSnap, snapRange.toSnap.Id)
+	}
+	log.Printf("[pull] about to start applying prelude on %v", pipeReader)
+	err = applyPrelude(prelude, fq(f.filesystemId))
+	if err != nil {
+		return &Event{
+			Name: "failed-applying-prelude",
+			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
+		}, backoffState
 	}
 	return discoveringState
 }
@@ -1681,7 +1698,7 @@ func (f *fsMachine) pull(
 		}, backoffState
 	}
 
-	// TODO dedupe wrt push
+	// TODO dedupe wrt push!!
 	// XXX This shouldn't be deduced here _and_ passed in as an argument (which
 	// is then thrown away), it just makes the code confusing.
 	toFilesystemId = pollResult.FilesystemId
@@ -1790,7 +1807,7 @@ func (f *fsMachine) pull(
 	prelude, err := consumePrelude(pipeReader)
 	if err != nil {
 		return &Event{
-			Name: "consule-prelude-failed",
+			Name: "consume-prelude-failed",
 			Args: &EventArgs{"err": err, "filesystemId": f.filesystemId},
 		}, backoffState
 	}
@@ -1815,7 +1832,7 @@ func (f *fsMachine) pull(
 			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
 		}, backoffState
 	}
-	log.Printf("[pull] about to start consuming prelude on %v", pipeReader)
+	log.Printf("[pull] about to start applying prelude on %v", pipeReader)
 	err = applyPrelude(prelude, fq(f.filesystemId))
 	if err != nil {
 		return &Event{
