@@ -9,13 +9,14 @@ import webpackDevMiddleware from 'webpack-dev-middleware'
 import webpackHotMiddleware from 'webpack-hot-middleware'
 
 import config from './webpack.config'
-import appsConfig from './apps.config'
+import appConfig from './app.config'
 
-const APPS = appsConfig.apps
+const APPS = appConfig.apps
 const app = express()
 const compiler = webpack(config)
 
-const devMiddleware = (compiler, {
+const devMiddleware = webpackDevMiddleware(compiler, {
+  noInfo: true,
   publicPath: config.output.publicPath,
   stats: {
     colors: true
@@ -29,16 +30,16 @@ app.use(webpackHotMiddleware(compiler, {
 app.use(devMiddleware)
 
 // catch all route which serves cached webpack html (with hashed paths)
-const appServer = (app) => (req, res) => {
-  const htmlBuffer = devMiddleware.fileSystem.readFileSync(`${config.output.path}/${app.name}/index.html`)
+const appServer = (appConfig) => (req, res) => {
+  const htmlBuffer = devMiddleware.fileSystem.readFileSync(`${config.output.path}/${appConfig.name}/index.html`)
   res.send(htmlBuffer.toString())
 }
 
-APPS.forEach(app => {
-  if(!app.name) throw new Error('each app must have a name')
-  const route = `/${app.name}*`
+APPS.forEach(appConfig => {
+  if(!appConfig.name) throw new Error('each app must have a name')
+  const route = `/${appConfig.name}*`
   console.log(`mounting ${route}`)
-  app.get(route, appServer(app))
+  app.get(route, appServer(appConfig))
 })
 
 app.listen(process.env.PORT || 80, '0.0.0.0', function (err) {

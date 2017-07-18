@@ -11,6 +11,12 @@ export DATABASE_ID=${DATABASE_ID:=""}
 export SERVER_IMAGE=${SERVER_IMAGE:="datamesh-server:latest"}
 export FRONTEND_IMAGE=${FRONTEND_IMAGE:="datamesh-frontend:latest"}
 export DATAMESH_HOME=${DATAMESH_HOME:="~/.datamesh"}
+export FRONTEND_PORT=${FRONTEND_PORT:="8085"}
+
+function cli-build() {
+  echo "building datamesh CLI binary"
+  cd "${DIR}/cmd/dm" && bash rebuild_docker.sh
+}
 
 function cluster-build() {
   echo "building datamesh server image: ${SERVER_IMAGE}"
@@ -18,8 +24,6 @@ function cluster-build() {
 }
 
 function cluster-start() {
-  echo "removing existing PKI keys"
-  rm -rf ~/.datamesh
   echo "creating cluster using ${SERVER_IMAGE}"
   dm cluster init \
     --image ${SERVER_IMAGE} \
@@ -31,7 +35,6 @@ function cluster-stop() {
   docker rm -f datamesh-server-inner
   docker rm -f datamesh-server
   docker rm -f datamesh-etcd
-  rm -rf "${DATAMESH_HOME}/pki"
 }
 
 function cluster-upgrade() {
@@ -50,10 +53,10 @@ function frontend-build() {
 function frontend-start() {
   echo "running frontend dev server using ${FRONTEND_IMAGE}"
   docker run -ti --rm \
-    --net host \
     --name datamesh-frontend \
-    -v "${DIR}/frontend:/app/frontend" \
-    -v "/app/frontend/node_modules/" \
+    -p ${FRONTEND_PORT}:80 \
+    -v "${DIR}/frontend:/app" \
+    -v "/app/node_modules/" \
     ${FRONTEND_IMAGE}
 }
 
@@ -62,16 +65,13 @@ function frontend-stop() {
   docker rm -f datamesh-frontend
 }
 
-function frontend-exec() {
-  local cmd="$@"
-  if [ -z "${cmd}" ]; then
-    cmd='bash'
-  fi
-  docker exec -ti datamesh-frontend "${cmd}"
+function frontend-dist() {
+  echo "build the production frontend code"
+  docker rm -f datamesh-frontend
 }
 
 function build() {
-  echo "building all images"
+  cli-build
   cluster-build
   frontend-build
 }
@@ -83,6 +83,7 @@ function reset() {
 function usage() {
 cat <<EOF
 Usage:
+  cli-build            rebuild the dm CLI
   cluster-build        rebuild the server image
   cluster-start        create a new cluster
   cluster-stop         stop a running cluster
@@ -90,7 +91,7 @@ Usage:
   frontend-build       rebuild the frontend image
   frontend-start       start the frontend dev container
   frontend-stop        stop the frontend dev container
-  frontend-exec        run a command in the frontend container
+  frontend-dist        export the production build of the frontend
   build                rebuild all images
   reset                reset the cluster
   help                 display this message
@@ -100,6 +101,7 @@ EOF
 
 function main() {
   case "$1" in
+  cli-build)           shift; cli-build $@;;
   cluster-build)       shift; cluster-build $@;;
   cluster-start)       shift; cluster-start $@;;
   cluster-stop)        shift; cluster-stop $@;;
@@ -107,7 +109,7 @@ function main() {
   frontend-build)      shift; frontend-build $@;;
   frontend-start)      shift; frontend-start $@;;
   frontend-stop)       shift; frontend-stop $@;;
-  frontend-exec)       shift; frontend-exec $@;;
+  frontend-dist)       shift; frontend-dist $@;;
   build)               shift; build $@;;
   reset)               shift; reset $@;;
   help)                shift; usage $@;;

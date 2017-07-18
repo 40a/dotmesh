@@ -112,7 +112,7 @@ $ sudo chmod +x /usr/local/bin/dm
 
 #### frontend
 
-The frontend is build using a [webpack config](frontend/webpack.config.js) and the local code is mounted as a volume which automatically triggers a rebuild when you save a file.
+The frontend is built using a [webpack config](frontend/webpack.config.js) and the local code is mounted as a volume which automatically triggers a rebuild when you save a file.
 
 The code is mounted with a [webpack-hot-middleware](https://github.com/glenjamin/webpack-hot-middleware) server so if you are editing React components they should auto-reload in the browser.
 
@@ -142,6 +142,8 @@ Build and start the frontend image:
 $ bash dev.sh frontend-build
 $ bash dev.sh frontend-start
 ```
+
+You can `docker exec -ti datamesh-frontend bash` to get a CLI inside the frontend container to run any other commands.
 
 #### building frontend production code
 
