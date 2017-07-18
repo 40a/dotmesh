@@ -11,7 +11,6 @@ export DATABASE_ID=${DATABASE_ID:=""}
 export SERVER_IMAGE=${SERVER_IMAGE:="datamesh-server:latest"}
 export FRONTEND_IMAGE=${FRONTEND_IMAGE:="datamesh-frontend:latest"}
 export DATAMESH_HOME=${DATAMESH_HOME:="~/.datamesh"}
-export FRONTEND_PORT=${FRONTEND_PORT:="8085"}
 
 function cli-build() {
   echo "building datamesh CLI binary"
@@ -28,6 +27,7 @@ function cluster-start() {
   dm cluster init \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
+    --frontend-proxy-container "datamesh-frontend" \
     --offline
 }
 
@@ -42,6 +42,7 @@ function cluster-upgrade() {
   dm cluster upgrade \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
+    --frontend-proxy-container "datamesh-frontend" \
     --offline
 }
 
@@ -52,9 +53,8 @@ function frontend-build() {
 
 function frontend-start() {
   echo "running frontend dev server using ${FRONTEND_IMAGE}"
-  docker run -ti --rm \
+  docker run -d \
     --name datamesh-frontend \
-    -p ${FRONTEND_PORT}:80 \
     -v "${DIR}/frontend:/app" \
     -v "/app/node_modules/" \
     ${FRONTEND_IMAGE}

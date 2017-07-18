@@ -1,6 +1,6 @@
 # dev commands
 
-How to develop the datamesh server, frontend and CLI all locally with Docker.
+How to develop the datamesh server, frontend and CLI locally with Docker.
 
 ## building images
 
@@ -26,7 +26,13 @@ $ bash dev.sh frontend-build
 
 ## run the stack
 
-First - we bring up a datamesh cluster:
+First, we bring up the frontend container - this needs to be running before we start the cluster because the `datamesh-server` container will proxy to the frontend.
+
+```bash
+$ bash dev.sh frontend-start
+```
+
+Then - we bring up a datamesh cluster:
 
 ```bash
 $ bash dev.sh cluster-start
@@ -34,16 +40,10 @@ $ bash dev.sh cluster-start
 
 This will start an etcd and 2 datamesh containers - `docker ps` will show this.
 
-Then we bring up the frontend container:
-
-```bash
-$ bash dev.sh frontend-start
-```
-
 To attach to the frontend logs:
 
 ```bash
-$ bash dev.sh frontend-logs
+$ docker logs -f datamesh-frontend
 ```
 
 Now you should be able to:
@@ -51,8 +51,6 @@ Now you should be able to:
 ```bash
 $ open http://localhost:6969
 ```
-
-and see the datamesh website.
 
 ## stop the stack
 
@@ -106,7 +104,7 @@ This will build the go code in a container and output it to `binaries/$GOOS`.
 We then move the binary to use it:
 
 ```bash
-$ sudo mv binaries/darwin/dm /usr/local/bin/dm
+$ sudo mv -f binaries/darwin/dm /usr/local/bin/dm
 $ sudo chmod +x /usr/local/bin/dm
 ```
 
