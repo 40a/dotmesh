@@ -8,18 +8,18 @@ services:
     depends_on:
       - frontend
       - api
-    links:
-      - frontend:frontend
-      - api:api
+    net: host
     environment:
       NOXY_API_FRONT: /rpc
-      NOXY_API_HOST: api
-      NOXY_DEFAULT_HOST: frontend
+      NOXY_API_HOST: localhost:6969
+      NOXY_DEFAULT_HOST: localhost:8080
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: datamesh_frontend
+    ports:
+      - "8080:80"
     environment:
       - MANUALRUN
     volumes:
