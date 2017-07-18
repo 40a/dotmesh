@@ -44,6 +44,8 @@ var (
 	discoveryUrl             string
 	assetsURLPrefix          string
 	homepageURL              string
+	frontendProxyContainer   string
+	frontendStaticFolder     string
 )
 
 var timings map[string]float64
@@ -147,6 +149,14 @@ another.`,
 	cmd.PersistentFlags().StringVar(
 		&homepageURL, "homepage-url", "https://datamesh.io/",
 		"Alternative URL to use for homepage links in built-in JavaScript app",
+	)
+	cmd.PersistentFlags().StringVar(
+		&frontendProxyContainer, "frontend-proxy-container", "",
+		"frontend development container name - the server will proxy there",
+	)
+	cmd.PersistentFlags().StringVar(
+		&frontendStaticFolder, "frontend-static-folder", "",
+		"local folder to serve frontend assets - used in production",
 	)
 	return cmd
 }
@@ -530,6 +540,8 @@ func startDatameshContainer(pkiPath string) error {
 		"-e", fmt.Sprintf("DATAMESH_DOCKER_IMAGE=%s", datameshDockerImage),
 		"-e", fmt.Sprintf("ASSETS_URL_PREFIX=%s", assetsURLPrefix),
 		"-e", fmt.Sprintf("HOMEPAGE_URL=%s", homepageURL),
+		"-e", fmt.Sprintf("FRONTEND_PROXY_CONTAINER=%s", frontendProxyContainer),
+		"-e", fmt.Sprintf("FRONTEND_STATIC_FOLDER=%s", frontendStaticFolder),
 	}
 	if usePoolDir != "" {
 		args = append(args, []string{"-v", fmt.Sprintf("%s:%s", usePoolDir, usePoolDir)}...)
