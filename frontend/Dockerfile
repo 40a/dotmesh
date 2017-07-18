@@ -1,9 +1,9 @@
 FROM binocarlos/yarn-base
 MAINTAINER kaiyadavenport@gmail.com
-WORKDIR /app/frontend
-COPY ./frontend/package.json /app/frontend/package.json
-COPY ./frontend/yarn.lock /app/frontend/yarn.lock
+WORKDIR /app
+COPY ./package.json /app/package.json
+COPY ./yarn.lock /app/yarn.lock
 RUN yarn install
-COPY ./frontend /app/frontend
+COPY ./ /app/frontend
 ENTRYPOINT ["yarn", "run"]
 CMD ["watch"]
