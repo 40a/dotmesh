@@ -2,6 +2,7 @@ const path = require('path')
 const webpack = require('webpack')
 const autoprefixer = require('autoprefixer')
 const ExtractTextPlugin = require('extract-text-webpack-plugin')
+const AssetsPlugin = require('assets-webpack-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const toolboxVariables = require('./toolbox-variables');
 
@@ -20,12 +21,13 @@ const isExternalModule = (module) => {
 
 const devPlugins = () => {
   return [
-    new ExtractTextPlugin('[name].css', { allChunks: true }),
-    new webpack.HotModuleReplacementPlugin(),
-    new webpack.NoErrorsPlugin(),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('development')
     }),
+    new AssetsPlugin(),
+    new ExtractTextPlugin('[name].[hash].css', { allChunks: true }),
+    new webpack.HotModuleReplacementPlugin(),
+    new webpack.NoErrorsPlugin(),
     new CopyWebpackPlugin([{
       from: 'www',
       to: ''
@@ -35,10 +37,11 @@ const devPlugins = () => {
 
 const prodPlugins = () => {
   return [
-    new ExtractTextPlugin('[name].css', { allChunks: true }),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('production')
     }),
+    new AssetsPlugin(),
+    new ExtractTextPlugin('[name].[hash].css', { allChunks: true }),
     new webpack.optimize.AggressiveMergingPlugin(),
     new webpack.optimize.OccurenceOrderPlugin(),
     new webpack.optimize.DedupePlugin(),
@@ -69,10 +72,23 @@ const prodPlugins = () => {
   ]
 }
 
+const htmlPlugins = () => {
+  return APPS.map(app => {
+    return new HtmlWebpackPlugin({
+      inject: false,
+      chunks: [app.name],
+      template: 'template.ejs',
+      filename: `${app.name}/index.html`
+    })
+  })
+}
+
 const getPlugins = () => {
-  return isDevelopment ?
+  const basePlugins =  isDevelopment ?
     devPlugins() :
     prodPlugins()
+  const htmlPlugins = htmlPlugins()
+  return basePlugins.concat(htmlPlugins)
 }
 
 const getEntryPoints = () => {
@@ -106,7 +122,7 @@ module.exports = {
   entry: getEntryPoints(),
   output: {
     path: path.join(__dirname, 'dist'),
-    filename: '[name].js',
+    filename: '[name].[hash].js',
     publicPath: '/'
   },
   resolve: {
