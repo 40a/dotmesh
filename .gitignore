@@ -3,3 +3,4 @@ node_modules
 npm-error.log
 dist
 datamesh_install_log.txt
+binaries
