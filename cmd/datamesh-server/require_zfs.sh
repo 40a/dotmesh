@@ -167,6 +167,12 @@ if [[ "$INITIAL_ADMIN_PASSWORD_FILE" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]]
     echo "set secret: $secret"
 fi
 
+FRONTEND_LINK=""
+if [ -n "${FRONTEND_PROXY_CONTAINER}" ]; then
+    echo "Setting up frontend proxy container: ${FRONTEND_PROXY_CONTAINER}"
+    FRONTEND_LINK="--link ${FRONTEND_PROXY_CONTAINER}:${FRONTEND_PROXY_CONTAINER}"
+fi
+
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/lib/docker:/var/lib/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -177,6 +183,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -l traefik.frontend.rule=Host:cloud.datamesh.io \
     $net \
     $link \
+    --link datamesh-etcd:datamesh-etcd \
     -e "PATH=$PATH" \
     -e "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \
     -e "MOUNT_PREFIX=$MOUNTPOINT" \
@@ -187,6 +194,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -e "HOMEPAGE_URL=$HOMEPAGE_URL" \
     -e "TRACE_ADDR=$TRACE_ADDR" \
     -e "DATAMESH_ETCD_ENDPOINT=$DATAMESH_ETCD_ENDPOINT" \
+    -e "FRONTEND_STATIC_FOLDER=$FRONTEND_STATIC_FOLDER" \
     $secret \
     $log_opts \
     $pki_volume_mount \
