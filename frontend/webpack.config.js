@@ -2,12 +2,12 @@ const path = require('path')
 const webpack = require('webpack')
 const autoprefixer = require('autoprefixer')
 const ExtractTextPlugin = require('extract-text-webpack-plugin')
-const AssetsPlugin = require('assets-webpack-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
 const toolboxVariables = require('./toolbox-variables');
 
-const appsConfig = require('./apps.config')
-const APPS = appsConfig.apps
+const appConfig = require('./app.config')
+const APPS = appConfig.apps
 
 const isDevelopment = process.env.NODE_ENV !== "production"
 
@@ -24,7 +24,6 @@ const devPlugins = () => {
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('development')
     }),
-    new AssetsPlugin(),
     new ExtractTextPlugin('[name].[hash].css', { allChunks: true }),
     new webpack.HotModuleReplacementPlugin(),
     new webpack.NoErrorsPlugin(),
@@ -40,7 +39,6 @@ const prodPlugins = () => {
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('production')
     }),
-    new AssetsPlugin(),
     new ExtractTextPlugin('[name].[hash].css', { allChunks: true }),
     new webpack.optimize.AggressiveMergingPlugin(),
     new webpack.optimize.OccurenceOrderPlugin(),
@@ -77,6 +75,7 @@ const htmlPlugins = () => {
     return new HtmlWebpackPlugin({
       inject: false,
       chunks: [app.name],
+      title: app.title,
       template: 'template.ejs',
       filename: `${app.name}/index.html`
     })
@@ -87,8 +86,7 @@ const getPlugins = () => {
   const basePlugins =  isDevelopment ?
     devPlugins() :
     prodPlugins()
-  const htmlPlugins = htmlPlugins()
-  return basePlugins.concat(htmlPlugins)
+  return basePlugins.concat(htmlPlugins())
 }
 
 const getEntryPoints = () => {
