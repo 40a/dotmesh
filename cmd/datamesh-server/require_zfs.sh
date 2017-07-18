@@ -128,6 +128,12 @@ fi
 # the host network namespace (here) and pass it in.
 YOUR_IPV4_ADDRS="$(datamesh-server --guess-ipv4-addresses)"
 
+FRONTEND_LINK=""
+if [ -n "${FRONTEND_PROXY_CONTAINER}" ]; then
+    echo "Setting up frontend proxy container: ${FRONTEND_PROXY_CONTAINER}"
+    FRONTEND_LINK="--link ${FRONTEND_PROXY_CONTAINER}:${FRONTEND_PROXY_CONTAINER}"
+fi
+
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/lib/docker:/var/lib/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -137,7 +143,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -p 6969:6969 \
     -l traefik.port=6969 \
     -l traefik.frontend.rule=Host:public.data-mesh.io \
-    --link datamesh-etcd:datamesh-etcd \
+    --link datamesh-etcd:datamesh-etcd ${FRONTEND_LINK} \
     -e "PATH=$PATH" \
     -e "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \
     -e "MOUNT_PREFIX=$MOUNTPOINT" \
@@ -146,6 +152,8 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -e "ALLOW_PUBLIC_REGISTRATION=$ALLOW_PUBLIC_REGISTRATION" \
     -e "ASSETS_URL_PREFIX=$ASSETS_URL_PREFIX" \
     -e "HOMEPAGE_URL=$HOMEPAGE_URL" \
+    -e "FRONTEND_PROXY_CONTAINER=$FRONTEND_PROXY_CONTAINER" \
+    -e "FRONTEND_STATIC_FOLDER=$FRONTEND_STATIC_FOLDER" \
     -e "TRACE_ADDR=$TRACE_ADDR" $log_opts \
     -v $PKI_PATH:/pki \
     -v datamesh-kernel-modules:/bundled-lib \
