@@ -1,6 +1,9 @@
 const APPS = [{
   "name": "admin",
-  "title": "Admin Panel"
+  "title": "Datamesh Admin"
+},{
+  "name": "console",
+  "title": "Datamesh Console"
 }]
 
 const CONFIG = {
