@@ -10,7 +10,8 @@ class Home extends Component {
         <Row>
           <Col lg={12}>
             <div className={ colorsTheme.redText }>
-              This is the homepage with text styled by css - please login
+              <p>This is the admin panel homepage (probably we should just display login)</p>
+              <p>The content is styled by CSS - take a look in `components/GuestHome4.js`</p>
             </div>
           </Col>
         </Row>
