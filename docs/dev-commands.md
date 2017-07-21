@@ -62,24 +62,10 @@ $ CLI=1 bash dev.sh frontend-start
 
 #### boot errors
 
-If you are finding that you cannot start the stack because of this message:
-
-> PKI directory already exists at /Users/kai/.datamesh/pki, refusing to proceed
-
-Then remove this folder to proceed:
+If anything happens which results in the cluster not being able to boot - usually the solution is:
 
 ```bash
-$ rm -rf ~/.datamesh
-```
-
-Equally - if the message is:
-
-> Can't set initial admin password yet (105: Key already exists (/data-mesh.io/users/00000000-0000-0000-0000-000000000000) [86]), retrying in 16s...
-
-Then delete the docker volume:
-
-```bash
-$ docker volume rm datamesh-etcd-data
+$ dm cluster reset
 ```
 
 ## stop the stack
