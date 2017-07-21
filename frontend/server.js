@@ -17,6 +17,7 @@ const compiler = webpack(config)
 
 const devMiddleware = webpackDevMiddleware(compiler, {
   noInfo: true,
+  public: 'localhost:6969',
   publicPath: config.output.publicPath,
   stats: {
     colors: true
