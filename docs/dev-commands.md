@@ -52,6 +52,14 @@ Now you should be able to:
 $ open http://localhost:6969
 ```
 
+#### getting a CLI into the frontend container
+
+Sometimes it's better to run the frontend with a bash command so you restart the build easily - to do this:
+
+```bash
+$ CLI=1 bash dev.sh frontend-start
+```
+
 #### boot errors
 
 If you are finding that you cannot start the stack because of this message:
