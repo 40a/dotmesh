@@ -24,7 +24,7 @@ You should put the following docker config in /etc/docker/daemon.json:
 
 Replacing $(hostname) with your hostname, and then `systemctl restart docker`.
 
-You need to be running a local registry, available as part of the
+You need to be running a local registry, as well as everything else in the
 github.com/lukemarsden/datamesh-instrumentation pack, which requires
 docker-compose (run up.sh with a password as the first argument).
 
@@ -73,7 +73,7 @@ tests will run:
 Now install some deps (for tests only; as root):
 
 	go get github.com/tools/godep
-	apt install zfsutils-linux
+	apt install zfsutils-linux jq
 	echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
 	sysctl vm.max_map_count=262144
 
@@ -81,6 +81,10 @@ You can now run tests, like:
 
 	./mark-cleanup.sh; ./rebuild.sh && ./test.sh -run TestTwoSingleNodeClusters
 
+To open a bunch of debug tools, run (where 'secret' is the pasword you
+specified when you ran 'up.sh' in datamesh-instrumentation):
+
+	ADMIN_PW=secret ./creds.sh
 */
 
 import (
@@ -926,19 +930,16 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		if !strings.Contains(resp, "again") {
 			t.Error("unable to find commit message remote's log output")
 		}
-		/*
-			TODO make this work
-			// test pulling branch with extant base
-			d(t, node2, "dm checkout -b newbranch")
-			d(t, node2, "dm commit -m 'branchy'")
-			d(t, node1, "dm pull node2 "+fsname+" newbranch")
+		// test pulling branch with extant base
+		d(t, node2, "dm checkout -b newbranch")
+		d(t, node2, "dm commit -m 'branchy'")
+		d(t, node1, "dm pull node2 "+fsname+" newbranch")
 
-			d(t, node1, "dm checkout newbranch")
-			resp = s(t, node1, "dm log")
-			if !strings.Contains(resp, "branchy") {
-				t.Error("unable to find commit message remote's log output")
-			}
-		*/
+		d(t, node1, "dm checkout newbranch")
+		resp = s(t, node1, "dm log")
+		if !strings.Contains(resp, "branchy") {
+			t.Error("unable to find commit message remote's log output")
+		}
 	})
 }
 

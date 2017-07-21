@@ -38,7 +38,12 @@ cluster 'backups':
 					return err
 				}
 				transferId, err := dm.RequestTransfer(
-					"pull", peer, filesystemName, branchName, "", "",
+					"pull", peer, filesystemName, branchName,
+					// (XXX copied from clone.go)
+					// 'dm pull' semantics are (for now) always that we pull into the
+					// same named filesystem as on the remote, rather than the current
+					// filesystem whatever that is.
+					filesystemName, branchName,
 				)
 				if err != nil {
 					return err
