@@ -52,8 +52,15 @@ function frontend-build() {
 }
 
 function frontend-start() {
+  local ti=""
+  local entrypoint=""
+
+  if [ -n "${CLI}" ]; then
+    ti=" -ti"
+    entrypoint=" --entrypoint bash"
+  fi
   echo "running frontend dev server using ${FRONTEND_IMAGE}"
-  docker run -d \
+  docker run -d ${ti} ${entrypoint} \
     --name datamesh-frontend \
     -v "${DIR}/frontend:/app" \
     -v "/app/node_modules/" \
