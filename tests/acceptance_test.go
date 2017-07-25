@@ -592,41 +592,71 @@ func TestTwoNodesSameCluster(t *testing.T) {
 	})
 }
 
-func TestTwoSingleNodeClusters(t *testing.T) {
+type Cluster struct {
+	Nodes int
+}
+
+type Clusters []Cluster
+
+func (cs *Clusters) NumNodes() int {
+	i := 0
+	for _, c := range cs {
+		i += c.Nodes
+	}
+	return i, nil
+}
+
+func nodeName(now int64, i, j int) {
+	return fmt.Sprintf("cluster_%d_%d_node_%d", now, i, j)
+}
+func poolId(now int64, i, j int) {
+	return fmt.Sprintf("testpool_%d_%d_node_%d", now, i, j)
+}
+
+func (cs *Clusters) Start() error {
 	teardownFinishedTestRuns()
 
 	startTiming()
 	now := time.Now().UnixNano()
-	err := testSetup(2, now)
-	defer testMarkForCleanup(2, now)
+	err := testSetup(cs.NumNodes(), now)
+	defer testMarkForCleanup(cs.NumNodes(), now)
 	if err != nil {
 		t.Error(err)
 	}
 	logTiming("setup")
 
-	node1 := fmt.Sprintf("node_%d_1", now)
-	node2 := fmt.Sprintf("node_%d_2", now)
-	poolId1 := fmt.Sprintf("testpool_%d_1", now)
-	poolId2 := fmt.Sprintf("testpool_%d_2", now)
-
-	_, err = docker(
-		node1, "dm cluster init "+localImageArgs()+
-			" --use-pool-dir /datamesh-test-pools/"+poolId1+
-			" --use-pool-name "+poolId1,
-	)
-	if err != nil {
-		t.Error(err)
+	nodeNames := []string{}
+	poolIds := []string{}
+	for i, c := range cs {
+		for j := 0; j < c.Nodes; j++ {
+			nodeNames = append(nodeNames, nodeName(now, i, j))
+			poolIds = append(poolIds, poolId(now, i, j))
+		}
 	}
-	logTiming("init1")
 
-	_, err = docker(
-		node2, "dm cluster init "+localImageArgs()+
-			" --use-pool-dir /datamesh-test-pools/"+poolId2+
-			" --use-pool-name "+poolId2,
-	)
-	if err != nil {
-		t.Error(err)
+	for i, c := range cs {
+		// init the first node in the cluster, join the rest
+		if c.Nodes == 0 {
+			panic("no such thing as a zero-node cluster")
+		}
+		_, err = docker(
+			node1, "dm cluster init "+localImageArgs()+
+				" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
+				" --use-pool-name "+poolId(now, i, 0),
+		)
+		if err != nil {
+			t.Error(err)
+		}
+		logTiming("init_" + poolId(now, i, 0))
+		for j := 1; j < c.Nodes; j++ {
+			// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
+			// node)
+			// TODO join the nodes
+		}
 	}
+
+	// ---
+
 	logTiming("init2")
 
 	node1IP := s(t,
@@ -682,6 +712,19 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		Container: node2,
 		IP:        node2IP,
 		ApiKey:    m.Remotes.Local.ApiKey,
+	}
+
+}
+
+func TestTwoSingleNodeClusters(t *testing.T) {
+
+	cs := []Cluster{
+		Cluster{Nodes: 1}, // cluster_1_node_1
+		Cluster{Nodes: 1}, // cluster_2_node_1
+	}
+	err := cs.Start()
+	if err != nil {
+		t.Error(err)
 	}
 
 	remoteAdd := func(t *testing.T) {
