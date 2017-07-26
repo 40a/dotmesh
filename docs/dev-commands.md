@@ -7,7 +7,7 @@ How to develop the datamesh server, frontend and CLI locally with Docker.
 Before you begin, upgrade your Docker then build the required images:
 
 ```bash
-$ bash dev.sh build
+$ make build
 ```
 
 This will:
@@ -19,9 +19,9 @@ This will:
 You can run the three build stages seperately:
 
 ```bash
-$ bash dev.sh cluster-build
-$ bash dev.sh cli-build
-$ bash dev.sh frontend-build
+$ make cluster-build
+$ make cli-build
+$ make frontend-build
 ```
 
 ## run the stack
@@ -29,7 +29,7 @@ $ bash dev.sh frontend-build
 First we bring up a datamesh cluster:
 
 ```bash
-$ bash dev.sh cluster-start
+$ make cluster-start
 ```
 
 This will start an etcd and 2 datamesh containers - `docker ps` will show this.
@@ -37,7 +37,7 @@ This will start an etcd and 2 datamesh containers - `docker ps` will show this.
 Then we bring up the frontend container (which proxies back to the cluster for api requests):
 
 ```bash
-$ bash dev.sh frontend-start
+$ make frontend-start
 ```
 
 To attach to the frontend logs:
@@ -57,7 +57,7 @@ $ open http://localhost:6969
 Sometimes it's better to run the frontend with a bash command so you restart the build easily - to do this:
 
 ```bash
-$ CLI=1 bash dev.sh frontend-start
+$ CLI=1 make frontend-start
 ```
 
 #### boot errors
@@ -73,9 +73,9 @@ $ dm cluster reset
 To stop a running stack - use these commands:
 
 ```bash
-$ bash dev.sh cluster-stop
-$ bash dev.sh frontend-stop
-$ bash dev.sh reset
+$ make cluster-stop
+$ make frontend-stop
+$ make reset
 ```
 
 We currently need to reset the cluster each time we stop - this means you will have to re-create your user account when you restart the stack.
@@ -98,13 +98,13 @@ Here is how you would edit code for the 3 main sections of datamesh:
 Once you have edited the [server code](cmd/datamesh-server) - run the build script:
 
 ```bash
-$ bash dev.sh cluster-build
+$ make cluster-build
 ```
 
 Then we run the `upgrade` script which will replace in place the server container with our new image:
 
 ```bash
-$ bash dev.sh cluster-upgrade
+$ make cluster-upgrade
 ```
 
 #### cli
@@ -112,7 +112,7 @@ $ bash dev.sh cluster-upgrade
 Once you have edited the [cli code](cmd/dm) - run the build script:
 
 ```bash
-$ bash dev.sh cli-build
+$ make cli-build
 ```
 
 This will build the go code in a container and output it to `binaries/$GOOS`.
@@ -139,7 +139,7 @@ There are times when you will need to rebuild the frontend image for example if 
 First, stop the frontend server:
 
 ```bash
-$ bash dev.sh frontend-stop
+$ make frontend-stop
 ```
 
 Then - use yarn to add the module:
@@ -153,8 +153,8 @@ $ cd ..
 Build and start the frontend image:
 
 ```bash
-$ bash dev.sh frontend-build
-$ bash dev.sh frontend-start
+$ make frontend-build
+$ make frontend-start
 ```
 
 You can `docker exec -ti datamesh-frontend bash` to get a CLI inside the frontend container to run any other commands.
@@ -164,7 +164,7 @@ You can `docker exec -ti datamesh-frontend bash` to get a CLI inside the fronten
 To build the production distribution of the frontend code:
 
 ```bash
-$ bash dev.sh frontend-dist
+$ make frontend-dist
 ```
 
 This will create output in `frontend/dist` which can be copied into the server container for production.
