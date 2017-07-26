@@ -27,7 +27,6 @@ function cluster-start() {
   dm cluster init \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
-    --frontend-proxy-container "datamesh-frontend" \
     --offline
 }
 
@@ -42,7 +41,6 @@ function cluster-upgrade() {
   dm cluster upgrade \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
-    --frontend-proxy-container "datamesh-frontend" \
     --offline
 }
 
@@ -53,17 +51,26 @@ function frontend-build() {
 
 function frontend-start() {
   local flags=""
-
-  if [ -n "${CLI}" ]; then
-    flags=" -ti --entrypoint bash"
+  local linkedVolumes=""
+  if [ -n "${MANUALRUN}" ]; then
+    flags=" --rm -ti --entrypoint bash"
   else
     flags=" -d"
   fi
+  # this is dev only for live reloading from the published node_modules for quick development cycles
+  # you need to have cloned https://github.com/binocarlos/templatestack.git to the same folder as datamesh for this to work
+  if [ -n "${LINKMODULES}" ]; then
+    linkedVolumes="${linkedVolumes} -v ${DIR}/../templatestack/template-ui:/app/node_modules/template-ui"
+    linkedVolumes="${linkedVolumes} -v ${DIR}/../templatestack/template-tools:/app/node_modules/template-tools"
+  fi
+
   echo "running frontend dev server using ${FRONTEND_IMAGE}"
   docker run ${flags} \
     --name datamesh-frontend \
+    --link datamesh-server-inner:datamesh-server \
+    -p 8080:80 \
     -v "${DIR}/frontend:/app" \
-    -v "/app/node_modules/" \
+    -v "/app/node_modules/" ${linkedVolumes} \
     ${FRONTEND_IMAGE}
 }
 
