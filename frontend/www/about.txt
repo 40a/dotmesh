@@ -1,1 +1,0 @@
-Put files/folders here and they will be copied to the web root of the web application.

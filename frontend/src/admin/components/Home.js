@@ -1,15 +1,16 @@
 import React, { Component, PropTypes } from 'react'
 import { Grid, Row, Col } from 'react-flexbox-grid'
 
-class About extends Component {
+class Home extends Component {
   render() {
     return (
       <Grid fluid>
         <Row>
-          <Col lg={12}>
-            <div>
-              About page
-            </div>
+          <Col xs={6} md={3}>
+            Hello, world!
+          </Col>
+          <Col xs={6} md={3}>
+            Hello, world!
           </Col>
         </Row>
       </Grid>
@@ -17,4 +18,4 @@ class About extends Component {
   }
 }
 
-export default About
+export default Home

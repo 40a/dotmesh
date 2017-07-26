@@ -1,29 +1,25 @@
-import config from '../config'
-const url = (path) => config.api + path
+import { request } from 'template-ui/lib/utils/ajax'
+import tools from './tools'
 
 export const status = (payload) => {
-  return new Promise(resolve => {
-    resolve({
-      loggedIn: false
-    })
+  return request({
+    url: tools.url('/auth/status')
   })
 }
 
 export const login = (payload) => {
-  return new Promise(resolve => {
-    resolve({
-      registered: false,
-      error: 'tbc'
-    })
+  return request({
+    method: 'post',
+    url: tools.url('/auth/login'),
+    data: payload
   })
 }
 
 export const register = (payload) => {
-  return new Promise(resolve => {
-    resolve({
-      registered: false,
-      error: 'tbc'
-    })
+  return request({
+    method: 'post',
+    url: tools.url('/auth/register'),
+    data: payload
   })
 }
 
