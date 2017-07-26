@@ -7,7 +7,8 @@ export const backends = {
 
 // a combo of handler, actions and saga
 const loaders = {
-
+  authStatus: backends.auth.status,
+  authRegister: backends.auth.register
 }
 
 const processedLoaders = processLoaders(loaders)

@@ -26,8 +26,7 @@ const icons = {
 const config = {
   title:'Datamesh',
   basepath:'/ui',
-  api: '/rpc',
-  // the default state for the value reducer
+  rpcUrl: '/rpc',
   initialState: {
     value: {
       config: {},

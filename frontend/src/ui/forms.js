@@ -4,9 +4,8 @@ import validators from 'template-ui/lib/plugins/form/validators'
 
 const authLogin = {
   username: models.string({
-    title: 'Email',
     component: fields.input,
-    validate: [validators.required,validators.email]
+    validate: [validators.required]
   }),
   password: models.string({
     type: 'password',
@@ -16,10 +15,13 @@ const authLogin = {
 }
 
 const authRegister = {
-  username: models.string({
-    title: 'Email',
+  email: models.string({
     component: fields.input,
     validate: [validators.required,validators.email]
+  }),
+  username: models.string({
+    component: fields.input,
+    validate: [validators.required]
   }),
   password: models.string({
     type: 'password',

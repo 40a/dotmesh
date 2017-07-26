@@ -12,6 +12,8 @@ import config from '../config'
 import * as actions from '../actions'
 import * as selectors from '../selectors'
 
+import auth from './auth'
+
 const Logger = (type) => {
   function* logger(req) {
     consoleTools.devRun(() => {
@@ -24,38 +26,15 @@ const Logger = (type) => {
 
 
 const Hooks = (opts = {}) => {
-
-  const auth = opts.auth
-
-  function* authLoginSuccess(user) {
-    yield put(actions.router.redirect('/dashboard'))
-  }
-
-  function* authRegisterSuccess(user) {
-    yield put(actions.router.redirect('/dashboard'))
-  }
-
-  function* authenticateRoute() {
-    const userSetting = yield select(state => selectors.router.firstValue(state, 'user'))
-    // this route has no opinion about the user
-    if(typeof(userSetting) != 'boolean') return
-    const user = yield select(state => selectors.valueSelector(state, 'user'))
-    const hasUser = user ? true : false
-    const isRouteAuthenticated = hasUser == userSetting
-    if(!isRouteAuthenticated) {
-      yield put(actions.router.push(config.authRedirect || '/'))
-    }
-  }
-
   return {
     routerChanged: [
-      authenticateRoute
+      auth.authenticateRoute
     ],
     authLogout: auth.logout,
     authLoginSubmit: auth.login,
-    authLoginSuccess,
+    authLoginSuccess: auth.loginSuccess,
     authRegisterSubmit: auth.register,
-    authRegisterSuccess,
+    authRegisterSuccess: auth.registerSuccess,
     apiRequest: Logger('request'),
     apiResponse: Logger('response'),
     apiError: Logger('error')

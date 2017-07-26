@@ -6,11 +6,8 @@ class Home extends Component {
     return (
       <Grid fluid>
         <Row>
-          <Col xs={6} md={3}>
-            Hello, world!
-          </Col>
-          <Col xs={6} md={3}>
-            Hello, world!
+          <Col xs={12}>
+            Some text here...
           </Col>
         </Row>
       </Grid>
