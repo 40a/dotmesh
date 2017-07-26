@@ -26,13 +26,7 @@ $ bash dev.sh frontend-build
 
 ## run the stack
 
-First, we bring up the frontend container - this needs to be running before we start the cluster because the `datamesh-server` container will proxy to the frontend.
-
-```bash
-$ bash dev.sh frontend-start
-```
-
-Then - we bring up a datamesh cluster:
+First we bring up a datamesh cluster:
 
 ```bash
 $ bash dev.sh cluster-start
@@ -40,13 +34,19 @@ $ bash dev.sh cluster-start
 
 This will start an etcd and 2 datamesh containers - `docker ps` will show this.
 
+Then we bring up the frontend container (which proxies back to the cluster for api requests):
+
+```bash
+$ bash dev.sh frontend-start
+```
+
 To attach to the frontend logs:
 
 ```bash
 $ docker logs -f datamesh-frontend
 ```
 
-Now you should be able to:
+Now you should be able to open the app in your browser:
 
 ```bash
 $ open http://localhost:6969

@@ -167,12 +167,6 @@ if [[ "$INITIAL_ADMIN_PASSWORD_FILE" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]]
     echo "set secret: $secret"
 fi
 
-FRONTEND_LINK=""
-if [ -n "${FRONTEND_PROXY_CONTAINER}" ]; then
-    echo "Setting up frontend proxy container: ${FRONTEND_PROXY_CONTAINER}"
-    FRONTEND_LINK="--link ${FRONTEND_PROXY_CONTAINER}:${FRONTEND_PROXY_CONTAINER}"
-fi
-
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/lib/docker:/var/lib/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
