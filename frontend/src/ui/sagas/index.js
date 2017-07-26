@@ -1,25 +1,14 @@
 import { take, put, call, fork, select, all, takeLatest, takeEvery } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
 import RouterSaga from 'template-ui/lib/plugins/router/saga'
-import AuthSaga from 'template-ui/lib/plugins/auth/saga'
 
 import * as actions from '../actions'
-
-import authApi from '../api/auth'
 import config from '../config'
 
 import Hooks from './hooks'
+import auth from './auth'
 
-const auth = AuthSaga({
-  actions: actions.auth,
-  apis: authApi,
-  basepath: config.basepath
-})
-
-const hooks = Hooks({
-  auth
-})
-
+const hooks = Hooks()
 const router = RouterSaga({
   hooks,
   basepath: config.basepath
