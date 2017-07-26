@@ -232,8 +232,6 @@ func (state *InMemoryState) runServer() {
 		),
 	).Methods("POST")
 
-	// we need to handle the 
-
 	// setup a static file server from the configured directory
 	// TODO: we need a way for /admin/some/sub/route to return frontendStaticFolder + '/admin/index.html'
 	// this is to account for HTML5 routing which is the same index.html with lots of sub-routes the browser will sort out
@@ -244,18 +242,6 @@ func (state *InMemoryState) runServer() {
 			frontendStaticFolder,
 		)
 		router.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir(frontendStaticFolder))))
-	}
-
-	// setup a http proxy to the frontend development server container
-	frontendProxyContainer := os.Getenv("FRONTEND_PROXY_CONTAINER")
-	if frontendProxyContainer != "" {
-		frontendProxyAddress := fmt.Sprintf("http://%s", frontendProxyContainer)
-		u, _ := url.Parse(frontendProxyAddress)
-		log.Printf(
-			"Proxying frontend files to development container %s",
-			frontendProxyAddress,
-		)
-		router.PathPrefix("/").Handler(httputil.NewSingleHostReverseProxy(u))
 	}
 
 	loggedRouter := handlers.LoggingHandler(getLogfile("requests"), router)
