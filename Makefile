@@ -27,3 +27,6 @@ frontend-stop: ; bash dev.sh frontend-stop
 
 .PHONY: frontend-dist
 frontend-dist: ; bash dev.sh frontend-dist
+
+.PHONY: reset
+reset: ; bash dev.sh reset
