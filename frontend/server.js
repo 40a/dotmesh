@@ -5,5 +5,6 @@ const appsConfig = require('./apps.config')
 Server({
   webpackConfig,
   appsConfig,
-  dirname: __dirname
+  dirname: __dirname,
+  disableLogging: true
 })
