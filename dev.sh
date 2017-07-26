@@ -48,7 +48,7 @@ function cluster-upgrade() {
 
 function frontend-build() {
   echo "building datamesh frontend image: ${FRONTEND_IMAGE}"
-  cd "${DIR}/frontend" && IMAGE="${FRONTEND_IMAGE}" NO_PUSH=1 bash rebuild.sh
+  docker build -t ${FRONTEND_IMAGE} frontend
 }
 
 function frontend-start() {
