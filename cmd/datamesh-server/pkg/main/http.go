@@ -9,8 +9,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	_ "net/http/pprof"
 	"os"
 	"text/template"
