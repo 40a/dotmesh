@@ -26,6 +26,7 @@ $ make frontend-build
 
 ## run the stack
 
+#### start cluster
 First we bring up a datamesh cluster:
 
 ```bash
@@ -34,6 +35,7 @@ $ make cluster-start
 
 This will start an etcd and 2 datamesh containers - `docker ps` will show this.
 
+#### start frontend
 Then we bring up the frontend container (which proxies back to the cluster for api requests):
 
 ```bash
@@ -49,8 +51,36 @@ $ docker logs -f datamesh-frontend
 Now you should be able to open the app in your browser:
 
 ```bash
+$ open http://localhost:8080
+```
+
+If you want to see the cluster server directly - you can:
+
+```bash
 $ open http://localhost:6969
 ```
+
+#### frontend CLI
+
+Sometimes it's useful to have the frontend container hooked up but with a bash prompt:
+
+```bash
+$ MANUALRUN=1 make frontend-start
+```
+
+From here, you can manually do `yarn run watch` amoungst other things.
+
+#### linking templatestack
+
+The `template-ui` and `template-tools` npm modules are used in the UI and to iterate quickly it can be useful to have these linked up to the hot reloading.
+
+To do this - you first need to clone https://github.com/binocarlos/templatestack.git to the same folder as datamesh then:
+
+```bash
+$ LINKMODULES=1 make frontend-start
+```
+
+Now - any changes made to `templatestack/template-ui` will hot-reload.
 
 #### getting a CLI into the frontend container
 
@@ -60,9 +90,15 @@ Sometimes it's better to run the frontend with a bash command so you restart the
 $ CLI=1 make frontend-start
 ```
 
-#### boot errors
+#### reset & boot errors
 
 If anything happens which results in the cluster not being able to boot - usually the solution is:
+
+```bash
+$ make reset
+```
+
+which does:
 
 ```bash
 $ dm cluster reset
