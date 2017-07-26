@@ -24,8 +24,8 @@ const icons = {
 }
 
 const config = {
-  title:'Datamesh Admin Panel',
-  basepath:'/admin',
+  title:'Datamesh',
+  basepath:'/ui',
   api: '/rpc',
   // the default state for the value reducer
   initialState: {

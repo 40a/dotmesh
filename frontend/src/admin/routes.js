@@ -1,22 +1,18 @@
 import React, { Component, PropTypes } from 'react'
 
+import UserWrapper from 'template-ui/lib/plugins/auth/UserWrapper'
+import RouteFactory from 'template-ui/lib/plugins/router/Route'
 import { processRoutes } from 'template-ui/lib/utils/routes'
 
-import RouteFactory from 'template-ui/lib/containers/Route'
-import UserWrapper from 'template-ui/lib/containers/UserWrapper'
-
 import Section from 'template-ui/lib/components/Section'
+
+import config from './config'
 
 import Application from './containers/Application'
 import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
 
-import GuestHome from './components/GuestHome'
-import UserHome from './components/UserHome'
-import Help from './components/Help'
-import About from './components/About'
-
-import config from './config'
+import Home from './components/Home'
 
 const Route = RouteFactory(config.basepath)
 
@@ -26,6 +22,8 @@ export const routeConfig = processRoutes({
     triggers: []
   },
   '/about': {
+    //user: true,
+    //autoScroll: false,
   },
   '/login': {
   },
@@ -39,10 +37,10 @@ export const routes = (
       <Route home>
         <Section>
           <UserWrapper loggedIn={ false }>
-            <GuestHome />
+            <Home />
           </UserWrapper>
           <UserWrapper loggedIn={ true }>
-            <UserHome />
+            Logged In!
           </UserWrapper>
         </Section>
       </Route>
