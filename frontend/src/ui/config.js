@@ -24,7 +24,7 @@ const icons = {
 }
 
 const config = {
-  title:'Datamesh',
+  title:'Datamesh Console',
   basepath:'/ui',
   rpcUrl: '/rpc',
   initialState: {
