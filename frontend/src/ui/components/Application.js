@@ -33,6 +33,17 @@ class ApplicationComponent extends Component {
       />
     )
 
+    const title = (
+      <div className={ appBarTheme.title }>
+        <div className={ appBarTheme.titleContent }>
+          <img src="/images/datamesh-on-dark.png" />
+          <div>
+            { this.props.title }
+          </div>
+        </div>
+      </div>
+    )
+
     return (
       <Layout>
         <NavDrawer
@@ -48,7 +59,7 @@ class ApplicationComponent extends Component {
           fixed
           leftIcon={ this.props.leftIcon || 'menu' }
           onLeftIconClick={ this.props.toggleMenu }
-          title={ this.props.title }
+          title={ title }
         >
           { appbarMenu }
         </AppBar>
