@@ -9,6 +9,7 @@ import forms from './forms'
 
 export const valuesSelector = (state) => state.value || {}
 export const valueSelector = (state, name) => valuesSelector(state)[name]
+export const value = (name) => (state) => valueSelector(state, name)
 export const routeInfoSelector = (state) => state.router.result
 
 export const formValuesSelector = (name) => {
