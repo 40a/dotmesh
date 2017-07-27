@@ -46,13 +46,13 @@ function cluster-upgrade() {
 
 function frontend-build() {
   echo "building datamesh frontend image: ${FRONTEND_IMAGE}"
-  docker build -t ${FRONTEND_IMAGE} frontend
+  docker build -t ${FRONTEND_IMAGE} ${DIR}/frontend
 }
 
 function frontend-start() {
   local flags=""
   local linkedVolumes=""
-  if [ -n "${MANUALRUN}" ]; then
+  if [ -n "${CLI}" ]; then
     flags=" --rm -ti --entrypoint bash"
   else
     flags=" -d"
