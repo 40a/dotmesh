@@ -4,7 +4,6 @@ import apis from '../../api'
 import forms from '../../forms'
 import * as actions from '../../actions'
 import * as selectors from '../../selectors'
-import authUtils from '../../utils/auth'
 
 // HELPERS
 
@@ -12,58 +11,54 @@ import authUtils from '../../utils/auth'
 
 // save the encoded user/password into state so we can pass it along
 // with every rpc reuqest
-function* saveCredentials(encoded) {
-  yield put(actions.value.set('credentials', encoded))
-  return encoded
-}
-
-function* loadCredentials() {
-  const credentials = yield select(selectors.value('credentials'))
+function* putCredentials(credentials) {
+  yield put(actions.value.set('user', credentials))
   return credentials
 }
 
-// HOOKS
-
-// 
-function* status(encodedCredentials) {
-  //const { answer, error } = yield call(apis.authStatus.loader)
-
-  // if we are not passed credentials then used the stashed ones
-  if(!encodedCredentials) {
-    encodedCredentials = yield call(loadCredentials)
-  }
-  
-  // if we don't have credentials here then are not defo not logged in
-  if(!encodedCredentials) return
-
-  const { answer, error } = yield call(apis.authStatus.loader, {
-    headers: authUtils.getHeaders(encodedCredentials)
-  })
-
-  if(error) return false
-  return true
+function* selectCredentials() {
+  const credentials = yield select(selectors.value('user'))
+  return credentials
 }
 
+const loadCachedCredentials = () => {
+  const localValue = localStorage.getItem('user')
+  return localValue ?
+    JSON.parse(localValue.toString()) :
+    null
+}
 
-function* login() {
-  const valid = yield select(selectors.form.authLogin.valid)
-  if(!valid) return
-  const values = yield select(selectors.form.authLogin.values)
+const saveCachedCredentials = (credentials) => {
+  localStorage.getItem('user', JSON.stringify(credentials))
+}
 
-  const encodedCredentials = authUtils.encodeCredentials(values.username, values.password)
+// HOOKS
+function* initialize() {
+  // do we have credentials in local storage?
+  const cachedCredentials = loadCachedCredentials()
+  if(cachedCredentials) {
+    yield call(login, cachedCredentials)
+  }
+}
 
-  const loggedIn = yield call(status, encodedCredentials)
-
-  if(!loggedIn) {
+function* login(credentials) {
+  if(!credentials) {
+    const valid = yield select(selectors.form.authLogin.valid)
+    if(!valid) return
+    credentials = yield select(selectors.form.authLogin.values)  
+  }
+  if(!credentials) return false
+  const { answer, error } = yield call(apis.authLogin.loader, {
+    credentials
+  })
+  if(error) {
     yield put(actions.router.hook('authLoginError', 'incorrect details'))
     return
   }
   else {
-    const user = {
-      username: values.username
-    }
-    yield put(actions.value.set('user', user))
-    yield call(saveCredentials, encodedCredentials)
+    yield call(putCredentials, credentials)
+
+    // TODO: if remember me then cache credentials
     yield put(actions.router.hook('authLoginSuccess', user))
     return user
   }
@@ -125,6 +120,7 @@ function* logout() {
 
 
 const authSagas = {
+  initialize,
   logout,
   status,
   login,

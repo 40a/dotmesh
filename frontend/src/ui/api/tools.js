@@ -4,14 +4,21 @@ import config from '../config'
 let requestCounter = 0
 const rpc = (opts = {}) => {
   if(!opts.method) throw new Error('method needed')
+
+  // rpc
+  const id = requestCounter++
   const method = opts.method
   const params = opts.params || {}
+  
+  // top level http request
+  const httpParams = opts.httpParams || {}
   const headers = opts.headers || {}
-  const id = requestCounter++
+
   return request({
     method: 'post',
     url: config.rpcUrl,
     headers,
+    params: httpParams,
     data: {
       jsonrpc: '2.0',
       id,
