@@ -1,9 +1,11 @@
 import React, { Component, PropTypes } from 'react'
 
 import { Layout, NavDrawer, Sidebar, Panel } from 'react-toolbox/lib/layout'
-import { AppBar } from 'react-toolbox/lib/app_bar'
+import AppBar from 'react-toolbox/lib/app_bar'
 import ListMenu from 'template-ui/lib/components/ListMenu'
 import IconMenu from 'template-ui/lib/components/IconMenu'
+
+import appBarTheme from './theme/appBar.css'
 
 class ApplicationComponent extends Component {
   render() {
@@ -42,6 +44,7 @@ class ApplicationComponent extends Component {
           { mainMenu }
         </NavDrawer>
         <AppBar
+          className={ appBarTheme.appBar }
           fixed
           leftIcon={ this.props.leftIcon || 'menu' }
           onLeftIconClick={ this.props.toggleMenu }
