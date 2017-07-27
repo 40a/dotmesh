@@ -19,6 +19,7 @@
   flex-direction: row;
   align-items: center;
   list-style-type: none;
+  cursor: pointer;
 }
 
 .titleContent > img {

@@ -34,7 +34,7 @@ class ApplicationComponent extends Component {
     )
 
     const title = (
-      <div className={ appBarTheme.title }>
+      <div className={ appBarTheme.title } onClick={ this.props.toggleMenu }>
         <div className={ appBarTheme.titleContent }>
           <img src="/images/datamesh-on-dark.png" />
           <div>
