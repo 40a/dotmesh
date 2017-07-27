@@ -54,6 +54,12 @@ Now you should be able to open the app in your browser:
 $ open http://localhost:8080
 ```
 
+To view the new UI:
+
+```bash
+$ open http://localhost:8080/ui
+```
+
 If you want to see the cluster server directly - you can:
 
 ```bash
@@ -65,7 +71,7 @@ $ open http://localhost:6969
 Sometimes it's useful to have the frontend container hooked up but with a bash prompt:
 
 ```bash
-$ MANUALRUN=1 make frontend-start
+$ CLI=1 make frontend-start
 ```
 
 From here, you can manually do `yarn run watch` amoungst other things.
@@ -82,12 +88,10 @@ $ LINKMODULES=1 make frontend-start
 
 Now - any changes made to `templatestack/template-ui` will hot-reload.
 
-#### getting a CLI into the frontend container
-
-Sometimes it's better to run the frontend with a bash command so you restart the build easily - to do this:
+To run both:
 
 ```bash
-$ CLI=1 make frontend-start
+$ make frontend-dev
 ```
 
 #### reset & boot errors
