@@ -22,7 +22,7 @@ const encodeCredentials = (username, password) => new Buffer(username + ':' + pa
 
 export const getHeaders = (credentials) => {
   return {
-    Authorization: `Basic ${credentials}`
+    Authorization: `Basic ${encodeCredentials(credentials.username, credentials.password)}`
   }
 }
 

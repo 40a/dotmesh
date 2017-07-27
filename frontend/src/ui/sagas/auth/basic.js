@@ -48,7 +48,7 @@ function* login(credentials) {
     credentials = yield select(selectors.form.authLogin.values)
   }
   if(!credentials) return false
-  const { answer, error } = yield call(apis.authLogin.loader, {
+  const { user, error } = yield call(apis.authLogin.loader, {
     credentials
   })
   if(error) {
