@@ -2,3 +2,30 @@
   background-image: url(/images/background-appbar.jpg);
   background-size: 100%;
 }
+
+.title {
+  -webkit-box-flex: 1;
+  -ms-flex-positive: 1;
+  flex-grow: 1;
+  font-size: 18px;
+  font-weight: bold;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titleContent {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  list-style-type: none;
+}
+
+.titleContent > img {
+  width: auto;
+  height: 36px;
+}
+
+.titleContent > div {
+  margin-left: 10px;
+}
