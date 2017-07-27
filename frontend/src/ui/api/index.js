@@ -1,14 +1,12 @@
 import processLoaders from 'template-ui/lib/plugins/api/processLoaders'
 import auth from './auth'
-
-export const backends = {
-  auth
-}
+import volume from './volume'
 
 // a combo of handler, actions and saga
 const loaders = {
-  authStatus: backends.auth.status,
-  authRegister: backends.auth.register
+  authStatus: auth.status,
+  authRegister: auth.register,
+  volumeList: volume.list
 }
 
 const processedLoaders = processLoaders(loaders)
