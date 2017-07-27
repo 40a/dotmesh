@@ -28,5 +28,8 @@ frontend-stop: ; bash dev.sh frontend-stop
 .PHONY: frontend-dist
 frontend-dist: ; bash dev.sh frontend-dist
 
+.PHONY: frontend-dev
+frontend-dev: ; CLI=1 LINKMODULES=1 bash dev.sh frontend-start
+
 .PHONY: reset
 reset: ; bash dev.sh reset
