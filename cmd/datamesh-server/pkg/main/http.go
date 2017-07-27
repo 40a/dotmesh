@@ -256,7 +256,10 @@ type AuthHandler struct {
 
 func (a AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	notAuth := func(w http.ResponseWriter) {
-		w.Header().Set("WWW-Authenticate", "Basic")
+		disableBasicAuth := r.URL.Query().Get("disableBasicAuth")
+		if disableBasicAuth != "y" {
+			w.Header().Set("WWW-Authenticate", "Basic")	
+		}
 		http.Error(w, "Unauthorized.", 401)
 	}
 	// check for empty username, if so show a login box
