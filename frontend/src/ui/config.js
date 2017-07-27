@@ -26,6 +26,7 @@ const icons = {
 const config = {
   title:'Datamesh Console',
   basepath:'/ui',
+  rpcNamespace: 'DatameshRPC',
   rpcUrl: '/rpc',
   initialState: {
     value: {
@@ -34,7 +35,7 @@ const config = {
       user: null,
       menuOpen: false
     }
-  },  
+  },
   menu: {
     guest: [
       ['/login', 'Login', icons.login],
