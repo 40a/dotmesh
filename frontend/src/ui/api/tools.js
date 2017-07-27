@@ -1,34 +1,33 @@
 import { request } from 'template-ui/lib/utils/ajax'
-import { userSelector } from '../selectors'
 import config from '../config'
 
 let requestCounter = 0
-const rpc = (method, params) => {
+const rpc = (opts = {}) => {
+  if(!opts.method) throw new Error('method needed')
+  const method = opts.method
+  const params = opts.params || {}
+  const headers = opts.headers || {}
   const id = requestCounter++
   return request({
     method: 'post',
     url: config.rpcUrl,
+    headers,
     data: {
       jsonrpc: '2.0',
       id,
-      method,
+      method: [config.rpcNamespace, method].join('.'),
       params
     }
   })
-  .then(data => data.result)
-}
-
-const encodeBasicAuthDetails = (username, password) => 'Basic ' + new Buffer(username + ':' + password).toString('base64')
-const authHeaders = (encodedDetails) => {
-  return {
-    Authorization: `Basic ${encodedDetails}`
-  }
+  .then(data => {
+    if(data.id != id) throw new Error(`request id ${id} does not match response id ${data.id}`)
+    if(!data.result) throw new Error(`no result found in response`)
+    return data.result
+  })
 }
 
 const tools = {
-  rpc,
-  encodeBasicAuthDetails,
-  authHeaders
+  rpc
 }
 
 export default tools
