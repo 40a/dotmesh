@@ -4,7 +4,7 @@ import volume from './volume'
 
 // a combo of handler, actions and saga
 const loaders = {
-  authStatus: auth.status,
+  authLogin: auth.login,
   authRegister: auth.register,
   volumeList: volume.list
 }

@@ -17,7 +17,7 @@ const router = RouterSaga({
 function* initialize() {
   yield call(delay, 1)
   yield all([
-    call(auth.status)
+    call(auth.initialize)
   ])
   yield put(actions.value.set('initialized', true))
   yield call(router.initialize)
