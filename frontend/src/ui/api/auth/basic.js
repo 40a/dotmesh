@@ -2,10 +2,6 @@ import { request } from 'template-ui/lib/utils/ajax'
 import tools from '../tools'
 
 export const status = (payload) => {
-  console.log('-------------------------------------------');
-  console.log('-------------------------------------------');
-  console.log('-------------------------------------------');
-  console.dir(payload)
   return tools.rpc({
     method: 'Ping',
     headers: payload.headers
