@@ -4,7 +4,12 @@ import volume from './volume'
 
 // a combo of handler, actions and saga
 const loaders = {
-  authLogin: auth.login,
+  authLogin: {
+    handler: auth.login,
+    options: {
+      processError: (error) => 'incorrect details'
+    }
+  },
   authRegister: auth.register,
   volumeList: volume.list
 }
