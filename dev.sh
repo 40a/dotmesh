@@ -12,6 +12,8 @@ export SERVER_IMAGE=${SERVER_IMAGE:="datamesh-server:latest"}
 export FRONTEND_IMAGE=${FRONTEND_IMAGE:="datamesh-frontend:latest"}
 export DATAMESH_HOME=${DATAMESH_HOME:="~/.datamesh"}
 
+
+
 function cli-build() {
   echo "building datamesh CLI binary"
   cd "${DIR}/cmd/dm" && bash rebuild_docker.sh
@@ -49,19 +51,27 @@ function frontend-build() {
   docker build -t ${FRONTEND_IMAGE} ${DIR}/frontend
 }
 
+
+
 function frontend-start() {
   local flags=""
   local linkedVolumes=""
+  declare -a frontend_volumes=("src" "www" "package.json" "webpack.config.js" "toolbox-variables.js" "yarn.lock")
   if [ -n "${CLI}" ]; then
     flags=" --rm -ti --entrypoint bash"
   else
     flags=" -d"
   fi
-  # this is dev only for live reloading from the published node_modules for quick development cycles
+  # always mount these for local development
+  for volume in "${frontend_volumes[@]}"
+  do
+    linkedVolumes="${linkedVolumes} -v ${DIR}/frontend/${volume}:/app/${volume}"
+  done
+  # mount modules from templatestack for quick reloading
   # you need to have cloned https://github.com/binocarlos/templatestack.git to the same folder as datamesh for this to work
   if [ -n "${LINKMODULES}" ]; then
-    linkedVolumes="${linkedVolumes} -v ${DIR}/../templatestack/template-ui:/app/node_modules/template-ui"
     linkedVolumes="${linkedVolumes} -v ${DIR}/../templatestack/template-tools:/app/node_modules/template-tools"
+    linkedVolumes="${linkedVolumes} -v ${DIR}/../templatestack/template-ui:/app/node_modules/template-ui"
   fi
 
   echo "running frontend dev server using ${FRONTEND_IMAGE}"
