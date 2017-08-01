@@ -50,7 +50,7 @@ const config = {
       ['/help', 'Help', icons.help],
       ['/about', 'About', icons.about],
       ['-'],
-      ['logout', 'Logout', icons.logout]
+      ['authLogout', 'Logout', icons.logout]
     ]
   },
   icons
