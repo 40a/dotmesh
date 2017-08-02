@@ -41,10 +41,7 @@ const saveCachedCredentials = (credentials) => {
 }
 
 const deleteCachedCredentials = () => {
-  console.log('-------------------------------------------');
-  console.log('deleting credentials')
   localStorage.setItem('user', '{}')
-  console.dir(localStorage.getItem('user'))
 }
 
 // HOOKS
@@ -61,7 +58,11 @@ function* initialize() {
 function* login(credentials) {
   if(!credentials) {
     const valid = yield select(selectors.form.authLogin.valid)
-    if(!valid) return
+    if(!valid) {
+      // touch all values of the form so the errors appear
+      yield put(actions.forms.touchAll('authLogin'))
+      return
+    }
     credentials = yield select(selectors.form.authLogin.values)
   }
 

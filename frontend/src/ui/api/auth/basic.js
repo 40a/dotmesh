@@ -1,6 +1,7 @@
 import { request } from 'template-ui/lib/utils/ajax'
 import tools from '../tools'
 
+// login means "do these credentials allow us to see the Ping endpoint"
 export const login = (payload) => {
   return tools.rpc({
     method: 'Ping',
