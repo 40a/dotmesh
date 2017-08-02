@@ -116,8 +116,7 @@ function* register() {
 }
 
 function* loginSuccess(user) {
-  //yield put(actions.router.redirect('/dashboard'))
-  alert('logged in')
+  yield put(actions.router.redirect('/dashboard'))
 }
 
 function* registerSuccess(user) {
