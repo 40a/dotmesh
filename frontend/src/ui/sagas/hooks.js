@@ -24,6 +24,10 @@ const Logger = (type) => {
   return logger
 }
 
+function* oldRegisterForm() {
+  document.location = '/register'
+}
+
 
 const Hooks = (opts = {}) => {
   return {
@@ -37,7 +41,8 @@ const Hooks = (opts = {}) => {
     authRegisterSuccess: auth.registerSuccess,
     apiRequest: Logger('request'),
     apiResponse: Logger('response'),
-    apiError: Logger('error')
+    apiError: Logger('error'),
+    oldRegisterForm
   }
 }
 

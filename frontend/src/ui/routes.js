@@ -29,8 +29,7 @@ export const routeConfig = processRoutes({
     authRedirect: '/dashboard'
   },
   '/register': {
-    user: false,
-    authRedirect: '/dashboard'
+    hooks: ['oldRegisterForm']
   }
 }, config.basepath)
 
