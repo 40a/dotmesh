@@ -41,14 +41,12 @@ const config = {
       ['/login', 'Login', icons.login],
       ['/register', 'Register', icons.register],
       ['-'],
-      ['/help', 'Help', icons.help],
-      ['/about', 'About', icons.about]
+      ['/help', 'Help', icons.help]
     ],
     user: [
       ['/dashboard', 'Dashboard', icons.dashboard],
       ['-'],
       ['/help', 'Help', icons.help],
-      ['/about', 'About', icons.about],
       ['-'],
       ['authLogout', 'Logout', icons.logout]
     ]

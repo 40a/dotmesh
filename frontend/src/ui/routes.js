@@ -19,15 +19,18 @@ const Route = RouteFactory(config.basepath)
 export const routeConfig = processRoutes({
   '/': {},
   '/help': {
-    triggers: []
   },
-  '/about': {
-    //user: true,
-    //autoScroll: false,
+  '/dashboard': {
+    user: true,
+    authRedirect: '/login'
   },
   '/login': {
+    user: false,
+    authRedirect: '/dashboard'
   },
   '/register': {
+    user: false,
+    authRedirect: '/dashboard'
   }
 }, config.basepath)
 
@@ -48,6 +51,12 @@ export const routes = (
       <Route path='/help'>
         <div>
           Help
+        </div>
+      </Route>
+
+      <Route path='/dashboard'>
+        <div>
+          dashboard
         </div>
       </Route>
 
