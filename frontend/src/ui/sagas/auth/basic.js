@@ -134,7 +134,7 @@ function* authenticateRoute() {
   const hasUser = user ? true : false
   const isRouteAuthenticated = hasUser == userSetting
   if(!isRouteAuthenticated) {
-    yield put(actions.router.push(tools.url(redirectSetting || '/')))
+    yield put(actions.router.redirect(redirectSetting || '/'))
   }
 }
 
