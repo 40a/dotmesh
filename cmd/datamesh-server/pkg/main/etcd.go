@@ -64,21 +64,26 @@ func transportFromTLS(certFile, keyFile, caFile string) (*http.Transport, error)
 func getEtcd() (client.Client, error) {
 	once.Do(func() {
 		var err error
-		pkiPath := os.Getenv("DATAMESH_PKI_PATH")
-		if pkiPath == "" {
-			pkiPath = "/pki"
-		}
-		transport, err := transportFromTLS(
-			fmt.Sprintf("%s/apiserver.pem", pkiPath),
-			fmt.Sprintf("%s/apiserver-key.pem", pkiPath),
-			fmt.Sprintf("%s/ca.pem", pkiPath),
-		)
-		if err != nil {
-			panic(err)
-		}
 		endpoint := os.Getenv("DATAMESH_ETCD_ENDPOINT")
 		if endpoint == "" {
 			endpoint = "https://datamesh-etcd:42379"
+		}
+		transport = nil
+		if endpoint[:5] == "https" {
+			// only try to fetch PKI gubbins if we're creating an encrypted
+			// connection.
+			pkiPath := os.Getenv("DATAMESH_PKI_PATH")
+			if pkiPath == "" {
+				pkiPath = "/pki"
+			}
+			transport, err = transportFromTLS(
+				fmt.Sprintf("%s/apiserver.pem", pkiPath),
+				fmt.Sprintf("%s/apiserver-key.pem", pkiPath),
+				fmt.Sprintf("%s/ca.pem", pkiPath),
+			)
+			if err != nil {
+				panic(err)
+			}
 		}
 		cfg := client.Config{
 			Endpoints: []string{endpoint},
