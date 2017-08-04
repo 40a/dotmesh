@@ -68,7 +68,7 @@ func getEtcd() (client.Client, error) {
 		if endpoint == "" {
 			endpoint = "https://datamesh-etcd:42379"
 		}
-		var transport *http.Transport
+		transport := http.DefaultTransport
 		if endpoint[:5] == "https" {
 			// only try to fetch PKI gubbins if we're creating an encrypted
 			// connection.
