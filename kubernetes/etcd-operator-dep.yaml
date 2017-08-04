@@ -3,6 +3,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: etcd-operator
+  namespace: datamesh
 spec:
   replicas: 1
   template:
