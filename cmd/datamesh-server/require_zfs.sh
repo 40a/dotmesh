@@ -128,6 +128,11 @@ fi
 # the host network namespace (here) and pass it in.
 YOUR_IPV4_ADDRS="$(datamesh-server --guess-ipv4-addresses)"
 
+pki_volume_mount=""
+if [ "$PKI_PATH" != "" ]; then
+    pki_volume_mount="-v $PKI_PATH:/pki"
+fi
+
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/lib/docker:/var/lib/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -147,7 +152,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -e "ASSETS_URL_PREFIX=$ASSETS_URL_PREFIX" \
     -e "HOMEPAGE_URL=$HOMEPAGE_URL" \
     -e "TRACE_ADDR=$TRACE_ADDR" $log_opts \
-    -v $PKI_PATH:/pki \
+    $pki_volume_mount \
     -v datamesh-kernel-modules:/bundled-lib \
     $DATAMESH_DOCKER_IMAGE \
     "$@" >/dev/null
