@@ -133,6 +133,14 @@ if [ "$PKI_PATH" != "" ]; then
     pki_volume_mount="-v $PKI_PATH:/pki"
 fi
 
+link=""
+if [ "$DATAMESH_ETCD_ENDPOINT" == "" ]; then
+    # If etcd endpoint is overridden, then don't try to link to a local
+    # datamesh-etcd container (etcd probably is being provided externally, e.g.
+    # by etcd operator on Kubernetes).
+    link="--link datamesh-etcd:datamesh-etcd"
+fi
+
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/lib/docker:/var/lib/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -142,7 +150,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -p 6969:6969 \
     -l traefik.port=6969 \
     -l traefik.frontend.rule=Host:public.data-mesh.io \
-    --link datamesh-etcd:datamesh-etcd \
+    $link \
     -e "PATH=$PATH" \
     -e "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \
     -e "MOUNT_PREFIX=$MOUNTPOINT" \
@@ -151,7 +159,9 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -e "ALLOW_PUBLIC_REGISTRATION=$ALLOW_PUBLIC_REGISTRATION" \
     -e "ASSETS_URL_PREFIX=$ASSETS_URL_PREFIX" \
     -e "HOMEPAGE_URL=$HOMEPAGE_URL" \
-    -e "TRACE_ADDR=$TRACE_ADDR" $log_opts \
+    -e "TRACE_ADDR=$TRACE_ADDR" \
+    -e "DATAMESH_ETCD_ENDPOINT=$DATAMESH_ETCD_ENDPOINT" \
+    $log_opts \
     $pki_volume_mount \
     -v datamesh-kernel-modules:/bundled-lib \
     $DATAMESH_DOCKER_IMAGE \
