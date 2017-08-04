@@ -74,6 +74,11 @@ items:
                     fieldRef:
                       apiVersion: v1
                       fieldPath: spec.nodeName
+                - name: DATAMESH_ETCD_ENDPOINT
+                  # etcd deployed by etcd operator.
+                  value: "http://etcd.datamesh.svc.cluster.local"
+                - name: DATAMESH_DOCKER_IMAGE
+                  value: "quay.io/lukemarsden/datamesh-server:pushpull"
               image: 'quay.io/lukemarsden/datamesh-server:pushpull'
               imagePullPolicy: Always
               livenessProbe:
