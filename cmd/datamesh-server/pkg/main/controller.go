@@ -260,7 +260,7 @@ func (s *InMemoryState) insertInitialAdminPassword() error {
 		Id     string
 		Name   string
 		ApiKey string
-	}{Id: ADMIN_USER_UUID, Name: "admin", ApiKey: adminPassword}
+	}{Id: ADMIN_USER_UUID, Name: "admin", ApiKey: string(adminPassword)}
 	encoded, err := json.Marshal(user)
 	if err != nil {
 		return err
