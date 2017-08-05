@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -246,7 +247,7 @@ func (s *InMemoryState) insertInitialAdminPassword() error {
 		return nil
 	}
 
-	adminPassword, err := os.ReadFile(os.Getenv("INITIAL_ADMIN_PASSWORD_FILE"))
+	adminPassword, err := ioutil.ReadFile(os.Getenv("INITIAL_ADMIN_PASSWORD_FILE"))
 	if err != nil {
 		return err
 	}
