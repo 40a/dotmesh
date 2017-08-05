@@ -95,7 +95,7 @@ items:
               livenessProbe:
                 httpGet:
                   path: /status
-                  port: 6969
+                  port: 30969
                 initialDelaySeconds: 30
               resources:
                 requests:

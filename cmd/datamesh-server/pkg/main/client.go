@@ -42,7 +42,7 @@ func (j *JsonRpcClient) CallRemote(
 	span.SetTag("rpcArgs", fmt.Sprintf("%v", args))
 	defer span.Finish()
 
-	url := fmt.Sprintf("http://%s:6969/rpc", j.Hostname)
+	url := fmt.Sprintf("http://%s:30969/rpc", j.Hostname)
 	message, err := json2.EncodeClientRequest(method, args)
 	if err != nil {
 		return err

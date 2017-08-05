@@ -7,7 +7,7 @@ metadata:
 spec:
   type: NodePort
   ports:
-  - port: 6969
+  - port: 30969
     nodePort: 30969
   selector:
     name: datamesh

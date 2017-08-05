@@ -276,7 +276,7 @@ func (j *JsonRpcClient) CallRemote(
 				"add'. Try 'dm cluster init' if you don't have a cluster yet.",
 		)
 	}
-	url := fmt.Sprintf("http://%s:6969/rpc", j.Hostname)
+	url := fmt.Sprintf("http://%s:30969/rpc", j.Hostname)
 	message, err := json2.EncodeClientRequest(method, args)
 	if err != nil {
 		return err

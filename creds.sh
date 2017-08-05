@@ -46,9 +46,9 @@ xdg-open http://admin:$ADMIN_PW@localhost:83/
 sleep 0.4
 
 # node uis
-xdg-open http://admin:$node1pw@$node1ip:6969/ux
+xdg-open http://admin:$node1pw@$node1ip:30969/ux
 sleep 0.4
-xdg-open http://admin:$node2pw@$node2ip:6969/ux
+xdg-open http://admin:$node2pw@$node2ip:30969/ux
 sleep 0.4
 
 for job in `jobs -p`; do
