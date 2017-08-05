@@ -133,7 +133,7 @@ if [ "$PKI_PATH" != "" ]; then
     pki_volume_mount="-v $PKI_PATH:/pki"
 fi
 
-net=""
+net="-p 6969:6969"
 link=""
 if [ "$DATAMESH_ETCD_ENDPOINT" == "" ]; then
     # If etcd endpoint is overridden, then don't try to link to a local
@@ -165,7 +165,6 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /run/docker/plugins:/run/docker/plugins \
     -v $MOUNTPOINT:$MOUNTPOINT:rshared \
     -v /var/datamesh:/var/datamesh \
-    -p 6969:6969 \
     -l traefik.port=6969 \
     -l traefik.frontend.rule=Host:public.data-mesh.io \
     $net \
