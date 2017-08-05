@@ -124,21 +124,38 @@ fi
 # To have its port exposed on Docker for Mac, `docker run` needs -p 6969.  But
 # datamesh-server also wants to discover its routeable IPv4 addresses (on Linux
 # anyway; multi-node clusters work only on Linux because we can't discover the
-# Mac's IP from a container).  So to work with both we do that while we're in
-# the host network namespace (here) and pass it in.
-YOUR_IPV4_ADDRS="$(datamesh-server --guess-ipv4-addresses)"
+# Mac's IP from a container).  So to work with both we do that in the host
+# network namespace (via docker) and pass it in.
+YOUR_IPV4_ADDRS="$(docker run -ti --net=host $DATAMESH_DOCKER_IMAGE datamesh-server --guess-ipv4-addresses)"
 
 pki_volume_mount=""
 if [ "$PKI_PATH" != "" ]; then
     pki_volume_mount="-v $PKI_PATH:/pki"
 fi
 
+net=""
 link=""
 if [ "$DATAMESH_ETCD_ENDPOINT" == "" ]; then
     # If etcd endpoint is overridden, then don't try to link to a local
     # datamesh-etcd container (etcd probably is being provided externally, e.g.
     # by etcd operator on Kubernetes).
     link="--link datamesh-etcd:datamesh-etcd"
+
+    # When running in a pod network, calculate the id of the current container
+    # in scope, and pass that as --net=container:<id> so that datamesh-server
+    # itself runs in the same network namespace.
+    self_containers=$(docker ps -q --filter="ancestor=$DATAMESH_DOCKER_IMAGE")
+    array_containers=( $self_containers )
+    num_containers=${#array_containers[@]}
+    if [ $num_containers -eq 0 ]; then
+        echo "Cannot find id of own container!"
+        exit 1
+    fi
+    if [ $num_containers -gt 1 ]; then
+        echo "Found more than one id of own container! $self_containers"
+        exit 1
+    fi
+    net="--net=container:$self_container"
 fi
 
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
