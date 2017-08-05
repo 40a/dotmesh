@@ -88,7 +88,7 @@ items:
               livenessProbe:
                 httpGet:
                   host: 127.0.0.1
-                  path: /ping
+                  path: /status
                   port: 6969
                 initialDelaySeconds: 30
               resources:
