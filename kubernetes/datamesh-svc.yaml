@@ -8,6 +8,6 @@ spec:
   type: NodePort
   ports:
   - port: 6969
-    nodePort: 6969
+    nodePort: 30969
   selector:
     name: datamesh
