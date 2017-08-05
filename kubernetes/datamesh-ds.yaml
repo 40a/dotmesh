@@ -84,7 +84,7 @@ items:
                 - name: LD_LIBRARY_PATH
                   value: "/bundled-lib/lib:/bundled-lib/usr/lib/"
                 - name: ALLOW_PUBLIC_REGISTRATION
-                  value: 1
+                  value: "1"
               image: 'quay.io/lukemarsden/datamesh-server:pushpull'
               imagePullPolicy: Always
               livenessProbe:
