@@ -291,7 +291,7 @@ func (s *InMemoryState) findRelatedContainers() error {
 	for _, filesystemId := range myFilesystems {
 		// update etcd with the list of containers and this node; we'll learn
 		// about the state via our own watch on etcd
-		// (0)/(1)data-mesh.io/(2)filesystems/(3)containers/(4):filesystem_id =>
+		// (0)/(1)datamesh.io/(2)filesystems/(3)containers/(4):filesystem_id =>
 		// {"server": "server", "containers": [{Name: "name", ID: "id"}]}
 		theContainers, ok := containerMap[filesystemId]
 		var value containerInfo

@@ -17,7 +17,7 @@ function fetch_zfs {
             mv /bundled-lib/lib /bundled-lib/lib.backup-`date +%s`
         fi
     fi
-    if ! curl -f -o ${RELEASE} https://get.data-mesh.io/zfs/${RELEASE}; then
+    if ! curl -f -o ${RELEASE} https://get.datamesh.io/zfs/${RELEASE}; then
         echo "ZFS is not installed on your docker host, and unable to find a kernel module for your kernel: $KERN"
         echo "Please create a new GitHub issue, pasting this error message, and tell me which Linux distribution you are using, at:"
         echo
@@ -166,7 +166,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/datamesh:/var/datamesh \
     -p 6969:6969 \
     -l traefik.port=6969 \
-    -l traefik.frontend.rule=Host:public.data-mesh.io \
+    -l traefik.frontend.rule=Host:cloud.datamesh.io \
     $link \
     -e "PATH=$PATH" \
     -e "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \

@@ -130,7 +130,7 @@ another.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&discoveryUrl, "discovery-url",
-		"https://discovery.data-mesh.io", "URL of discovery service. "+
+		"https://discovery.datamesh.io", "URL of discovery service. "+
 			"Use one you trust. Use HTTPS otherwise your private key will"+
 			"be transmitted in plain text!",
 	)
@@ -141,11 +141,11 @@ another.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&assetsURLPrefix, "assets-url-prefix",
-		"https://get.data-mesh.io/assets/datamesh-website/_site",
+		"https://get.datamesh.io/assets/datamesh-website/_site",
 		"Alternative URL prefix for assets for built-in datamesh JavaScript app",
 	)
 	cmd.PersistentFlags().StringVar(
-		&homepageURL, "homepage-url", "https://data-mesh.io/",
+		&homepageURL, "homepage-url", "https://datamesh.io/",
 		"Alternative URL to use for homepage links in built-in JavaScript app",
 	)
 	return cmd
@@ -419,7 +419,7 @@ func getToken() (string, error) {
 	}
 	encoded, err := kapi.Get(
 		context.Background(),
-		fmt.Sprintf("/data-mesh.io/users/%s", ADMIN_USER_UUID),
+		fmt.Sprintf("/datamesh.io/users/%s", ADMIN_USER_UUID),
 		nil,
 	)
 	if err != nil {
@@ -451,7 +451,7 @@ func setTokenIfNotExists(adminPassword string) error {
 	}
 	_, err = kapi.Set(
 		context.Background(),
-		fmt.Sprintf("/data-mesh.io/users/%s", ADMIN_USER_UUID),
+		fmt.Sprintf("/datamesh.io/users/%s", ADMIN_USER_UUID),
 		string(encoded),
 		&client.SetOptions{PrevExist: client.PrevNoExist},
 	)
@@ -906,7 +906,7 @@ func clusterInit(cmd *cobra.Command, args []string, out io.Writer) error {
 		return err
 	}
 	fmt.Printf("Registering new cluster... ")
-	// - Get a unique cluster id by asking discovery.data-mesh.io.
+	// - Get a unique cluster id by asking discovery.datamesh.io.
 	// support specifying size here (to avoid cliques/enable HA)
 	resp, err := http.Get(fmt.Sprintf("%s/new?size=%d", discoveryUrl, serverCount))
 	if err != nil {
@@ -943,7 +943,7 @@ func clusterInit(cmd *cobra.Command, args []string, out io.Writer) error {
 	err = generatePKI(false)
 	fmt.Printf("done.\n")
 
-	// - Upload all PKI assets to discovery.data-mesh.io under "secure" path
+	// - Upload all PKI assets to discovery.datamesh.io under "secure" path
 	pkiJsonEncoded, err := generatePkiJsonEncoded(pkiPath)
 	if err != nil {
 		return err

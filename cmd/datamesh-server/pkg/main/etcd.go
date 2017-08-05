@@ -496,7 +496,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 
 	// handy inline funcs to avoid duplication
 	updateMine := func(node *client.Node) {
-		// (0)/(1)data-mesh.io/(2)servers/(3)masters/(4):filesystem = master
+		// (0)/(1)datamesh.io/(2)servers/(3)masters/(4):filesystem = master
 		pieces := strings.Split(node.Key, "/")
 		fs := pieces[4]
 
@@ -511,7 +511,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		}
 	}
 	updateAddresses := func(node *client.Node) error {
-		// (0)/(1)data-mesh.io/(2)servers/(3)addresses/(4):server = addresses
+		// (0)/(1)datamesh.io/(2)servers/(3)addresses/(4):server = addresses
 		pieces := strings.Split(node.Key, "/")
 		server := pieces[4]
 
@@ -521,7 +521,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		return nil
 	}
 	updateStates := func(node *client.Node) error {
-		// (0)/(1)data-mesh.io/(2)servers/
+		// (0)/(1)datamesh.io/(2)servers/
 		//     (3)snapshots/(4):server/(5):filesystem = snapshots
 		pieces := strings.Split(node.Key, "/")
 		server := pieces[4]
@@ -566,7 +566,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 	}
 
 	updateSnapshots := func(node *client.Node) error {
-		// (0)/(1)data-mesh.io/(2)servers/
+		// (0)/(1)datamesh.io/(2)servers/
 		//     (3)snapshots/(4):server/(5):filesystem = snapshots
 		pieces := strings.Split(node.Key, "/")
 		server := pieces[4]
@@ -584,7 +584,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		return s.updateSnapshotsFromKnownState(server, filesystem, snapshots)
 	}
 	/*
-		(0)/(1)data-mesh.io/(2)registry/(3)filesystems/(4)<name> =>
+		(0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<name> =>
 		{"Uuid": "<fs-uuid>"}
 			fs-uuid can be a branch or filesystem uuid
 	*/
@@ -599,7 +599,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		return s.registry.UpdateFilesystemFromEtcd(name, rf)
 	}
 	/*
-		   (0)/(1)data-mesh.io/(2)registry/(3)clones/(4)<fs-uuid-of-filesystem>/(5)<name> =>
+		   (0)/(1)datamesh.io/(2)registry/(3)clones/(4)<fs-uuid-of-filesystem>/(5)<name> =>
 			   uniqueness: we want branch names under a top-level filesystem to be unique, that is, assuming we're wedging the git UI into this
 			   the fs-uuid has to be one of the filesystems, here that the clone gets attributed to in the UI
 
@@ -621,7 +621,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		return nil
 	}
 	/*
-	   (0)/(1)data-mesh.io/(2)filesystems/(3)containers/(4):filesystem_id =>
+	   (0)/(1)datamesh.io/(2)filesystems/(3)containers/(4):filesystem_id =>
 	   {"server": X, "containers": [<docker inspect info>, ...]}
 	*/
 	updateFilesystemsDirty := func(node *client.Node) error {
@@ -651,7 +651,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		return nil
 	}
 	updateTransfers := func(node *client.Node) error {
-		// (0)/(1)data-mesh.io/(2)filesystems/
+		// (0)/(1)datamesh.io/(2)filesystems/
 		//     (3)transfers/(4):transferId = transferRequest
 		pieces := strings.Split(node.Key, "/")
 		transferId := pieces[4]
@@ -667,7 +667,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 	}
 	var kapi client.KeysAPI
 	maybeDispatchEvent := func(node *client.Node) error {
-		// (0)/(1)data-mesh.io/(2)filesystems/
+		// (0)/(1)datamesh.io/(2)filesystems/
 		//     (3)requests/(4):filesystem/(5):request_id = request
 		pieces := strings.Split(node.Key, "/")
 		fs := pieces[4]
@@ -682,7 +682,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		return nil
 	}
 	getVariant := func(node *client.Node) string {
-		// e.g. "masters" in (0)/(1)data-mesh.io/(2)filesystems/(3)masters/(4)1b25b8f5...
+		// e.g. "masters" in (0)/(1)datamesh.io/(2)filesystems/(3)masters/(4)1b25b8f5...
 		pieces := strings.Split(node.Key, "/")
 		if len(pieces) > 3 {
 			return pieces[2] + "/" + pieces[3]

@@ -28,11 +28,11 @@ You need to be running a local registry, as well as everything else in the
 github.com/lukemarsden/datamesh-instrumentation pack, which requires
 docker-compose (run up.sh with a password as the first argument).
 
-Finally, you need to be running github.com/lukemarsden/discovery.data-mesh.io
+Finally, you need to be running github.com/lukemarsden/discovery.datamesh.io
 on port 8087:
 
-	git clone git@github.com:lukemarsden/discovery.data-mesh.io
-	cd discovery.data-mesh.io
+	git clone git@github.com:lukemarsden/discovery.datamesh.io
+	cd discovery.datamesh.io
 	./start-local.sh
 
 You have to do some one-off setup and priming of docker images before these
