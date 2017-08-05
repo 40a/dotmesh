@@ -126,7 +126,7 @@ fi
 # anyway; multi-node clusters work only on Linux because we can't discover the
 # Mac's IP from a container).  So to work with both we do that in the host
 # network namespace (via docker) and pass it in.
-YOUR_IPV4_ADDRS="$(docker run -ti --net=host $DATAMESH_DOCKER_IMAGE datamesh-server --guess-ipv4-addresses)"
+YOUR_IPV4_ADDRS="$(docker run -i --net=host $DATAMESH_DOCKER_IMAGE datamesh-server --guess-ipv4-addresses)"
 
 pki_volume_mount=""
 if [ "$PKI_PATH" != "" ]; then
