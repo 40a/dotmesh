@@ -85,6 +85,11 @@ items:
                   value: "/bundled-lib/lib:/bundled-lib/usr/lib/"
                 - name: ALLOW_PUBLIC_REGISTRATION
                   value: "1"
+                # XXX some duplication here wrt datamesh/cmd/dm/pkg/commands/cluster.go
+                - name: ASSETS_URL_PREFIX
+                  value: "https://get.datamesh.io/assets/datamesh-website/_site"
+                - name: HOMEPAGE_URL
+                  value: "https://datamesh.io/"
               image: 'quay.io/lukemarsden/datamesh-server:pushpull'
               imagePullPolicy: Always
               livenessProbe:
