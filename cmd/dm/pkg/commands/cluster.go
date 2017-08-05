@@ -647,7 +647,7 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 
 	if adminPassword != "" {
 		// we are to try and initialize the first admin password
-		// try 10 times with exponentially increasing delay in between
+		// try 10 times with exponentially increasing delay in between.
 		// panic if the adminPassword already exists
 		delay := 1
 		var err error

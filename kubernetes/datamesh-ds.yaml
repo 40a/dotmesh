@@ -90,6 +90,8 @@ items:
                   value: "https://get.datamesh.io/assets/datamesh-website/_site"
                 - name: HOMEPAGE_URL
                   value: "https://datamesh.io/"
+                - name: INITIAL_ADMIN_PASSWORD_FILE
+                  value: /secret/initial-datamesh-admin-password.txt
               image: 'quay.io/lukemarsden/datamesh-server:pushpull'
               imagePullPolicy: Always
               livenessProbe:
@@ -115,6 +117,8 @@ items:
                   mountPath: /system-lib/lib
                 - name: datamesh-kernel-modules
                   mountPath: /bundled-lib
+                - name: datamesh-secret
+                  mountPath: /secret
           #hostNetwork: true
           #hostPID: true
           restartPolicy: Always
@@ -142,5 +146,8 @@ items:
                 path: /lib
             - name: datamesh-kernel-modules
               emptyDir: {}
+            - name: datamesh-secret
+              secret:
+                secretName: datamesh
       updateStrategy:
         type: RollingUpdate

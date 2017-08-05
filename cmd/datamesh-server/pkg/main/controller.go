@@ -13,6 +13,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
+
 // typically methods on the InMemoryState "god object"
 
 func NewInMemoryState(localPoolId string) *InMemoryState {
@@ -237,6 +239,40 @@ func (s *InMemoryState) getCurrentState(filesystemId string) (string, error) {
 		return "", fmt.Errorf("No such filesystem id %s", filesystemId)
 	}
 	return f.getCurrentState(), nil
+}
+
+func (s *InMemoryState) insertInitialAdminPassword() error {
+
+	if os.Getenv("INITIAL_ADMIN_PASSWORD_FILE") == "" {
+		return nil
+	}
+
+	adminPassword, err := os.ReadFile(os.Getenv("INITIAL_ADMIN_PASSWORD_FILE"))
+	if err != nil {
+		return err
+	}
+
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+	user := struct {
+		Id     string
+		Name   string
+		ApiKey string
+	}{Id: ADMIN_USER_UUID, Name: "admin", ApiKey: adminPassword}
+	encoded, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+	_, err = kapi.Set(
+		context.Background(),
+		fmt.Sprintf("/datamesh.io/users/%s", ADMIN_USER_UUID),
+		string(encoded),
+		&client.SetOptions{PrevExist: client.PrevNoExist},
+	)
+	return err
+
 }
 
 // query container runtime for any containers which have datamesh volumes.
