@@ -76,7 +76,7 @@ items:
                       fieldPath: spec.nodeName
                 - name: DATAMESH_ETCD_ENDPOINT
                   # etcd deployed by etcd operator.
-                  value: "http://etcd.datamesh.svc.cluster.local"
+                  value: "http://datamesh-etcd-cluster-client.datamesh.svc.cluster.local:2379"
                 - name: DATAMESH_DOCKER_IMAGE
                   value: "quay.io/lukemarsden/datamesh-server:pushpull"
                 - name: PATH
