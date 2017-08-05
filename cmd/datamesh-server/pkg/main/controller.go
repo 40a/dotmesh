@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -12,8 +13,6 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"golang.org/x/net/context"
 )
-
-const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
 
 // typically methods on the InMemoryState "god object"
 
