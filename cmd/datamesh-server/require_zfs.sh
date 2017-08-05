@@ -140,7 +140,8 @@ if [ "$DATAMESH_ETCD_ENDPOINT" == "" ]; then
     # datamesh-etcd container (etcd probably is being provided externally, e.g.
     # by etcd operator on Kubernetes).
     link="--link datamesh-etcd:datamesh-etcd"
-
+fi
+if [ "$DATAMESH_ETCD_ENDPOINT" != "" ]; then
     # When running in a pod network, calculate the id of the current container
     # in scope, and pass that as --net=container:<id> so that datamesh-server
     # itself runs in the same network namespace.
