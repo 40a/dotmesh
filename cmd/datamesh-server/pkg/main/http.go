@@ -208,6 +208,12 @@ func (state *InMemoryState) runServer() {
 		)
 	}
 
+	router.HandleFunc("/status",
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "OK")
+		},
+	)
+
 	router.Handle("/ux", NewAuthHandler(state.NewWebServer()))
 
 	router.HandleFunc("/",

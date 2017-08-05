@@ -126,21 +126,22 @@ fi
 # anyway; multi-node clusters work only on Linux because we can't discover the
 # Mac's IP from a container).  So to work with both we do that in the host
 # network namespace (via docker) and pass it in.
-YOUR_IPV4_ADDRS="$(docker run -ti --net=host $DATAMESH_DOCKER_IMAGE datamesh-server --guess-ipv4-addresses)"
+YOUR_IPV4_ADDRS="$(docker run -i --net=host $DATAMESH_DOCKER_IMAGE datamesh-server --guess-ipv4-addresses)"
 
 pki_volume_mount=""
 if [ "$PKI_PATH" != "" ]; then
     pki_volume_mount="-v $PKI_PATH:/pki"
 fi
 
-net=""
+net="-p 6969:6969"
 link=""
 if [ "$DATAMESH_ETCD_ENDPOINT" == "" ]; then
     # If etcd endpoint is overridden, then don't try to link to a local
     # datamesh-etcd container (etcd probably is being provided externally, e.g.
     # by etcd operator on Kubernetes).
     link="--link datamesh-etcd:datamesh-etcd"
-
+fi
+if [ "$DATAMESH_ETCD_ENDPOINT" != "" ]; then
     # When running in a pod network, calculate the id of the current container
     # in scope, and pass that as --net=container:<id> so that datamesh-server
     # itself runs in the same network namespace.
@@ -155,7 +156,7 @@ if [ "$DATAMESH_ETCD_ENDPOINT" == "" ]; then
         echo "Found more than one id of own container! $self_containers"
         exit 1
     fi
-    net="--net=container:$self_container"
+    net="--net=container:$self_containers"
 fi
 
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
@@ -164,9 +165,9 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /run/docker/plugins:/run/docker/plugins \
     -v $MOUNTPOINT:$MOUNTPOINT:rshared \
     -v /var/datamesh:/var/datamesh \
-    -p 6969:6969 \
     -l traefik.port=6969 \
     -l traefik.frontend.rule=Host:cloud.datamesh.io \
+    $net \
     $link \
     -e "PATH=$PATH" \
     -e "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \

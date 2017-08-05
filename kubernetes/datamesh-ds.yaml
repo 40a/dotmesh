@@ -76,19 +76,20 @@ items:
                       fieldPath: spec.nodeName
                 - name: DATAMESH_ETCD_ENDPOINT
                   # etcd deployed by etcd operator.
-                  value: "http://etcd.datamesh.svc.cluster.local"
+                  value: "http://datamesh-etcd-cluster-client.datamesh.svc.cluster.local:2379"
                 - name: DATAMESH_DOCKER_IMAGE
                   value: "quay.io/lukemarsden/datamesh-server:pushpull"
                 - name: PATH
                   value: "/bundled-lib/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
                 - name: LD_LIBRARY_PATH
                   value: "/bundled-lib/lib:/bundled-lib/usr/lib/"
+                - name: ALLOW_PUBLIC_REGISTRATION
+                  value: "1"
               image: 'quay.io/lukemarsden/datamesh-server:pushpull'
               imagePullPolicy: Always
               livenessProbe:
                 httpGet:
-                  host: 127.0.0.1
-                  path: /ping
+                  path: /status
                   port: 6969
                 initialDelaySeconds: 30
               resources:
