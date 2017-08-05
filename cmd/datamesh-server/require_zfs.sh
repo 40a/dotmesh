@@ -156,7 +156,7 @@ if [ "$DATAMESH_ETCD_ENDPOINT" != "" ]; then
         echo "Found more than one id of own container! $self_containers"
         exit 1
     fi
-    net="--net=container:$self_container"
+    net="--net=container:$self_containers"
 fi
 
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
@@ -168,6 +168,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -p 6969:6969 \
     -l traefik.port=6969 \
     -l traefik.frontend.rule=Host:public.data-mesh.io \
+    $net \
     $link \
     -e "PATH=$PATH" \
     -e "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \
