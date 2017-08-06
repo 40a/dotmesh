@@ -243,15 +243,11 @@ func (s *InMemoryState) getCurrentState(filesystemId string) (string, error) {
 
 func (s *InMemoryState) insertInitialAdminPassword() error {
 
-	if os.Getenv("INITIAL_ADMIN_PASSWORD_FILE") == "" {
+	if os.Getenv("INITIAL_ADMIN_PASSWORD") == "" {
 		return nil
 	}
 
-	adminPassword, err := ioutil.ReadFile(os.Getenv("INITIAL_ADMIN_PASSWORD_FILE"))
-	if err != nil {
-		return err
-	}
-
+	adminPassword := os.Getenv("INITIAL_ADMIN_PASSWORD")
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		return err

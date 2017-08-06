@@ -159,6 +159,13 @@ if [ "$DATAMESH_ETCD_ENDPOINT" != "" ]; then
     net="--net=container:$self_containers"
 fi
 
+secret=""
+if [ "$INITIAL_ADMIN_PASSWORD" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]; then
+    # shell escape the password, https://stackoverflow.com/questions/15783701
+    pw=$(cat $INITIAL_ADMIN_PASSWORD_FILE |sed -e "s/'/'\\\\''/g")
+    secret="-e INITIAL_ADMIN_PASSWORD='$pw'"
+fi
+
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/lib/docker:/var/lib/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -179,6 +186,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -e "HOMEPAGE_URL=$HOMEPAGE_URL" \
     -e "TRACE_ADDR=$TRACE_ADDR" \
     -e "DATAMESH_ETCD_ENDPOINT=$DATAMESH_ETCD_ENDPOINT" \
+    $secret \
     $log_opts \
     $pki_volume_mount \
     -v datamesh-kernel-modules:/bundled-lib \
