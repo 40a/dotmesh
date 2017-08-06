@@ -16,5 +16,10 @@ spec:
       containers:
       - name: etcd-browser
         image: lmarsden/etcd-browser:latest
+        env:
+        - name: ETCD_HOST
+          value: "datamesh-etcd-cluster-client.datamesh.svc.cluster.local"
+        - name: ETCD_PORT
+          value: "2379"
         ports:
         - containerPort: 8000
