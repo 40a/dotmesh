@@ -8,6 +8,8 @@ spec:
   replicas: 1
   template:
     metadata:
+      labels:
+        app: etcd-browser
       namespace: datamesh
     spec:
       containers:
