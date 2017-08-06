@@ -2,14 +2,12 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: etcd-browser
   namespace: datamesh
 spec:
   replicas: 1
   template:
     metadata:
-      labels:
-        app: etcd-browser
       namespace: datamesh
     spec:
       containers:
