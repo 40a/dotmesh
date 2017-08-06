@@ -163,7 +163,7 @@ secret=""
 if [[ "$INITIAL_ADMIN_PASSWORD_FILE" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]]; then
     # shell escape the password, https://stackoverflow.com/questions/15783701
     pw=$(cat $INITIAL_ADMIN_PASSWORD_FILE |sed -e "s/'/'\\\\''/g")
-    secret="-e INITIAL_ADMIN_PASSWORD='$pw'"
+    secret="-e 'INITIAL_ADMIN_PASSWORD=$pw'"
 fi
 
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \

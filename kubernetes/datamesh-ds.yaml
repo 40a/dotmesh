@@ -91,7 +91,7 @@ items:
                 - name: HOMEPAGE_URL
                   value: "https://datamesh.io/"
                 - name: INITIAL_ADMIN_PASSWORD_FILE
-                  value: /secret/initial-datamesh-admin-password.txt
+                  value: /secret/datamesh-admin-password.txt
               image: 'quay.io/lukemarsden/datamesh-server:pushpull'
               imagePullPolicy: Always
               livenessProbe:
