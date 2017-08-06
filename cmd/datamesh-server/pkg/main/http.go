@@ -208,12 +208,6 @@ func (state *InMemoryState) runServer() {
 		)
 	}
 
-	router.HandleFunc("/status",
-		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "OK")
-		},
-	)
-
 	router.Handle("/ux", NewAuthHandler(state.NewWebServer()))
 
 	router.HandleFunc("/",
@@ -237,6 +231,14 @@ func (state *InMemoryState) runServer() {
 	).Methods("POST")
 
 	loggedRouter := handlers.LoggingHandler(getLogfile("requests"), router)
+
+	// don't log every single health check
+	loggedRouter.HandleFunc("/status",
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "OK")
+		},
+	)
+
 	err = http.ListenAndServe(":30969", loggedRouter)
 	if err != nil {
 		out(fmt.Sprintf("Unable to listen on port 30969: '%s'\n", err))
