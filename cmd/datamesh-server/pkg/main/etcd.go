@@ -833,7 +833,12 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 	onceAgain.Do(func() {
 		go s.runServer()
 		go s.runPlugin()
-		go s.insertInitialAdminPassword()
+		go func() {
+			err := s.insertInitialAdminPassword()
+			if err != nil {
+				log.Printf("[insertInitialAdminPassword] err: %v", err)
+			}
+		}()
 	})
 
 	// now watch for changes, and pipe them into the state machines

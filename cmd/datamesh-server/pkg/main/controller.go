@@ -266,9 +266,6 @@ func (s *InMemoryState) insertInitialAdminPassword() error {
 		string(encoded),
 		&client.SetOptions{PrevExist: client.PrevNoExist},
 	)
-	if err != nil {
-		log.Printf("[insertInitialAdminPassword] err: %v", err)
-	}
 	return err
 
 }
