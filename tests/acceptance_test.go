@@ -945,3 +945,8 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 
 // TODO: spin up _three_ single node clusters, use one as a hub so that alice
 // and bob can collaborate.
+
+// TODO: run dind/dind-cluster.sh up, and then test the manifests in
+// kubernetes/ against the resulting (3 node by default) cluster. Ensure things
+// run offline. Figure out how to configure each cluster node with its own
+// zpool. Test dynamic provisioning, and so on.
