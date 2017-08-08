@@ -162,7 +162,7 @@ fi
 secret=""
 if [[ "$INITIAL_ADMIN_PASSWORD_FILE" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]]; then
     # shell escape the password, https://stackoverflow.com/questions/15783701
-    pw=$(cat $INITIAL_ADMIN_PASSWORD_FILE |base64 -w 0)
+    pw=$(cat $INITIAL_ADMIN_PASSWORD_FILE |tr -d '\n' |base64 -w 0)
     secret="-e INITIAL_ADMIN_PASSWORD=$pw"
     echo "set secret: $secret"
 fi
