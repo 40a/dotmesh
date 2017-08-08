@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -246,7 +247,13 @@ func (s *InMemoryState) insertInitialAdminPassword() error {
 		return nil
 	}
 
-	adminPassword := os.Getenv("INITIAL_ADMIN_PASSWORD")
+	adminPassword, err := base64.StdEncoding.DecodeString(
+		os.Getenv("INITIAL_ADMIN_PASSWORD"),
+	)
+	if err != nil {
+		return err
+	}
+
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		return err
