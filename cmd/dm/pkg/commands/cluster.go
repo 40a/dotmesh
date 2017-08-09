@@ -103,7 +103,7 @@ another.`,
 	cmd.PersistentFlags().BoolVar(
 		&allowPublicRegistrations, "allow-public-registration", false,
 		"Allow anyone who can connect to this datamesh cluster to create an account on it "+
-			"at :30969/register",
+			"at :6969/register",
 	)
 	cmd.PersistentFlags().StringVar(
 		&datameshDockerImage, "image", DATAMESH_DOCKER_IMAGE,

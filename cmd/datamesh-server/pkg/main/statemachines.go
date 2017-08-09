@@ -1265,7 +1265,7 @@ func receivingState(f *fsMachine) stateFn {
 	req, err := http.NewRequest(
 		"GET",
 		fmt.Sprintf(
-			"http://%s:30969/filesystems/%s/%s/%s", peerAddress,
+			"http://%s:6969/filesystems/%s/%s/%s", peerAddress,
 			f.filesystemId, fromSnap, snapRange.toSnap.Id,
 		),
 		nil,
@@ -1282,7 +1282,7 @@ func receivingState(f *fsMachine) stateFn {
 		return backoffState
 	}
 	log.Printf(
-		"Debug: curl -u admin:[pw] http://%s:30969/filesystems/%s/%s/%s",
+		"Debug: curl -u admin:[pw] http://%s:6969/filesystems/%s/%s/%s",
 		peerAddress, f.filesystemId, fromSnap, snapRange.toSnap.Id,
 	)
 
@@ -1730,7 +1730,7 @@ func (f *fsMachine) pull(
 	// 2. Perform GET, as receivingState does. Update as we go, similar to how
 	// push does it.
 	url := fmt.Sprintf(
-		"http://%s:30969/filesystems/%s/%s/%s",
+		"http://%s:6969/filesystems/%s/%s/%s",
 		transferRequest.Peer,
 		toFilesystemId,
 		fromSnapshotId,
@@ -1754,7 +1754,7 @@ func (f *fsMachine) pull(
 		}, backoffState
 	}
 	log.Printf(
-		"Debug: curl -u admin:[pw] http://%s:30969/filesystems/%s/%s/%s",
+		"Debug: curl -u admin:[pw] http://%s:6969/filesystems/%s/%s/%s",
 		transferRequest.Peer, fromFilesystemId, fromSnapshotId, toSnapshotId,
 	)
 	// TODO finish rewriting return values and update pollResult as the transfer happens...
@@ -1974,7 +1974,7 @@ func (f *fsMachine) push(
 	defer postReader.Close()
 
 	url := fmt.Sprintf(
-		"http://%s:30969/filesystems/%s/%s/%s",
+		"http://%s:6969/filesystems/%s/%s/%s",
 		transferRequest.Peer,
 		filesystemId,
 		fromSnapshotId,
