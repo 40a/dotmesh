@@ -68,6 +68,9 @@ items:
               command:
                 - /require_zfs.sh
                 - datamesh-server
+              ports:
+              - containerPort: 6969
+                hostPort: 6969
               env:
                 - name: HOSTNAME
                   valueFrom:
