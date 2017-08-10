@@ -136,27 +136,28 @@ func silentSystem(cmd string, args ...string) error {
 	return c.Run()
 }
 
-func testMarkForCleanup(n int, stamp int64) {
-	for i := 1; i < n+1; i++ {
-		node := fmt.Sprintf("node_%d_%d", stamp, i)
-		err := system("bash", "-c", fmt.Sprintf(
-			`docker exec -t %s bash -c 'touch /CLEAN_ME_UP'`, node,
-		))
-		if err != nil {
-			fmt.Printf("Error marking %s for cleanup: %s, retrying...\n", node, err)
-			time.Sleep(1 * time.Second)
+func testMarkForCleanup(f Federation, stamp int64) {
+	for i, c := range f {
+		for j := 0; j < c.Nodes; j++ {
+			node := nodeName(stamp, i, j)
 			err := system("bash", "-c", fmt.Sprintf(
 				`docker exec -t %s bash -c 'touch /CLEAN_ME_UP'`, node,
 			))
 			if err != nil {
-				fmt.Printf("Error marking %s for cleanup: %s, giving up.\n", node, err)
+				fmt.Printf("Error marking %s for cleanup: %s, retrying...\n", node, err)
+				time.Sleep(1 * time.Second)
+				err := system("bash", "-c", fmt.Sprintf(
+					`docker exec -t %s bash -c 'touch /CLEAN_ME_UP'`, node,
+				))
+				if err != nil {
+					fmt.Printf("Error marking %s for cleanup: %s, giving up.\n", node, err)
+				}
 			}
 		}
 	}
 }
 
-func testSetup(n int, stamp int64) error {
-	// build client once so we can copy it in place later
+func testSetup(f Federation, stamp int64) error {
 	err := system("bash", "-c", `
 		# Create a home for the test pools to live that can have the same path
 		# both from ZFS's perspective and that of the inner container.
@@ -172,10 +173,11 @@ func testSetup(n int, stamp int64) error {
 		return err
 	}
 
-	for i := 1; i < n+1; i++ {
-		node := fmt.Sprintf("node_%d_%d", stamp, i)
-		// XXX the following only works if overlay is working
-		err := system("bash", "-c", fmt.Sprintf(`
+	for i, c := range f {
+		for j := 0; j < c.Nodes; j++ {
+			node := nodeName(stamp, i, j)
+			// XXX the following only works if overlay is working
+			err := system("bash", "-c", fmt.Sprintf(`
 			mkdir -p /datamesh-test-pools
 			MOUNTPOINT=/datamesh-test-pools
 			NODE=%s
@@ -201,10 +203,11 @@ func testSetup(n int, stamp int64) error {
 			'
 			docker cp ../binaries/Linux/dm $NODE:/usr/local/bin/dm
 		`, node))
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+			fmt.Printf("=== Started up %s\n", node)
 		}
-		fmt.Printf("=== Started up %s\n", node)
 	}
 	return nil
 }
@@ -432,10 +435,12 @@ func TestSingleNode(t *testing.T) {
 	// single node tests
 	teardownFinishedTestRuns()
 
+	f := Federation{Cluster{Nodes: 1}}
+
 	startTiming()
 	now := time.Now().UnixNano()
-	err := testSetup(1, now)
-	defer testMarkForCleanup(1, now)
+	err := testSetup(f, now)
+	defer testMarkForCleanup(f, now)
 
 	if err != nil {
 		t.Error(err)
@@ -533,55 +538,25 @@ func TestSingleNode(t *testing.T) {
 func TestTwoNodesSameCluster(t *testing.T) {
 	teardownFinishedTestRuns()
 
+	f := Federation{Cluster{Nodes: 2}}
+
 	startTiming()
 	now := time.Now().UnixNano()
-	err := testSetup(2, now)
-	defer testMarkForCleanup(2, now)
+
+	node1 := nodeName(now, 0, 0)
+	node2 := nodeName(now, 0, 1)
+
+	err := testSetup(f, now)
+	defer testMarkForCleanup(f, now)
 	if err != nil {
 		t.Error(err)
 	}
 	logTiming("setup")
-	node1 := fmt.Sprintf("node_%d_1", now)
-	node2 := fmt.Sprintf("node_%d_2", now)
-	poolId1 := fmt.Sprintf("testpool_%d_1", now)
-	poolId2 := fmt.Sprintf("testpool_%d_2", now)
 
-	st, err := docker(
-		node1, "dm cluster init "+localImageArgs()+
-			" --use-pool-dir /datamesh-test-pools/"+poolId1+
-			" --use-pool-name "+poolId1,
-	)
+	err = f.Start()
 	if err != nil {
 		t.Error(err)
 	}
-	lines := strings.Split(st, "\n")
-	joinUrl := func(lines []string) string {
-		for _, line := range lines {
-			shrap := strings.Fields(line)
-			if len(shrap) > 3 {
-				if shrap[0] == "dm" && shrap[1] == "cluster" && shrap[2] == "join" {
-					return shrap[3]
-				}
-			}
-		}
-		return ""
-	}(lines)
-	if joinUrl == "" {
-		t.Error("unable to find join url in 'dm cluster init' output")
-	}
-	logTiming("init")
-	_, err = docker(node2, fmt.Sprintf(
-		"dm cluster join %s %s %s",
-		localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId2,
-		joinUrl,
-		" --use-pool-name "+poolId2,
-	))
-	if err != nil {
-		t.Error(err)
-	}
-	logTiming("join")
-	dumpTiming()
-
 	t.Run("Move", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
@@ -596,69 +571,82 @@ type Cluster struct {
 	Nodes int
 }
 
-type Clusters []Cluster
+type Federation []Cluster
 
-func (cs *Clusters) NumNodes() int {
+func (f Federation) NumNodes() int {
 	i := 0
-	for _, c := range cs {
+	for _, c := range f {
 		i += c.Nodes
 	}
-	return i, nil
+	return i
 }
 
-func nodeName(now int64, i, j int) {
+func nodeName(now int64, i, j int) string {
 	return fmt.Sprintf("cluster_%d_%d_node_%d", now, i, j)
 }
-func poolId(now int64, i, j int) {
+func poolId(now int64, i, j int) string {
 	return fmt.Sprintf("testpool_%d_%d_node_%d", now, i, j)
 }
 
-func (cs *Clusters) Start() error {
+func (f Federation) Start() error {
 	teardownFinishedTestRuns()
 
 	startTiming()
 	now := time.Now().UnixNano()
-	err := testSetup(cs.NumNodes(), now)
-	defer testMarkForCleanup(cs.NumNodes(), now)
+	err := testSetup(f, now)
+	defer testMarkForCleanup(f, now)
 	if err != nil {
-		t.Error(err)
+		return err
 	}
 	logTiming("setup")
 
-	nodeNames := []string{}
-	poolIds := []string{}
-	for i, c := range cs {
-		for j := 0; j < c.Nodes; j++ {
-			nodeNames = append(nodeNames, nodeName(now, i, j))
-			poolIds = append(poolIds, poolId(now, i, j))
-		}
-	}
-
-	for i, c := range cs {
+	for i, c := range f {
 		// init the first node in the cluster, join the rest
 		if c.Nodes == 0 {
 			panic("no such thing as a zero-node cluster")
 		}
-		_, err = docker(
-			node1, "dm cluster init "+localImageArgs()+
+		st, err := docker(
+			nodeName(now, i, 0), "dm cluster init "+localImageArgs()+
 				" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
 				" --use-pool-name "+poolId(now, i, 0),
 		)
 		if err != nil {
-			t.Error(err)
+			return err
+		}
+		lines := strings.Split(st, "\n")
+		joinUrl := func(lines []string) string {
+			for _, line := range lines {
+				shrap := strings.Fields(line)
+				if len(shrap) > 3 {
+					if shrap[0] == "dm" && shrap[1] == "cluster" && shrap[2] == "join" {
+						return shrap[3]
+					}
+				}
+			}
+			return ""
+		}(lines)
+		if joinUrl == "" {
+			return fmt.Errorf("unable to find join url in 'dm cluster init' output")
 		}
 		logTiming("init_" + poolId(now, i, 0))
 		for j := 1; j < c.Nodes; j++ {
 			// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
-			// node)
-			// TODO join the nodes
+			// node).  now join the nodes.
+			_, err = docker(nodeName(now, i, j), fmt.Sprintf(
+				"dm cluster join %s %s %s",
+				localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, j),
+				joinUrl,
+				" --use-pool-name "+poolId(now, i, j),
+			))
+			if err != nil {
+				return err
+			}
+			logTiming("join_" + poolId(now, i, j))
 		}
 	}
 
-	// ---
-
-	logTiming("init2")
-
+	// TODO refactor the following so that each node has one other node on the
+	// other cluster as a remote named 'cluster0' or 'cluster1', etc.
 	node1IP := s(t,
 		node1,
 		`ifconfig eth0 | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1`,
@@ -713,16 +701,15 @@ func (cs *Clusters) Start() error {
 		IP:        node2IP,
 		ApiKey:    m.Remotes.Local.ApiKey,
 	}
-
 }
 
 func TestTwoSingleNodeClusters(t *testing.T) {
 
-	cs := []Cluster{
+	f := Federation{
 		Cluster{Nodes: 1}, // cluster_1_node_1
 		Cluster{Nodes: 1}, // cluster_2_node_1
 	}
-	err := cs.Start()
+	err := f.Start()
 	if err != nil {
 		t.Error(err)
 	}
