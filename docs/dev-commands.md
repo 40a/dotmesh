@@ -45,7 +45,7 @@ $ make frontend.start
 To attach to the frontend logs:
 
 ```bash
-$ docker logs -f datamesh-frontend
+$ make frontend.logs
 ```
 
 Now you should be able to open the app in your browser:
@@ -71,7 +71,7 @@ $ open http://localhost:6969
 Sometimes it's useful to have the frontend container hooked up but with a bash prompt:
 
 ```bash
-$ CLI=1 make frontend.start
+$ make frontend.dev
 ```
 
 From here, you can manually do `yarn run watch` amoungst other things.
@@ -83,16 +83,10 @@ The `template-ui` and `template-tools` npm modules are used in the UI and to ite
 To do this - you first need to clone https://github.com/binocarlos/templatestack.git to the same folder as datamesh then:
 
 ```bash
-$ LINKMODULES=1 make frontend.start
+$ make frontend.link
 ```
 
 Now - any changes made to `templatestack/template-ui` will hot-reload.
-
-To run both:
-
-```bash
-$ make frontend.dev
-```
 
 #### reset & boot errors
 
