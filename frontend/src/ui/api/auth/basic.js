@@ -2,15 +2,9 @@ import { request } from 'template-ui/lib/utils/ajax'
 import tools from '../tools'
 
 // login means "do these credentials allow us to see the Ping endpoint"
-export const login = (payload) => {
-  return tools.rpc({
-    method: 'Ping',
-    headers: getHeaders(payload.credentials),
-    httpParams: {
-      disableBasicAuth: 'y'
-    }
-  })
-}
+export const login = (payload) => ({
+  method: 'Ping'
+})
 
 export const register = (payload) => {
   return new Promise(resolve => {
@@ -18,7 +12,7 @@ export const register = (payload) => {
   })
 }
 
-const encodeCredentials = (username, password) => new Buffer(username + ':' + password).toString('base64')
+export const encodeCredentials = (username, password) => new Buffer(username + ':' + password).toString('base64')
 
 export const getHeaders = (credentials) => {
   return {
