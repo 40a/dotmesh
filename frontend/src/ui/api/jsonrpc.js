@@ -1,5 +1,5 @@
 import { request } from 'template-ui/lib/utils/ajax'
-import config from '../../config'
+import config from '../config'
 
 const noop = () => ({})
 
