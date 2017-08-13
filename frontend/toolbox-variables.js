@@ -11,6 +11,8 @@ const pink = '#e91e63'
 const yellow = '#ff9800'
 
 module.exports = {
-  'color-primary': pink,
-  'color-accent': orange,
+  'color-primary': orange,
+  'color-accent': pink,
+  'input-text-error-color': pink,
+  'input-text-required-color': pink
 }
