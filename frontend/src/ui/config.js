@@ -28,6 +28,8 @@ const config = {
   basepath:'/ui',
   rpcNamespace: 'DatameshRPC',
   rpcUrl: '/rpc',
+  userValueName: 'user',
+  userLocalStorageName: 'user',
   initialState: {
     value: {
       config: {},
