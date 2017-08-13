@@ -20,11 +20,11 @@ const RPCExecutor = (opts = {}) => {
   const getHeaders = opts.getHeaders || noop
   const getParams = opts.getParams || noop
   const rpc = (payload = {}, state) => {
-    if(!opts.method) throw new Error('method needed')
+    if(!payload.method) throw new Error('method needed')
 
     const id = requestCounter++
-    const method = opts.method
-    const params = opts.params || {}
+    const method = payload.method
+    const params = payload.params || {}
 
     const httpHeaders = getHeaders(payload, state)
     const httpParams = getParams(payload, state)
@@ -32,7 +32,7 @@ const RPCExecutor = (opts = {}) => {
     return request({
       method: 'post',
       url: config.rpcUrl,
-      headers,
+      headers: httpHeaders,
       params: httpParams,
       data: {
         jsonrpc: '2.0',

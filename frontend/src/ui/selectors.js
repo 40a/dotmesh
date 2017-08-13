@@ -36,5 +36,5 @@ export const form = Object.keys(forms).reduce((all, name) => {
 }, {})
 
 export const auth = {
-  user: (state) => value(config.userValueName)
+  user: value(config.userValueName)
 }

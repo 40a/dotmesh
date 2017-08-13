@@ -6,7 +6,7 @@ const load = (name, json = false) => {
 
 const save = (name, value, json = false) => {
   value = json ? JSON.stringify(value) : value
-  localStorage.setItem(value)
+  localStorage.setItem(name, value)
 }
 
 const del = (name) => localStorage.removeItem(name)

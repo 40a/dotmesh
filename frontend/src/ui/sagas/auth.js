@@ -1,6 +1,6 @@
 import { take, put, call, fork, select, all, takeLatest, takeEvery } from 'redux-saga/effects'
 
-import LocalStorage from '../../shared/utils/localStorage'
+import LocalStorage from '../utils/localStorage'
 
 import config from '../config'
 import forms from '../forms'
@@ -74,14 +74,18 @@ const AuthSagas = (opts = {}) => {
   function* login(credentials) {
     if(!credentials) throw new Error('credentials required for login saga')
 
-    // remember is a local field - we don't want to send it to the backend api
-    const useCreds = Object.assign({}, credentials)
-    const remember = useCreds.remember
-    delete(useCreds.remember)
+    // save the credentials to the store
+    yield call(reduceCredentials, credentials)
+
+    const sendCredentials = {
+      username: credentials.username,
+      password: credentials.password
+    }
+    
 
     // run the login api
-    const { user, error } = yield call(apis.login, {
-      credentials
+    const { user, error } = yield call(apis.login.loader, {
+      credentials: sendCredentials
     })
 
     if(error) {
@@ -89,11 +93,10 @@ const AuthSagas = (opts = {}) => {
       return
     }
     else {
-      // save the credentials to the store so until close/refresh we are authed
-      yield call(reduceCredentials, credentials)
-
-      if(remember) {
-        saveCachedCredentials(credentials)
+      
+      // save credentials to local storage if remember
+      if(credentials.remember) {
+        saveCachedCredentials(sendCredentials)
       }
 
       // save the credentials to local storage so upon re-opening browser we are authenticated
@@ -197,7 +200,9 @@ const AuthSagas = (opts = {}) => {
     logout,
     status,
     login,
+    loginSubmit,
     register,
+    registerSubmit,
     loginSuccess,
     registerSuccess,
     authenticateRoute
