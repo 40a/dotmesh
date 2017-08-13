@@ -34,7 +34,13 @@ frontend.stop: ; bash dev.sh frontend-stop
 frontend.dist: ; bash dev.sh frontend-dist
 
 .PHONY: frontend.dev
-frontend.dev: ; CLI=1 LINKMODULES=1 bash dev.sh frontend-start
+frontend.dev: ; CLI=1 make frontend.start
+
+.PHONY: frontend.link
+frontend.link: ; CLI=1 LINKMODULES=1 make frontend.start
+
+.PHONY: frontend.logs
+frontend.logs: ; docker logs -f datamesh-frontend
 
 .PHONY: reset
 reset: ; bash dev.sh reset
