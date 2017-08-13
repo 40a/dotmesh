@@ -1,18 +1,8 @@
 import { take, put, call, fork, select, all, takeLatest, takeEvery } from 'redux-saga/effects'
 
-import {
-  getFormValues,
-  isValid
-} from 'redux-form'
-
-import apiSaga from 'template-ui/lib/plugins/api/saga'
 import consoleTools from 'template-ui/lib/utils/console'
 
 import config from '../config'
-import * as actions from '../actions'
-import * as selectors from '../selectors'
-
-import auth from './auth'
 
 const Logger = (type) => {
   function* logger(req) {
@@ -29,6 +19,8 @@ function* oldRegisterForm() {
 }
 
 const Hooks = (opts = {}) => {
+  if(!opts.auth) throw new Error('auth opt required for hooks')
+  const auth = opts.auth
   return {
     routerChanged: [
       auth.authenticateRoute
