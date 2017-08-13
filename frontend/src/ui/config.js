@@ -40,6 +40,7 @@ const config = {
   },
   menu: {
     guest: [
+      ['/', 'Home', icons.dashboard],
       ['/login', 'Login', icons.login],
       ['/register', 'Register', icons.register],
       ['-'],
