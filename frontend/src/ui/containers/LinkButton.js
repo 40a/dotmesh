@@ -10,7 +10,10 @@ class LinkButton extends Component {
   render() {
     return (
       <Button
-        {...this.props}
+        label={ this.props.label }
+        primary={ this.props.primary }
+        raised={ this.props.raised }
+        icon={ this.props.icon }
         onClick={ () => this.props.onClick(this.props.url) }
       />
     )
