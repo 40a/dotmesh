@@ -35,9 +35,9 @@ const Hooks = (opts = {}) => {
       auth.authenticateRoute
     ],
     authLogout: auth.logout,
-    authLoginSubmit: auth.login,
+    authLoginSubmit: auth.loginSubmit,
     authLoginSuccess: auth.loginSuccess,
-    authRegisterSubmit: auth.register,
+    authRegisterSubmit: auth.registerSubmit,
     authRegisterSuccess: auth.registerSuccess,
     apiRequest: Logger('request'),
     apiResponse: Logger('response'),
