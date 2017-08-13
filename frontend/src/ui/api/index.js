@@ -5,7 +5,7 @@ import JsonRpc from './jsonrpc'
 
 // switch which type of auth driver we are using here
 import auth from './auth/basic'
-import volumeList from './volume/list'
+import volume from './volume'
 
 // a HTTP Basic auth version of the JSONRPC connector
 // you can switch out this connector / use multiple connectors
@@ -25,7 +25,14 @@ const connector = JsonRpc({
 // the connector is passed the state so it can inject auth credentials
 const wrapper = (handler) => (payload, state) => connector(handler(payload), state)
 
-// a combo of handler, actions and saga
+// these apis are processed and so each will have:
+//
+//  * name
+//  * actions   - request,response + error actions for this api
+//  * handler   - the raw promise generator
+//  * loader    - the api saga loader (which triggers request, response + error actions)
+//
+// the following is a map of name -> handler
 const loaders = {
   authLogin: {
     handler: wrapper(auth.login),

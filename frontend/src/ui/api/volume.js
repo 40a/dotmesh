@@ -1,13 +1,9 @@
-import tools from './tools'
+const list = (payload) => ({
+  method: 'AllVolumesAndClones'
+})
 
-export const list = (payload) => {
-  return new Promise(resolve => {
-    throw new Error('this is a test')
-  })
-}
-
-const volumeApi = {
+const VolumeApi = {
   list
 }
 
-export default volumeApi
+export default VolumeApi
