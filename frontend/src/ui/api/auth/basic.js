@@ -8,8 +8,7 @@ export const login = (payload) => {
     headers: getHeaders(payload.credentials),
     httpParams: {
       disableBasicAuth: 'y'
-    },
-
+    }
   })
 }
 
