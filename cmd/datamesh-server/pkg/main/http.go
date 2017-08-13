@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -260,10 +261,12 @@ type AuthHandler struct {
 	subHandler http.Handler
 }
 
+var DISABLE_BASIC_AUTH_NAME string = "disableBasicAuthWindow"
+
 func (a AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	notAuth := func(w http.ResponseWriter) {
-		disableBasicAuth := r.URL.Query().Get("disableBasicAuth")
-		if disableBasicAuth != "y" {
+		disableBasicAuth := r.URL.Query().Get(DISABLE_BASIC_AUTH_NAME)
+		if len(disableBasicAuth) <= 0 {
 			w.Header().Set("WWW-Authenticate", "Basic")
 		}
 		http.Error(w, "Unauthorized.", 401)
