@@ -14,7 +14,12 @@ cluster-start: ; bash dev.sh cluster-start
 cluster-stop: ; bash dev.sh cluster-stop
 
 .PHONY: cli-build
-cli-build: ; bash dev.sh cli-build
+cli-build:
+	bash dev.sh cli-build
+	@echo
+	@echo "dm binary created - copy it to /usr/local/bin with this command:"
+	@echo
+	@echo "sudo cp -f ./binaries/darwin/dm /usr/local/bin"
 
 .PHONY: frontend-build
 frontend-build: ; bash dev.sh frontend-build
