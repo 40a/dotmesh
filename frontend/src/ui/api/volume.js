@@ -1,8 +1,12 @@
 import tools from './tools'
 
 export const list = (payload) => {
-  return new Promise(resolve => {
-    throw new Error('this is a test')
+  return tools.rpc({
+    method: 'AllVolumesAndClones',
+    headers: getHeaders(payload.credentials),
+    httpParams: {
+      disableBasicAuth: 'y'
+    }
   })
 }
 
