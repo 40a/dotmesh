@@ -6,6 +6,7 @@ import RouterActions from 'template-ui/lib/plugins/router/actions'
 import ValueActions from 'template-ui/lib/plugins/value/actions'
 
 import formConfig from './forms'
+import config from './config'
 
 export const forms = FormActions(formConfig)
 
@@ -16,3 +17,7 @@ export const events = {
 }
 
 export const router = RouterActions
+
+export const auth = {
+  setUser: (credentials) => value.set(config.userValueName, credentials)
+}

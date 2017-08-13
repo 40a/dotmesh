@@ -6,6 +6,7 @@ import APISelector from 'template-ui/lib/plugins/api/selectors'
 export { default as router } from 'template-ui/lib/plugins/router/selectors'
 
 import forms from './forms'
+import config from './config'
 
 export const valuesSelector = (state) => state.value || {}
 export const valueSelector = (state, name) => valuesSelector(state)[name]
@@ -33,3 +34,7 @@ export const form = Object.keys(forms).reduce((all, name) => {
   }
   return all
 }, {})
+
+export const auth = {
+  user: (state) => value(config.userValueName)
+}
