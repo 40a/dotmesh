@@ -11,8 +11,7 @@ import tools from '../tools'
 
 const REQUIRED_APIS = [
   'login',
-  'register',
-  'status'
+  'register'
 ]
 
 const AuthSagas = (opts = {}) => {
@@ -184,7 +183,6 @@ const AuthSagas = (opts = {}) => {
   function* formValuesIfValid(name) {
     const valid = yield select(selectors.form[name].valid)
     if(!valid) {
-      // touch all values of the form so the errors appear
       yield put(actions.forms.touchAll(name))
       return
     }
