@@ -69,7 +69,8 @@ export const routes = (
         <Section>
           <RegisterForm />
         </Section>
-      </Route>
+      </Route>      
+
     </Application>
   </div>
 )

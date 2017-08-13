@@ -28,7 +28,6 @@ function* oldRegisterForm() {
   document.location = '/register'
 }
 
-
 const Hooks = (opts = {}) => {
   return {
     routerChanged: [
