@@ -1,9 +1,6 @@
 .PHONY: build
 build: ; bash dev.sh build
 
-.PHONY: cluster.update
-cluster.upgrade: ; bash dev.sh cluster-upgrade
-
 .PHONY: cluster.build
 cluster.build: ; bash dev.sh cluster-build
 
@@ -12,6 +9,9 @@ cluster.start: ; bash dev.sh cluster-start
 
 .PHONY: cluster.stop
 cluster.stop: ; bash dev.sh cluster-stop
+
+.PHONY: cluster.upgrade
+cluster.upgrade: ; bash dev.sh cluster-upgrade
 
 .PHONY: cli.build
 cli.build:
