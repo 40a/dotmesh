@@ -72,9 +72,8 @@ Sometimes it's useful to have the frontend container hooked up but with a bash p
 
 ```bash
 $ make frontend.dev
+$ yarn run watch
 ```
-
-From here, you can manually do `yarn run watch` amoungst other things.
 
 #### linking templatestack
 
@@ -84,6 +83,7 @@ To do this - you first need to clone https://github.com/binocarlos/templatestack
 
 ```bash
 $ make frontend.link
+$ yarn run watch
 ```
 
 Now - any changes made to `templatestack/template-ui` will hot-reload.
