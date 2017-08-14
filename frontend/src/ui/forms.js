@@ -37,6 +37,10 @@ const authRegister = formWrapper({
       type: 'password',
       component: fields.input,
       validate: validators.required
+    }),
+    remember: models.raw({
+      title: 'Remember Me?',
+      component: fields.checkbox
     })
   }
 })
