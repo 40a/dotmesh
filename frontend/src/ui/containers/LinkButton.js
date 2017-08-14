@@ -13,6 +13,7 @@ class LinkButton extends Component {
         label={ this.props.label }
         primary={ this.props.primary }
         raised={ this.props.raised }
+        accent={ this.props.accent }
         icon={ this.props.icon }
         onClick={ () => this.props.onClick(this.props.url) }
       />
