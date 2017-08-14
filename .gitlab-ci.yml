@@ -13,6 +13,7 @@ sync_github:
         - git checkout -b $CI_BUILD_REF_NAME || true
         - pwd
         - git remote -v
+        # this is a comment
         - git push github $CI_BUILD_REF_NAME
 
 before_script:
