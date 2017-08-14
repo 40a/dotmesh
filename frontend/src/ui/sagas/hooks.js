@@ -14,10 +14,6 @@ const Logger = (type) => {
   return logger
 }
 
-function* oldRegisterForm() {
-  document.location = '/register'
-}
-
 const Hooks = (opts = {}) => {
   if(!opts.auth) throw new Error('auth opt required for hooks')
   const auth = opts.auth
@@ -32,8 +28,7 @@ const Hooks = (opts = {}) => {
     authRegisterSuccess: auth.registerSuccess,
     apiRequest: Logger('request'),
     apiResponse: Logger('response'),
-    apiError: Logger('error'),
-    oldRegisterForm
+    apiError: Logger('error')
   }
 }
 

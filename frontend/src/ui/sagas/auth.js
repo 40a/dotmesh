@@ -82,7 +82,6 @@ const AuthSagas = (opts = {}) => {
       password: credentials.password
     }
     
-
     // run the login api
     const { user, error } = yield call(apis.login.loader, {
       credentials: sendCredentials
@@ -109,44 +108,41 @@ const AuthSagas = (opts = {}) => {
   // grab the values from the 'authLogin' form and send them to the 'login' saga
   function* loginSubmit() {
     const credentials = yield call(formValuesIfValid, 'authLogin')
-    yield call(login, credentials)
+    if(credentials) {
+      yield call(login, credentials)  
+    }
   }
 
-  function* register() {
+  function* register(credentials) {
+    if(!credentials) throw new Error('credentials required for register saga')
 
-    /*
-    const valid = yield select(isValid('register'))
-    if(!valid) return
-    const values = yield select(getFormValues('register'))
-
-    const { answer, error } = yield call(apiSaga, {
-      name: 'authRegister',
-      actions: actions.register,
-      api: apis.register,
-      payload: values
-    })
-
-    if(error) {
-      yield put(routerActions.hook('authRegisterError', user))
-      return
+    const sendCredentials = {
+      email: credentials.email,
+      username: credentials.username,
+      password: credentials.password
     }
 
-    const user = yield call(status)
-    yield put(routerActions.hook('authRegisterSuccess', user))
-    return user
-    */
+    // run the register api
+    const { user, error } = yield call(apis.register.loader, sendCredentials)
+
+    if(error) {
+      yield put(actions.router.hook('authRegisterError', error))
+      return
+    }
+    else {
+      
+      yield call(login, credentials)
+      yield put(actions.router.hook('authRegisterSuccess', user))
+      return user
+    }
   }
 
   // called when the user clicks the submit button
   function* registerSubmit() {
-    const valid = yield select(selectors.form.authRegister.valid)
-    if(!valid) {
-      // touch all values of the form so the errors appear
-      yield put(actions.forms.touchAll('authRegister'))
-      return
+    const credentials = yield call(formValuesIfValid, 'authRegister')
+    if(credentials) {
+      yield call(register, credentials)  
     }
-    const credentials = yield select(selectors.form.authRegister.values)
-    yield call(login, credentials)
   }
 
   function* logout() {
@@ -160,8 +156,7 @@ const AuthSagas = (opts = {}) => {
   }
 
   function* registerSuccess(user) {
-    //yield put(actions.router.redirect('/dashboard'))
-    alert('registered')
+    yield put(actions.router.redirect('/dashboard'))
   }
 
   // control access to routes based on the user
