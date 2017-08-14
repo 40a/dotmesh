@@ -1,8 +1,11 @@
 stages:
     - sync
-    - build
-    - test
-    - deploy
+    - build_frontend
+    - merge
+    #- build
+    #- merge
+    #- test
+    #- deploy
 
 sync_github:
     # push all commits to all branches to github for safe keeping
@@ -62,6 +65,37 @@ build_server:
         paths:
             - cmd/datamesh-server/target
         expire_in: 1 week
+
+build_frontend:
+    stage: build_frontend
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - cd frontend
+        - ./rebuild.sh
+    artifacts:
+        paths:
+            - frontend/dist.tar.gz
+        expire_in: 1 week
+
+# we have already built the binaries and frontend code
+# let's produce a final production image of the inner server
+# that has the frontend files burnt
+# it will overwrite $(hostname).local:80/lukemarsden/datamesh-server:pushpull
+# so the tests use the image with the frontend
+merge_frontend_into_server:
+    stage: merge
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - cd frontend
+        - gzip -dc frontend/dist.tar.gz | tar -xof -
+        - cd ..
+        - mv frontend/dist cmd/datamesh-server/www
+        - cd cmd/datamesh-server
+        - ./mergebuild.sh
 
 # run sanity check that things still work on macOS
 macos:
