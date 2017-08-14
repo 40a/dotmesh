@@ -1,11 +1,9 @@
 stages:
     - sync
-    - build_frontend
+    - build
     - merge
-    #- build
-    #- merge
-    #- test
-    #- deploy
+    - test
+    - deploy
 
 sync_github:
     # push all commits to all branches to github for safe keeping
@@ -67,7 +65,7 @@ build_server:
         expire_in: 1 week
 
 build_frontend:
-    stage: build_frontend
+    stage: build
     tags:
         - ubuntu-16.10
         - fast
@@ -86,7 +84,7 @@ build_frontend:
 # that has the frontend files burnt
 # it will overwrite $(hostname).local:80/lukemarsden/datamesh-server:pushpull
 # so the tests use the image with the frontend
-merge_frontend_into_server:
+merge_frontend:
     stage: merge
     tags:
         - ubuntu-16.10
