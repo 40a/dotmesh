@@ -5,18 +5,21 @@ class ServerTable extends Component {
   render() {
     const data = this.props.data || []
     return (
-      <Table selectable={ false } style={{ marginTop: 10 }}>
-        <TableHead>
-          <TableCell>ID</TableCell>
-          <TableCell>Address</TableCell>
-        </TableHead>
-        {data.map((item, idx) => (
-          <TableRow key={idx}>
-            <TableCell>{item.Id || ''}</TableCell>
-            <TableCell>{(item.Addresses || []).join(', ')}</TableCell>
-          </TableRow>
-        ))}
-      </Table>
+      <div id="serverPage">
+        <h1 id="title">Servers</h1>
+        <Table selectable={ false } style={{ marginTop: 10 }}>
+          <TableHead>
+            <TableCell>ID</TableCell>
+            <TableCell>Address</TableCell>
+          </TableHead>
+          {data.map((item, idx) => (
+            <TableRow key={idx}>
+              <TableCell>{item.Id || ''}</TableCell>
+              <TableCell>{(item.Addresses || []).join(', ')}</TableCell>
+            </TableRow>
+          ))}
+        </Table>
+      </div>
     )
   }
 }

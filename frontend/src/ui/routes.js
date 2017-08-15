@@ -51,8 +51,6 @@ export const routes = (
           </UserWrapper>
           <UserWrapper loggedIn={ true }>
             <Section>
-              <h1>Volumes</h1>
-                <hr />
               <VolumeTable />
             </Section>
           </UserWrapper>
@@ -67,24 +65,18 @@ export const routes = (
 
       <Route path='/dashboard'>
         <Section>
-          <h1>Volumes</h1>
-          <hr />
           <VolumeTable />
         </Section>
       </Route>
 
       <Route path='/volumes'>
         <Section>
-          <h1>Volumes</h1>
-          <hr />
           <VolumeTable />
         </Section>
       </Route>
 
       <Route path='/servers'>
         <Section>
-          <h1>Servers</h1>
-          <hr />
           <ServerTable />
         </Section>
       </Route>

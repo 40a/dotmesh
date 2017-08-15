@@ -136,9 +136,12 @@ function frontend-test() {
     --name ${NIGHTWATCH_NAME} \
     --link "${linkserver}:server" \
     --link "${CHROME_DRIVER_NAME}:chromedriver" \
-    -e "LAUNCH_URL=server:${linkport}" \
+    -e "LAUNCH_URL=server:${linkport}/ui" \
     -e "SELENIUM_HOST=chromedriver" \
     -e "WAIT_FOR_HOSTS=server:${linkport} chromedriver:4444 chromedriver:6060" \
+    -e "TEST_USER=test" \
+    -e "TEST_EMAIL=test@test.com" \
+    -e "TEST_PASSWORD=test" \
     -v "${DIR}/frontend/.media/screenshots:/home/node/screenshots" \
     -v "${DIR}/frontend/.media/videos:/home/node/videos" \
     -v "${DIR}/frontend/test/specs:/home/node/specs" \

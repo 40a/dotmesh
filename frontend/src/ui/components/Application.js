@@ -57,7 +57,9 @@ class ApplicationComponent extends Component {
           onLeftIconClick={ this.props.toggleMenu }
           title={ title }
         >
-          { appbarMenu }
+          <div id="appBarMenu">
+            { appbarMenu }
+          </div>
         </AppBar>
         <Panel bodyScroll={ bodyScroll }>
           {

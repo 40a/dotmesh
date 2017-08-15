@@ -2,7 +2,7 @@
 
 module.exports = {
   url: function() {
-    return this.api.launchUrl + '/ui'
+    return this.api.launchUrl
   },
   elements: {
     title: {

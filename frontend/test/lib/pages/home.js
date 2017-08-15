@@ -2,7 +2,7 @@
 
 module.exports = {
   url: function() {
-    return this.api.launchUrl + '/ui'
+    return this.api.launchUrl
   },
   elements: {
     title: {
@@ -13,6 +13,12 @@ module.exports = {
     },
     loginLink: {
       selector: '.homePageLoginLink'
+    },
+    rightMenuButton: {
+      selector: '#appBarMenu button'
+    },
+    logoutButton: {
+      selector: '#appBarMenu ul li:last-child'
     }
   }
 }
