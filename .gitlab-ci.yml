@@ -90,11 +90,11 @@ merge_frontend:
     script:
         - cd frontend
         - ls -la
-        #- gzip -dc dist.tar.gz | tar -xof -
-        #- cd ..
-        #- mv frontend/dist cmd/datamesh-server/www
-        #- cd cmd/datamesh-server
-        #- ./mergebuild.sh
+        - gzip -dc dist.tar.gz | tar -xof -
+        - cd ..
+        - mv frontend/dist cmd/datamesh-server/www
+        - cd cmd/datamesh-server
+        - ./mergebuild.sh
 
 # run sanity check that things still work on macOS
 macos:
