@@ -92,7 +92,7 @@ merge_frontend:
         - ls -la
         - gzip -dc dist.tar.gz | tar -xof -
         - cd ..
-        - mv frontend/dist cmd/datamesh-server/www
+        - mv frontend/dist cmd/datamesh-server/dist
         - cd cmd/datamesh-server
         - ./mergebuild.sh
 
