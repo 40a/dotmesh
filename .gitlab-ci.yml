@@ -16,5 +16,5 @@ clean:
         - cd frontend
         - ls -la
         - sudo ls -la
-        - cat cd /var/opt/gitlab/gitlab-rails/shared/artifacts
+        - cat /etc/gitlab/gitlab.rb
 
