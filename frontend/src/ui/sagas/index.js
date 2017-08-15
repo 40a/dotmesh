@@ -8,6 +8,7 @@ import config from '../config'
 
 import Hooks from './hooks'
 import Auth from './auth'
+import Volume from './volume'
 
 const auth = Auth({
   apis: {
@@ -16,8 +17,15 @@ const auth = Auth({
   }
 })
 
+const volume = Volume({
+  apis: {
+    list: apis.volumeList
+  }
+})
+
 const hooks = Hooks({
-  auth
+  auth,
+  volume
 })
 
 const router = RouterSaga({
