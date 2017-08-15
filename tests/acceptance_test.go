@@ -991,15 +991,8 @@ func TestFrontend(t *testing.T) {
 		t.Error(err)
 	}
 	node1 := f[0].Nodes[0].Container
-
 	t.Run("Authenticate", func(t *testing.T) {
-		fmt.Sprintf("node1 container %v", node1)
-		err := system("bash", "-c", `
-			docker ps -a
-		`)
-		if err != nil {
-			t.Error(fmt.Sprintf("there was an error %v", "err"))
-		}
+		d(t, node1, "docker ps -a")
 	})
 
 }
