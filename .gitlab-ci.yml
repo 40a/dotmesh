@@ -72,8 +72,6 @@ build_frontend:
     script:
         - cd frontend
         - ./rebuild.sh
-        - tar -cf dist.tar dist
-        - gzip dist.tar
     artifacts:
         paths:
             - frontend/dist.tar.gz
