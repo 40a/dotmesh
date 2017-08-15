@@ -7,7 +7,9 @@ IMAGE=${IMAGE:=$(hostname).local:80/lukemarsden/datamesh-frontend-builder}
 
 mkdir -p target
 docker build -f Dockerfile -t datamesh-frontend-builder .
-docker run --rm \
-  -v ${DIR}/dist:/app/dist \
-  datamesh-frontend-builder \
-  release
+#docker run --rm \
+#  datamesh-frontend-builder \
+#  release
+
+echo "TODO - run the release without volumes (use cp)"
+
