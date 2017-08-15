@@ -25,14 +25,27 @@ const VolumeSagas = (opts = {}) => {
 
   let currentLoopTask = null
 
+  function* setData(payload) {
+    yield put(actions.value.set('volumes', payload.Volumes || []))
+    yield put(actions.value.set('servers', payload.Servers || []))
+  }
+
+  // called if there is an error so the user is not looking at stale data
+  function* resetData() {
+    yield put(actions.value.set('volumes', []))
+    yield put(actions.value.set('servers', []))
+  }
+
   // load the current volume list
   function* list() {
-    console.log('loading volume list')
-    const result = yield call(apis.list.loader)
+    const { answer, error } = yield call(apis.list.loader)
 
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.dir(result)
+    if(error) {
+      yield call(resetData)
+    }
+    else {
+      yield call(setData, answer)
+    }
   }
 
   function* listLoop() {
@@ -55,7 +68,9 @@ const VolumeSagas = (opts = {}) => {
 
   function* stopLoop() {
     console.log('stopping loop')
-    yield cancel(currentLoopTask)
+    if(currentLoopTask) {
+      yield cancel(currentLoopTask)  
+    }
   }
 
   return {
