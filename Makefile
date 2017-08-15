@@ -39,6 +39,9 @@ frontend.dist: ; bash dev.sh frontend-dist
 .PHONY: frontend.test.build
 frontend.test.build: ; bash dev.sh frontend-test-build
 
+.PHONY: frontend.test.prod
+frontend.test.prod: ; bash dev.sh frontend-test-prod
+
 .PHONY: frontend.test
 frontend.test: ; bash dev.sh frontend-test
 
@@ -53,6 +56,9 @@ frontend.logs: ; docker logs -f datamesh-frontend
 
 .PHONY: chromedriver.start
 chromedriver.start: ; bash dev.sh chromedriver-start
+
+.PHONY: chromedriver.start.prod
+chromedriver.start.prod: ; bash dev.sh chromedriver-start-prod
 
 .PHONY: chromedriver.stop
 chromedriver.stop: ; bash dev.sh chromedriver-stop

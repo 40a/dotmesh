@@ -19,7 +19,9 @@ export NIGHTWATCH_IMAGE=${NIGHTWATCH_IMAGE:="datamesh-nightwatch"}
 export NIGHTWATCH_NAME=${NIGHTWATCH_NAME:="datamesh-nightwatch"}
 
 export DATAMESH_SERVER_NAME=${DATAMESH_SERVER_NAME:="datamesh-server-inner"}
+export DATAMESH_FRONTEND_NAME=${DATAMESH_FRONTEND_NAME:="datamesh-frontend"}
 export DATAMESH_SERVER_PORT=${DATAMESH_SERVER_PORT:="6969"}
+export DATAMESH_FRONTEND_PORT=${DATAMESH_FRONTEND_PORT:="80"}
 
 function cli-build() {
   echo "building datamesh CLI binary"
@@ -93,8 +95,8 @@ function frontend-start() {
   fi
   echo "running frontend dev server using ${FRONTEND_IMAGE}"
   docker run ${flags} \
-    --name datamesh-frontend \
-    --link datamesh-server-inner:datamesh-server \
+    --name ${DATAMESH_FRONTEND_NAME} \
+    --link ${DATAMESH_SERVER_NAME}:datamesh-server \
     -p 8080:80 \
     -v "${DIR}/frontend:/app" \
     -v "/app/node_modules/" ${linkedVolumes} \
@@ -112,33 +114,55 @@ function frontend-dist() {
     ${FRONTEND_IMAGE} release
 }
 
-
 function frontend-test-build() {
   docker build -t ${NIGHTWATCH_IMAGE} -f ${DIR}/frontend/test/Dockerfile ${DIR}/frontend/test
 }
 
+function frontend-test-prod() {
+  frontend-test "${DATAMESH_SERVER_NAME}" "${DATAMESH_SERVER_PORT}"
+}
+
 function frontend-test() {
-  frontend-test-build
+  local linkserver="${1}"
+  local linkport="${2}"
+
+  if [ -z "${linkserver}" ]; then
+    linkserver="${DATAMESH_FRONTEND_NAME}"
+    linkport="${DATAMESH_FRONTEND_PORT}"
+  fi
+
   rm -rf ${DIR}/frontend/.media
   docker run --rm \
     --name ${NIGHTWATCH_NAME} \
-    --link "${DATAMESH_SERVER_NAME}:server" \
+    --link "${linkserver}:server" \
     --link "${CHROME_DRIVER_NAME}:chromedriver" \
-    -e "LAUNCH_URL=server:${DATAMESH_SERVER_PORT}" \
+    -e "LAUNCH_URL=server:${linkport}" \
     -e "SELENIUM_HOST=chromedriver" \
-    -e "WAIT_FOR_HOSTS=server:${DATAMESH_SERVER_PORT} chromedriver:4444 chromedriver:6060" \
+    -e "WAIT_FOR_HOSTS=server:${linkport} chromedriver:4444 chromedriver:6060" \
     -v "${DIR}/frontend/.media/screenshots:/home/node/screenshots" \
     -v "${DIR}/frontend/.media/videos:/home/node/videos" \
-    ${NIGHTWATCH_IMAGE} "${@}"
+    -v "${DIR}/frontend/test/specs:/home/node/test/specs" \
+    -v "${DIR}/frontend/test/lib:/home/node/test/lib" \
+    ${NIGHTWATCH_IMAGE}
 }
 
 function chromedriver-start() {
+  local linkserver="${1}"
+
+  if [ -z "${linkserver}" ]; then
+    linkserver="${DATAMESH_FRONTEND_NAME}"
+  fi
+
   docker run -d \
     --name ${CHROME_DRIVER_NAME} \
-    --link "${DATAMESH_SERVER_NAME}:server" \
+    --link "${linkserver}:server" \
     -e VNC_ENABLED=true \
     -e EXPOSE_X11=true \
     ${CHROME_DRIVER_IMAGE}
+}
+
+function chromedriver-start-prod() {
+  chromedriver-start "${DATAMESH_SERVER_NAME}"
 }
 
 function chromedriver-stop() {
@@ -166,12 +190,14 @@ Usage:
   cluster-stop         stop a running cluster
   cluster-upgrade      update a cluster after build-server
   chromedriver-start   start chromedriver
+  chromedriver-start-prod   start chromedriver in prod
   chromedriver-stop    stop chromedriver
   frontend-build       rebuild the frontend image
   frontend-start       start the frontend dev container
   frontend-stop        stop the frontend dev container
   frontend-dist        export the production build of the frontend
   frontend-test-build  build the frontend test image
+  frontend-test-prod   run the frontend tests against the production trim
   frontend-test        run the frontend tests
   build                rebuild all images
   reset                reset the cluster
@@ -189,9 +215,11 @@ function main() {
   cluster-stop)        shift; cluster-stop $@;;
   cluster-upgrade)     shift; cluster-upgrade $@;;
   chromedriver-start)  shift; chromedriver-start $@;;
+  chromedriver-start-prod)  shift; chromedriver-start-prod $@;;
   chromedriver-stop)   shift; chromedriver-stop $@;;
   frontend-test-build) shift; frontend-test-build $@;;
   frontend-test)       shift; frontend-test $@;;
+  frontend-test-prod)  shift; frontend-test-prod $@;;
   frontend-build)      shift; frontend-build $@;;
   frontend-start)      shift; frontend-start $@;;
   frontend-stop)       shift; frontend-stop $@;;

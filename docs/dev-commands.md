@@ -211,6 +211,12 @@ TODO: add the `dist` folder to the production build of the datamesh server
 To run the frontend code in production mode (i.e. static files inside the server) - do the following:
 
 ```bash
+$ make prod
+```
+
+This will:
+
+```bash
 $ make frontend.build
 $ make frontend.dist
 $ make cluster.build
@@ -218,5 +224,34 @@ $ make cluster.prodbuild
 $ make cluster.start
 ```
 
+and end up with the same as `cluster.start` but with the frontend code built into the server.
+
+The difference in this mode is you need to hit `localhost:6969` to see it in the browser.
+
+## running frontend tests
+
+Whilst the local dev stack is running - you can run the frontend tests.
+
+First - startup chromedriver and build the test image.
+
+```bash
+$ make frontend.test.build # only needed once
+$ make chromedriver.start
+```
+
+Then - as the frontend is rebuilding as you make changes - you can re-run the test suite:
+
+```bash
+$ make frontend.test
+```
+
+Videos & screenshots are produced after each test run - they live in `frontend/.media`
+
+If you are running the production trim (where the frontend code is burnt into the server):
+
+```bash
+$ make chromedriver.start.prod
+$ make frontend.test.prod
+```
 
 

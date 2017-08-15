@@ -25,11 +25,6 @@ cat << NIGHTWATCH_JSON > /home/node/nightwatch.json
 }
 NIGHTWATCH_JSON
 
-
-cat /home/node/nightwatch.json
-
-ping -c 5 datamesh-server-inner
-
 # shellcheck disable=SC2086
 exec /sbin/tini -g -- \
   wait-for --timeout "${WAIT_FOR_TIMEOUT:-10}" $WAIT_FOR_HOSTS -- \
