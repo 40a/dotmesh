@@ -993,7 +993,7 @@ func TestFrontend(t *testing.T) {
 	node1 := f[0].Nodes[0].Container
 
 	t.Run("Authenticate", func(t *testing.T) {
-		fsname := uniqName()
+		fmt.Sprintf("node1 container %v", node1)
 		err := system("bash", "-c", `
 			docker ps -a
 		`)
