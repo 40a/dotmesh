@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"io/ioutil"
 	"encoding/json"
 	"net/http"
 	"mime"
@@ -27,7 +28,7 @@ func (s *InMemoryState) NewRegistrationServer() http.Handler {
 	}
 }
 
-func hasContentType(r *http.Request, mimetype string) bool {
+func HasContentType(r *http.Request, mimetype string) bool {
 	contentType := r.Header.Get("Content-type")
 	if contentType == "" {
 		return mimetype == "application/octet-stream"
@@ -45,112 +46,138 @@ func hasContentType(r *http.Request, mimetype string) bool {
 	return false
 }
 
-func isRequestJSON(r *http.Request) bool {
-	return hasContentType(r, "application/json")
+func IsRequestJSON(r *http.Request) bool {
+	return HasContentType(r, "application/json")
 }
 
 
-func writeError(w http.ResponseWriter) {
+func WriteError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte(fmt.Sprintf("Internal server error. Please check logs.")))
 }
 
 type RegistrationPayload struct {
-	username string
-	email string
-	password string
-	emailError string
-	usernameError string
-	passwordError string
-	created bool
-	submit bool
-	json bool
+	Username string
+	Email string
+	Password string
+	EmailError string
+	UsernameError string
+	PasswordError string
+	Created bool
+	Submit bool
+	Json bool
 }
 
-func (payload *RegistrationPayload) validate() bool {
-	if payload.password == "" {
-		payload.passwordError = "Password cannot be empty."
+type JSONPayload struct {
+	Username string `json:"username"`
+  Email string `json:"email"`
+  Password string `json:"password"`
+}
+
+func (payload *RegistrationPayload) Validate() bool {
+	if payload.Password == "" {
+		payload.PasswordError = "Password cannot be empty."
 	}
-	if payload.email == "" {
-		payload.emailError = "Email address cannot be empty."
+	if payload.Email == "" {
+		payload.EmailError = "Email address cannot be empty."
 	}
-	if payload.username == "" {
-		payload.usernameError = "Username cannot be empty."
-	} else if strings.Contains(payload.username, "/") {
-		payload.usernameError = "Invalid username."
+	if payload.Username == "" {
+		payload.UsernameError = "Username cannot be empty."
+	} else if strings.Contains(payload.Username, "/") {
+		payload.UsernameError = "Invalid username."
 	}
-	return payload.emailError == "" && payload.usernameError == "" && payload.passwordError == ""
+	return payload.EmailError == "" && payload.UsernameError == "" && payload.PasswordError == ""
 }
 
 func NewRegistrationPayload(r *http.Request) (RegistrationPayload, error) {
 	payload := RegistrationPayload{
-		username: "",
-		email: "",
-		password: "",
-		emailError: "",
-		usernameError: "",
-		passwordError: "",
-		created: false,
-		submit: false,
-		json: false,
+		Username: "",
+		Email: "",
+		Password: "",
+		EmailError: "",
+		UsernameError: "",
+		PasswordError: "",
+		Created: false,
+		Submit: false,
+		Json: false,
 	}
 
-	// TODO
-	if isRequestJSON(r) {
-		err := json.NewDecoder(r.Body).Decode(&payload)
+	if IsRequestJSON(r) {
+		body, err := ioutil.ReadAll(r.Body)
+
 		if err != nil {
-			log.Printf("[RegistrationServer] Error decoding JSON payload: %v", err)
+      log.Printf("[RegistrationServer] Error reading HTTP body: %v", err)
 			return payload, err
-		}
-		payload.json = true
-		payload.submit = true
+    }
+
+    log.Println(string(body))
+    var jsonPacket JSONPayload
+    err = json.Unmarshal(body, &jsonPacket)
+
+    if err != nil {
+      log.Printf("[RegistrationServer] Error decoding JSON payload: %v - %s", err, body)
+			return payload, err
+    }
+
+    payload.Username = jsonPacket.Username
+		payload.Email = jsonPacket.Email
+		payload.Password = jsonPacket.Password
+    payload.Json = true
+		payload.Submit = true
+
+		
 	} else {
-		payload.username = r.FormValue("username")
-		payload.email = r.FormValue("email")
-		payload.password = r.FormValue("password")
-		payload.submit = r.FormValue("submit") != ""
+		r.ParseForm()
+		payload.Username = r.FormValue("username")
+		payload.Email = r.FormValue("email")
+		payload.Password = r.FormValue("password")
+		payload.Submit = r.FormValue("submit") != ""
 	}
+
+	log.Printf("[RegistrationServer] payload: %v", payload)
 
 	return payload, nil
 }
 
 func (web *RegistrationServer) registerUser(payload *RegistrationPayload) error {
+	log.Printf("[RegistrationServer] registerUser: %v", payload)
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		log.Printf("[RegistrationServer] Error talking to etcd: %v", err)
 		return err
 	}
 
-	if payload.validate() {
+	if payload.Validate() {
 		// lookup username in etcd, bail if it exists
 		_, err = kapi.Get(
 			context.Background(),
 			fmt.Sprintf(
-				"%s/users/%s", ETCD_PREFIX, payload.username,
+				"%s/users/%s", ETCD_PREFIX, payload.Username,
 			),
 			nil,
 		)
 		if !client.IsKeyNotFound(err) && err != nil {
-			log.Printf("[RegistrationServer] Error checking username %v: %v", payload.username, err)
+			log.Printf("[RegistrationServer] Error checking username %v: %v", payload.Username, err)
 			return err
 		}
 		if err == nil {
-			payload.usernameError = "Username already exists, please choose another."
+			payload.UsernameError = "Username already exists, please choose another."
 		}
 	}
 
-	if payload.validate() {
-		user, err := NewUser(payload.username, payload.email, payload.password)
+	// validate the second time because we have just loaded the UsernameError
+	if payload.Validate() {
+		user, err := NewUser(payload.Username, payload.Email, payload.Password)
 		if err != nil {
-			log.Printf("[RegistrationServer] Error creating user %v: %v", payload.username, err)
+			log.Printf("[RegistrationServer] Error creating user %v: %v", payload.Username, err)
 			return err
 		}
 		err = user.Save()
 		if err != nil {
-			log.Printf("[RegistrationServer] Error saving user %v: %v", payload.username, err)
+			log.Printf("[RegistrationServer] Error saving user %v: %v", payload.Username, err)
 			return err
 		}
-		payload.created = true
+		payload.Created = true
 	}
 
 	return nil
@@ -162,19 +189,19 @@ func (web RegistrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	payload, err := NewRegistrationPayload(r)
 
 	if err != nil {
-		writeError(w)
+		WriteError(w)
 		return
 	}
 
-	if payload.submit {
+	if payload.Submit {
 		err := web.registerUser(&payload)
 		if err != nil {
-			writeError(w)
+			WriteError(w)
 			return
 		}	
 	}
 
-	if payload.json {
+	if payload.Json {
 		web.RespondJSON(&payload, w, r)
 	} else {
 		web.RespondHTML(&payload, w, r)
@@ -247,18 +274,18 @@ func (web RegistrationServer) RespondHTML(payload *RegistrationPayload, w http.R
 		<form action="/register" method="POST" class="register">
 			<p>
 				<div class="label"><p>Your Email Address</p></div>
-				<input type="email" name="email" value="{{.payload.email}}" />
-				<span class="error">{{.payload.emailError}}</span>
+				<input type="email" name="email" value="{{.FormEmail}}" />
+				<span class="error">{{.ErrorEmail}}</span>
 			</p>
 			<p>
 				<div class="label"><p>Choose Username</p></div>
-				<input type="username" name="username" value="{{.payload.username}}" />
-				<span class="error">{{.payload.usernameError}}</span>
+				<input type="username" name="username" value="{{.FormUsername}}" />
+				<span class="error">{{.ErrorUsername}}</span>
 			</p>
 			<p>
 				<div class="label"><p>Choose Password<br />(also used as your API key)</p></div>
-				<input type="password" name="password" value="{{.payload.password}}" />
-				<span class="error">{{.payload.passwordError}}</span>
+				<input type="password" name="password" value="{{.FormPassword}}" />
+				<span class="error">{{.ErrorPassword}}</span>
 			</p>
 			<p style="clear:both; text-align:center;">
 				<input type="submit" name="submit" class="button cta" value="Register" />
@@ -298,15 +325,15 @@ func (web RegistrationServer) RespondHTML(payload *RegistrationPayload, w http.R
 	assetsURLPrefix := os.Getenv("ASSETS_URL_PREFIX")
 	homepageURL := os.Getenv("HOMEPAGE_URL")
 	t := TemplateArgs{
-		FormEmail:       htmlEscape(payload.email),
-		ErrorEmail:      payload.emailError,
-		FormUsername:    htmlEscape(payload.username),
-		ErrorUsername:   payload.usernameError,
-		FormPassword:    htmlEscape(payload.password),
-		ErrorPassword:   payload.passwordError,
+		FormEmail:       htmlEscape(payload.Email),
+		ErrorEmail:      payload.EmailError,
+		FormUsername:    htmlEscape(payload.Username),
+		ErrorUsername:   payload.UsernameError,
+		FormPassword:    htmlEscape(payload.Password),
+		ErrorPassword:   payload.PasswordError,
 		AssetsURLPrefix: assetsURLPrefix,
 		HomepageURL:     homepageURL,
-		Complete:        payload.created,
+		Complete:        payload.Created,
 	}
 	tmpl, err := template.New("t").Parse(tmplStr)
 	if err != nil {
