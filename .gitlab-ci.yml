@@ -13,3 +13,6 @@ clean:
     stage: clean
     script:
         - pwd
+        - cd frontend
+        - ls -la
+
