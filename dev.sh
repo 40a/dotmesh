@@ -146,7 +146,7 @@ function frontend-test() {
     -v "${DIR}/frontend/.media/videos:/home/node/videos" \
     -v "${DIR}/frontend/test/specs:/home/node/specs" \
     -v "${DIR}/frontend/test/lib:/home/node/lib" \
-    ${NIGHTWATCH_IMAGE}
+    ${NIGHTWATCH_IMAGE} ${TEST_NAME}
 }
 
 function chromedriver-start() {
