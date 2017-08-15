@@ -158,3 +158,11 @@ deploy_server_docker_image:
         - docker push quay.io/lukemarsden/datamesh-server:pushpull
     only:
         - master
+
+frontend:
+    stage: test
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestFrontend
