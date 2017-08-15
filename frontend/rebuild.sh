@@ -11,8 +11,3 @@ docker run --rm \
   -v ${DIR}/dist:/app/dist \
   datamesh-frontend-builder \
   release
-
-# allow disabling of registry push
-if [ -z "${NO_PUSH}" ]; then
-  docker push ${IMAGE}
-fi
