@@ -64,7 +64,7 @@ class ApplicationComponent extends Component {
             this.props.initialized ?
               this.props.children : 
               (
-                <div>loading...</div>
+                <div></div>
               ) 
           }
         </Panel>
