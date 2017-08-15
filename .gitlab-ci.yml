@@ -75,7 +75,15 @@ build_frontend:
     artifacts:
         paths:
             - frontend/dist.tar.gz
-    
+
+build_frontend_test_runner:
+    stage: build
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - cd frontend
+        - ./rebuild_test_runner.sh
 
 # we have already built the binaries and frontend code
 # let's produce a final production image of the inner server
