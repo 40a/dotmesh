@@ -999,7 +999,6 @@ func TestFrontend(t *testing.T) {
 		`)
 		if err != nil {
 			t.Error(fmt.Sprintf("there was an error %v", "err"))
-			return err
 		}
 	})
 
