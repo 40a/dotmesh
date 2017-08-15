@@ -18,11 +18,12 @@ const Route = RouteFactory(config.basepath)
 
 export const routeConfig = processRoutes({
   '/': {},
-  '/help': {
-  },
+  '/help': {},
   '/dashboard': {
     user: true,
-    authRedirect: '/login'
+    authRedirect: '/login',
+    onEnter: ['volumeList', 'volumeStartLoop'],
+    onLeave: ['volumeStopLoop']
   },
   '/login': {
     user: false,
