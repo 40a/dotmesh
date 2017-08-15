@@ -1,0 +1,156 @@
+---
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: datamesh
+      #annotations:
+      #  datamesh.io/key: value
+      labels:
+        name: datamesh
+      namespace: datamesh
+  - apiVersion: rbac.authorization.k8s.io/v1beta1
+    kind: ClusterRole
+    metadata:
+      name: datamesh
+      #annotations:
+      #  datamesh.io/key: value
+      labels:
+        name: datamesh
+    rules:
+      - apiGroups:
+          - ''
+        resources:
+          - pods
+          - namespaces
+          - nodes
+        verbs:
+          - get
+          - list
+          - watch
+  # TODO: bind to system:persistent-volume-provisioner?
+  # https://kubernetes.io/docs/admin/authorization/rbac/#other-component-roles
+  - apiVersion: rbac.authorization.k8s.io/v1beta1
+    kind: ClusterRoleBinding
+    metadata:
+      name: datamesh
+      #annotations:
+      #  datamesh.io/key: value
+      labels:
+        name: datamesh
+    roleRef:
+      kind: ClusterRole
+      name: datamesh
+      apiGroup: rbac.authorization.k8s.io
+    subjects:
+      - kind: ServiceAccount
+        name: datamesh
+        namespace: datamesh
+  - apiVersion: extensions/v1beta1
+    kind: DaemonSet
+    metadata:
+      name: datamesh
+      #annotations:
+      #  datamesh.io/key: value
+      labels:
+        name: datamesh
+      namespace: datamesh
+    spec:
+      template:
+        metadata:
+          labels:
+            name: datamesh
+        spec:
+          containers:
+            - name: datamesh-outer
+              command:
+                - /require_zfs.sh
+                - datamesh-server
+              ports:
+              - containerPort: 6969
+                hostPort: 6969
+              env:
+                - name: HOSTNAME
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: spec.nodeName
+                - name: DATAMESH_ETCD_ENDPOINT
+                  # etcd deployed by etcd operator.
+                  value: "http://datamesh-etcd-cluster-client.datamesh.svc.cluster.local:2379"
+                - name: DATAMESH_DOCKER_IMAGE
+                  value: "quay.io/lukemarsden/datamesh-server:pushpull"
+                - name: PATH
+                  value: "/bundled-lib/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                - name: LD_LIBRARY_PATH
+                  value: "/bundled-lib/lib:/bundled-lib/usr/lib/"
+                - name: ALLOW_PUBLIC_REGISTRATION
+                  value: "1"
+                # XXX some duplication here wrt datamesh/cmd/dm/pkg/commands/cluster.go
+                - name: ASSETS_URL_PREFIX
+                  value: "https://get.datamesh.io/assets/datamesh-website/_site"
+                - name: HOMEPAGE_URL
+                  value: "https://datamesh.io/"
+                - name: INITIAL_ADMIN_PASSWORD_FILE
+                  value: /secret/datamesh-admin-password.txt
+              image: 'quay.io/lukemarsden/datamesh-server:pushpull'
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  path: /status
+                  port: 6969
+                initialDelaySeconds: 30
+              resources:
+                requests:
+                  cpu: 10m
+              securityContext:
+                privileged: true
+              volumeMounts:
+              #  - name: foo
+              #    mountPath: /bar
+                - name: docker-sock
+                  mountPath: /var/run/docker.sock
+                - name: run-docker
+                  mountPath: /run/docker
+                - name: var-lib-docker
+                  mountPath: /var/lib/docker
+                - name: system-lib
+                  mountPath: /system-lib/lib
+                - name: datamesh-kernel-modules
+                  mountPath: /bundled-lib
+                - name: datamesh-secret
+                  mountPath: /secret
+          #hostNetwork: true
+          #hostPID: true
+          restartPolicy: Always
+          securityContext:
+            seLinuxOptions: {}
+          serviceAccountName: datamesh
+          tolerations:
+            - effect: NoSchedule
+              operator: Exists
+          volumes:
+            #- name: foo
+            #  hostPath:
+            #    path: /bar
+            - name: docker-sock
+              hostPath:
+                path: /var/run/docker.sock
+            - name: run-docker
+              hostPath:
+                path: /run/docker
+            - name: var-lib-docker
+              hostPath:
+                path: /var/lib/docker
+            - name: system-lib
+              hostPath:
+                path: /lib
+            - name: datamesh-kernel-modules
+              emptyDir: {}
+            - name: datamesh-secret
+              secret:
+                secretName: datamesh
+      updateStrategy:
+        type: RollingUpdate

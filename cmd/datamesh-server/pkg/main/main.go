@@ -22,8 +22,8 @@ import (
 const ROOT_FS = "dmfs"
 const ZFS = "zfs"
 const ZPOOL = "zpool"
-const META_KEY_PREFIX = "io.data-mesh:meta-"
-const ETCD_PREFIX = "/data-mesh.io"
+const META_KEY_PREFIX = "io.datamesh:meta-"
+const ETCD_PREFIX = "/datamesh.io"
 const CONTAINER_MOUNT_PREFIX = "/var/datamesh"
 
 var LOG_TO_STDOUT bool

@@ -413,7 +413,7 @@ func (d *DatameshRPC) Clone(
 func (d *DatameshRPC) Version(
 	r *http.Request, args *struct{}, result *map[string]string) error {
 	*result = map[string]string{
-		"Version": "0.1", "Name": "Datamesh", "Website": "https://data-mesh.io",
+		"Version": "0.1", "Name": "Datamesh", "Website": "https://datamesh.io",
 	}
 	return nil
 }

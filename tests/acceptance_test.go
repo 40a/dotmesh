@@ -28,11 +28,11 @@ You need to be running a local registry, as well as everything else in the
 github.com/lukemarsden/datamesh-instrumentation pack, which requires
 docker-compose (run up.sh with a password as the first argument).
 
-Finally, you need to be running github.com/lukemarsden/discovery.data-mesh.io
+Finally, you need to be running github.com/lukemarsden/discovery.datamesh.io
 on port 8087:
 
-	git clone git@github.com:lukemarsden/discovery.data-mesh.io
-	cd discovery.data-mesh.io
+	git clone git@github.com:lukemarsden/discovery.datamesh.io
+	cd discovery.datamesh.io
 	./start-local.sh
 
 You have to do some one-off setup and priming of docker images before these
@@ -971,3 +971,8 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 
 // TODO: spin up _three_ single node clusters, use one as a hub so that alice
 // and bob can collaborate.
+
+// TODO: run dind/dind-cluster.sh up, and then test the manifests in
+// kubernetes/ against the resulting (3 node by default) cluster. Ensure things
+// run offline. Figure out how to configure each cluster node with its own
+// zpool. Test dynamic provisioning, and so on.

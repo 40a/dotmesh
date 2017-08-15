@@ -219,7 +219,7 @@ func (r *Registry) RegisterFilesystem(ctx context.Context, name string, filesyst
 	}
 	_, err = kapi.Set(
 		context.Background(),
-		// (0)/(1)data-mesh.io/(2)registry/(3)filesystems/(4)<name> =>
+		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<name> =>
 		//     {"Uuid": "<fs-uuid>"}
 		fmt.Sprintf("%s/registry/filesystems/%s", ETCD_PREFIX, name),
 		string(serialized),
@@ -258,7 +258,7 @@ func (r *Registry) UpdateCollaborators(
 	}
 	_, err = kapi.Set(
 		context.Background(),
-		// (0)/(1)data-mesh.io/(2)registry/(3)filesystems/(4)<name> =>
+		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<name> =>
 		//     {"Uuid": "<fs-uuid>"}
 		fmt.Sprintf("%s/registry/filesystems/%s", ETCD_PREFIX, tlf.TopLevelVolume.Name),
 		string(serialized),
@@ -286,7 +286,7 @@ func (r *Registry) RegisterClone(name string, topLevelFilesystemId string, clone
 	}
 	kapi.Set(
 		context.Background(),
-		// (0)/(1)data-mesh.io/(2)registry/(3)clones/(4)<fs-uuid-of-filesystem>/(5)<name> =>
+		// (0)/(1)datamesh.io/(2)registry/(3)clones/(4)<fs-uuid-of-filesystem>/(5)<name> =>
 		//     {"Origin": {"FilesystemId": "<fs-uuid-of-actual-origin-snapshot>", "SnapshotId": "<snap-id>"}, "Uuid": "<fs-uuid>"}
 		fmt.Sprintf("%s/registry/clones/%s/%s", ETCD_PREFIX, topLevelFilesystemId, name),
 		string(serialized),

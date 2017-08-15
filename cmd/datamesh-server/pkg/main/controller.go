@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -239,6 +241,42 @@ func (s *InMemoryState) getCurrentState(filesystemId string) (string, error) {
 	return f.getCurrentState(), nil
 }
 
+func (s *InMemoryState) insertInitialAdminPassword() error {
+
+	if os.Getenv("INITIAL_ADMIN_PASSWORD") == "" {
+		return nil
+	}
+
+	adminPassword, err := base64.StdEncoding.DecodeString(
+		os.Getenv("INITIAL_ADMIN_PASSWORD"),
+	)
+	if err != nil {
+		return err
+	}
+
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+	user := struct {
+		Id     string
+		Name   string
+		ApiKey string
+	}{Id: ADMIN_USER_UUID, Name: "admin", ApiKey: string(adminPassword)}
+	encoded, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+	_, err = kapi.Set(
+		context.Background(),
+		fmt.Sprintf("/datamesh.io/users/%s", ADMIN_USER_UUID),
+		string(encoded),
+		&client.SetOptions{PrevExist: client.PrevNoExist},
+	)
+	return err
+
+}
+
 // query container runtime for any containers which have datamesh volumes.
 // update etcd with our findings, so that other servers can learn about what
 // containers we've got running here (for purposes of displaying this
@@ -291,7 +329,7 @@ func (s *InMemoryState) findRelatedContainers() error {
 	for _, filesystemId := range myFilesystems {
 		// update etcd with the list of containers and this node; we'll learn
 		// about the state via our own watch on etcd
-		// (0)/(1)data-mesh.io/(2)filesystems/(3)containers/(4):filesystem_id =>
+		// (0)/(1)datamesh.io/(2)filesystems/(3)containers/(4):filesystem_id =>
 		// {"server": "server", "containers": [{Name: "name", ID: "id"}]}
 		theContainers, ok := containerMap[filesystemId]
 		var value containerInfo

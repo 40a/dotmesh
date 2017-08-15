@@ -17,7 +17,7 @@ function fetch_zfs {
             mv /bundled-lib/lib /bundled-lib/lib.backup-`date +%s`
         fi
     fi
-    if ! curl -f -o ${RELEASE} https://get.data-mesh.io/zfs/${RELEASE}; then
+    if ! curl -f -o ${RELEASE} https://get.datamesh.io/zfs/${RELEASE}; then
         echo "ZFS is not installed on your docker host, and unable to find a kernel module for your kernel: $KERN"
         echo "Please create a new GitHub issue, pasting this error message, and tell me which Linux distribution you are using, at:"
         echo
@@ -124,9 +124,48 @@ fi
 # To have its port exposed on Docker for Mac, `docker run` needs -p 6969.  But
 # datamesh-server also wants to discover its routeable IPv4 addresses (on Linux
 # anyway; multi-node clusters work only on Linux because we can't discover the
-# Mac's IP from a container).  So to work with both we do that while we're in
-# the host network namespace (here) and pass it in.
-YOUR_IPV4_ADDRS="$(datamesh-server --guess-ipv4-addresses)"
+# Mac's IP from a container).  So to work with both we do that in the host
+# network namespace (via docker) and pass it in.
+YOUR_IPV4_ADDRS="$(docker run -i --net=host $DATAMESH_DOCKER_IMAGE datamesh-server --guess-ipv4-addresses)"
+
+pki_volume_mount=""
+if [ "$PKI_PATH" != "" ]; then
+    pki_volume_mount="-v $PKI_PATH:/pki"
+fi
+
+net="-p 6969:6969"
+link=""
+if [ "$DATAMESH_ETCD_ENDPOINT" == "" ]; then
+    # If etcd endpoint is overridden, then don't try to link to a local
+    # datamesh-etcd container (etcd probably is being provided externally, e.g.
+    # by etcd operator on Kubernetes).
+    link="--link datamesh-etcd:datamesh-etcd"
+fi
+if [ "$DATAMESH_ETCD_ENDPOINT" != "" ]; then
+    # When running in a pod network, calculate the id of the current container
+    # in scope, and pass that as --net=container:<id> so that datamesh-server
+    # itself runs in the same network namespace.
+    self_containers=$(docker ps -q --filter="ancestor=$DATAMESH_DOCKER_IMAGE")
+    array_containers=( $self_containers )
+    num_containers=${#array_containers[@]}
+    if [ $num_containers -eq 0 ]; then
+        echo "Cannot find id of own container!"
+        exit 1
+    fi
+    if [ $num_containers -gt 1 ]; then
+        echo "Found more than one id of own container! $self_containers"
+        exit 1
+    fi
+    net="--net=container:$self_containers"
+fi
+
+secret=""
+if [[ "$INITIAL_ADMIN_PASSWORD_FILE" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]]; then
+    # shell escape the password, https://stackoverflow.com/questions/15783701
+    pw=$(cat $INITIAL_ADMIN_PASSWORD_FILE |tr -d '\n' |base64 -w 0)
+    secret="-e INITIAL_ADMIN_PASSWORD=$pw"
+    echo "set secret: $secret"
+fi
 
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/lib/docker:/var/lib/docker \
@@ -134,10 +173,10 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /run/docker/plugins:/run/docker/plugins \
     -v $MOUNTPOINT:$MOUNTPOINT:rshared \
     -v /var/datamesh:/var/datamesh \
-    -p 6969:6969 \
     -l traefik.port=6969 \
-    -l traefik.frontend.rule=Host:public.data-mesh.io \
-    --link datamesh-etcd:datamesh-etcd \
+    -l traefik.frontend.rule=Host:cloud.datamesh.io \
+    $net \
+    $link \
     -e "PATH=$PATH" \
     -e "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \
     -e "MOUNT_PREFIX=$MOUNTPOINT" \
@@ -146,8 +185,11 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -e "ALLOW_PUBLIC_REGISTRATION=$ALLOW_PUBLIC_REGISTRATION" \
     -e "ASSETS_URL_PREFIX=$ASSETS_URL_PREFIX" \
     -e "HOMEPAGE_URL=$HOMEPAGE_URL" \
-    -e "TRACE_ADDR=$TRACE_ADDR" $log_opts \
-    -v $PKI_PATH:/pki \
+    -e "TRACE_ADDR=$TRACE_ADDR" \
+    -e "DATAMESH_ETCD_ENDPOINT=$DATAMESH_ETCD_ENDPOINT" \
+    $secret \
+    $log_opts \
+    $pki_volume_mount \
     -v datamesh-kernel-modules:/bundled-lib \
     $DATAMESH_DOCKER_IMAGE \
     "$@" >/dev/null
