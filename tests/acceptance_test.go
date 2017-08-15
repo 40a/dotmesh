@@ -156,6 +156,12 @@ func testMarkForCleanup(f Federation) {
 	}
 }
 
+// this starts a chromedriver container
+// it expects a datamesh-server-inner to be running
+func startChromeDriver() error {
+
+}
+
 func testSetup(f Federation, stamp int64) error {
 	err := system("bash", "-c", `
 		# Create a home for the test pools to live that can have the same path
@@ -976,3 +982,31 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 // kubernetes/ against the resulting (3 node by default) cluster. Ensure things
 // run offline. Figure out how to configure each cluster node with its own
 // zpool. Test dynamic provisioning, and so on.
+
+
+func TestFrontend(t *testing.T) {
+	// single node tests
+	teardownFinishedTestRuns()
+
+	f := Federation{NewCluster(1)}
+
+	startTiming()
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		t.Error(err)
+	}
+	node1 := f[0].Nodes[0].Container
+
+	t.Run("Authenticate", func(t *testing.T) {
+		fsname := uniqName()
+		err := system("bash", "-c", `
+			docker ps -a
+		`)
+		if err != nil {
+			t.Error(fmt.Sprintf("there was an error %v", "err"))
+			return err
+		}
+	})
+
+}
