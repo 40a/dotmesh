@@ -179,8 +179,9 @@ function build() {
 }
 
 function reset() {
-  dm cluster reset
-  docker rm -f datamesh-frontend || true
+  dm cluster reset || true
+  docker rm -f ${DATAMESH_FRONTEND_NAME} || true
+  docker rm -f ${CHROME_DRIVER_NAME} || true
 }
 
 function usage() {
