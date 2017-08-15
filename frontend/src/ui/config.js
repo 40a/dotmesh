@@ -38,6 +38,8 @@ const config = {
       menuOpen: false
     }
   },
+  // milliseconds delay for backend volume polling
+  volumeLoopInterval: 1000,
   images: {
     appbar: '/images/datamesh-on-dark.png'
   },

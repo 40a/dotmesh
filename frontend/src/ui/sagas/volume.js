@@ -1,4 +1,5 @@
-import { take, put, call, fork, select, all, takeLatest, takeEvery } from 'redux-saga/effects'
+import { take, put, call, fork, select, all, takeLatest, takeEvery, cancel } from 'redux-saga/effects'
+import { delay } from 'redux-saga'
 
 import config from '../config'
 import forms from '../forms'
@@ -22,26 +23,39 @@ const VolumeSagas = (opts = {}) => {
   ///////////////////////////////////////
   // HOOKS
 
+  let currentLoopTask = null
+
   // load the current volume list
   function* list() {
+    console.log('loading volume list')
     const result = yield call(apis.list.loader)
 
     console.log('-------------------------------------------');
     console.log('-------------------------------------------');
     console.dir(result)
-    
+  }
+
+  function* listLoop() {
+    try {
+      while (true) {
+        yield call(list)
+        yield call(delay, config.volumeLoopInterval)
+      }
+    } finally {
+      if (yield cancelled()) {
+        console.log('volume list loop cancelled')
+      }
+    }
   }
 
   function* startLoop() {
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.log('starting volume loop')
+    console.log('starting loop')
+    currentLoopTask = yield fork(listLoop)
   }
 
   function* stopLoop() {
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.log('stopping volume loop')
+    console.log('stopping loop')
+    yield cancel(currentLoopTask)
   }
 
   return {
