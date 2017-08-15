@@ -204,3 +204,19 @@ $ make frontend.dist
 This will create output in `frontend/dist` which can be copied into the server container for production.
 
 TODO: add the `dist` folder to the production build of the datamesh server
+
+
+## running production mode
+
+To run the frontend code in production mode (i.e. static files inside the server) - do the following:
+
+```bash
+$ make frontend.build
+$ make frontend.dist
+$ make cluster.build
+$ make cluster.prodbuild
+$ make cluster.start
+```
+
+
+

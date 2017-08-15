@@ -4,6 +4,9 @@ build: ; bash dev.sh build
 .PHONY: cluster.build
 cluster.build: ; bash dev.sh cluster-build
 
+.PHONY: cluster.prodbuild
+cluster.prodbuild: ; bash dev.sh cluster-prodbuild
+
 .PHONY: cluster.start
 cluster.start: ; bash dev.sh cluster-start
 
@@ -41,6 +44,14 @@ frontend.link: ; CLI=1 LINKMODULES=1 make frontend.start
 
 .PHONY: frontend.logs
 frontend.logs: ; docker logs -f datamesh-frontend
+
+.PHONY: prod
+prod:
+	make frontend.build
+	make frontend.dist
+	make cluster.build
+	make cluster.prodbuild
+	make cluster.start
 
 .PHONY: reset
 reset: ; bash dev.sh reset

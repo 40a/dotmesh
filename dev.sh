@@ -12,8 +12,6 @@ export SERVER_IMAGE=${SERVER_IMAGE:="datamesh-server:latest"}
 export FRONTEND_IMAGE=${FRONTEND_IMAGE:="datamesh-frontend:latest"}
 export DATAMESH_HOME=${DATAMESH_HOME:="~/.datamesh"}
 
-
-
 function cli-build() {
   echo "building datamesh CLI binary"
   cd "${DIR}/cmd/dm" && bash rebuild_docker.sh
@@ -22,6 +20,13 @@ function cli-build() {
 function cluster-build() {
   echo "building datamesh server image: ${SERVER_IMAGE}"
   cd "${DIR}/cmd/datamesh-server" && IMAGE="${SERVER_IMAGE}" NO_PUSH=1 bash rebuild.sh
+}
+
+function cluster-prodbuild() {
+  echo "building production datamesh server image: ${SERVER_IMAGE}"
+  cp -r "${DIR}/frontend/dist" "${DIR}/cmd/datamesh-server/dist"
+  cd "${DIR}/cmd/datamesh-server" && IMAGE="${SERVER_IMAGE}" NO_PUSH=1 bash mergebuild.sh
+  rm -rf "${DIR}/cmd/datamesh-server/dist"
 }
 
 function cluster-start() {
@@ -52,16 +57,9 @@ function frontend-build() {
 }
 
 
-
-function frontend-start() {
-  local flags=""
+function frontend-volumes() {
   local linkedVolumes=""
   declare -a frontend_volumes=("src" "www" "package.json" "webpack.config.js" "toolbox-variables.js" "yarn.lock")
-  if [ -n "${CLI}" ]; then
-    flags=" --rm -ti --entrypoint bash"
-  else
-    flags=" -d"
-  fi
   # always mount these for local development
   for volume in "${frontend_volumes[@]}"
   do
@@ -73,7 +71,17 @@ function frontend-start() {
     linkedVolumes="${linkedVolumes} -v ${DIR}/../templatestack/template-tools:/app/node_modules/template-tools"
     linkedVolumes="${linkedVolumes} -v ${DIR}/../templatestack/template-ui:/app/node_modules/template-ui"
   fi
+  echo "${linkedVolumes}"
+}
 
+function frontend-start() {
+  local flags=""
+  local linkedVolumes=$(frontend-volumes)
+  if [ -n "${CLI}" ]; then
+    flags=" --rm -ti --entrypoint bash"
+  else
+    flags=" -d"
+  fi
   echo "running frontend dev server using ${FRONTEND_IMAGE}"
   docker run ${flags} \
     --name datamesh-frontend \
@@ -90,8 +98,9 @@ function frontend-stop() {
 }
 
 function frontend-dist() {
-  echo "build the production frontend code"
-  docker rm -f datamesh-frontend
+  docker run -it --rm \
+    -v "${DIR}/frontend:/app" \
+    ${FRONTEND_IMAGE} release
 }
 
 function build() {
@@ -102,6 +111,7 @@ function build() {
 
 function reset() {
   dm cluster reset
+  docker rm -f datamesh-frontend
 }
 
 function usage() {
@@ -109,6 +119,7 @@ cat <<EOF
 Usage:
   cli-build            rebuild the dm CLI
   cluster-build        rebuild the server image
+  cluster-prodbuild    rebuild the server image with frontend code
   cluster-start        create a new cluster
   cluster-stop         stop a running cluster
   cluster-upgrade      update a cluster after build-server
@@ -127,6 +138,7 @@ function main() {
   case "$1" in
   cli-build)           shift; cli-build $@;;
   cluster-build)       shift; cluster-build $@;;
+  cluster-prodbuild)   shift; cluster-prodbuild $@;;
   cluster-start)       shift; cluster-start $@;;
   cluster-stop)        shift; cluster-stop $@;;
   cluster-upgrade)     shift; cluster-upgrade $@;;
