@@ -94,7 +94,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -136,27 +135,28 @@ func silentSystem(cmd string, args ...string) error {
 	return c.Run()
 }
 
-func testMarkForCleanup(n int, stamp int64) {
-	for i := 1; i < n+1; i++ {
-		node := fmt.Sprintf("node_%d_%d", stamp, i)
-		err := system("bash", "-c", fmt.Sprintf(
-			`docker exec -t %s bash -c 'touch /CLEAN_ME_UP'`, node,
-		))
-		if err != nil {
-			fmt.Printf("Error marking %s for cleanup: %s, retrying...\n", node, err)
-			time.Sleep(1 * time.Second)
+func testMarkForCleanup(f Federation) {
+	for _, c := range f {
+		for _, n := range c.Nodes {
+			node := n.Container
 			err := system("bash", "-c", fmt.Sprintf(
 				`docker exec -t %s bash -c 'touch /CLEAN_ME_UP'`, node,
 			))
 			if err != nil {
-				fmt.Printf("Error marking %s for cleanup: %s, giving up.\n", node, err)
+				fmt.Printf("Error marking %s for cleanup: %s, retrying...\n", node, err)
+				time.Sleep(1 * time.Second)
+				err := system("bash", "-c", fmt.Sprintf(
+					`docker exec -t %s bash -c 'touch /CLEAN_ME_UP'`, node,
+				))
+				if err != nil {
+					fmt.Printf("Error marking %s for cleanup: %s, giving up.\n", node, err)
+				}
 			}
 		}
 	}
 }
 
-func testSetup(n int, stamp int64) error {
-	// build client once so we can copy it in place later
+func testSetup(f Federation, stamp int64) error {
 	err := system("bash", "-c", `
 		# Create a home for the test pools to live that can have the same path
 		# both from ZFS's perspective and that of the inner container.
@@ -172,10 +172,11 @@ func testSetup(n int, stamp int64) error {
 		return err
 	}
 
-	for i := 1; i < n+1; i++ {
-		node := fmt.Sprintf("node_%d_%d", stamp, i)
-		// XXX the following only works if overlay is working
-		err := system("bash", "-c", fmt.Sprintf(`
+	for i, c := range f {
+		for j := 0; j < c.DesiredNodeCount; j++ {
+			node := nodeName(stamp, i, j)
+			// XXX the following only works if overlay is working
+			err := system("bash", "-c", fmt.Sprintf(`
 			mkdir -p /datamesh-test-pools
 			MOUNTPOINT=/datamesh-test-pools
 			NODE=%s
@@ -201,42 +202,69 @@ func testSetup(n int, stamp int64) error {
 			'
 			docker cp ../binaries/Linux/dm $NODE:/usr/local/bin/dm
 		`, node))
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+			fmt.Printf("=== Started up %s\n", node)
 		}
-		fmt.Printf("=== Started up %s\n", node)
 	}
 	return nil
 }
 
+type N struct {
+	Timestamp  int64
+	ClusterNum string
+	NodeNum    string
+}
+
 func teardownFinishedTestRuns() {
 	cs, err := exec.Command(
-		"docker", "ps", "--filter", "name=^/node_.*$", "--format", "{{.Names}}",
+		"docker", "ps", "--filter", "name=^/cluster_.*$", "--format", "{{.Names}}",
 	).Output()
 	if err != nil {
 		panic(err)
 	}
-	stamps := []int{}
+	stamps := map[int64][]N{}
 	for _, line := range strings.Split(string(cs), "\n") {
 		shrap := strings.Split(line, "_")
-		if len(shrap) > 1 {
-			// node_timestamp_counter
+		if len(shrap) > 4 {
+			// cluster_<timestamp>_<clusterNum>_node_<nodeNum>
 			stamp := shrap[1]
-			i, err := strconv.Atoi(stamp)
+			clusterNum := shrap[2]
+			nodeNum := shrap[4]
+
+			i, err := strconv.ParseInt(stamp, 10, 64)
 			if err != nil {
 				panic(err)
 			}
-			stamps = append(stamps, i)
+			_, ok := stamps[i]
+			if !ok {
+				stamps[i] = []N{}
+			}
+			stamps[i] = append(stamps[i], N{
+				Timestamp:  i,
+				ClusterNum: clusterNum,
+				NodeNum:    nodeNum,
+			})
 		}
 	}
 
-	sort.Ints(stamps)
-	for _, stamp := range stamps {
+	for stamp, ns := range stamps {
 		func() {
-			maxNodesInAnyTest := 2 // XXX Keep this up to date
-			for i := 1; i < maxNodesInAnyTest+1; i++ {
-				node := fmt.Sprintf("node_%d_%d", stamp, i)
+			for _, n := range ns {
+				cn, err := strconv.Atoi(n.ClusterNum)
+				if err != nil {
+					fmt.Printf("can't deduce clusterNum: %s", cn)
+					return
+				}
 
+				nn, err := strconv.Atoi(n.NodeNum)
+				if err != nil {
+					fmt.Printf("can't deduce nodeNum: %s", nn)
+					return
+				}
+
+				node := nodeName(stamp, cn, nn)
 				existsErr := silentSystem("docker", "inspect", node)
 				notExists := false
 				if existsErr != nil {
@@ -245,7 +273,7 @@ func teardownFinishedTestRuns() {
 					notExists = true
 				}
 
-				err := system("docker", "exec", "-i", node, "test", "-e", "/CLEAN_ME_UP")
+				err = system("docker", "exec", "-i", node, "test", "-e", "/CLEAN_ME_UP")
 				if err != nil {
 					fmt.Printf("not cleaning up %s because /CLEAN_ME_UP not found\n", node)
 					if !notExists {
@@ -432,23 +460,15 @@ func TestSingleNode(t *testing.T) {
 	// single node tests
 	teardownFinishedTestRuns()
 
-	startTiming()
-	now := time.Now().UnixNano()
-	err := testSetup(1, now)
-	defer testMarkForCleanup(1, now)
+	f := Federation{NewCluster(1)}
 
+	startTiming()
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
 	if err != nil {
 		t.Error(err)
 	}
-	poolId := fmt.Sprintf("testpool_%d_1", now)
-	node1 := fmt.Sprintf("node_%d_1", now)
-
-	d(t, node1, "dm cluster init "+localImageArgs()+
-		" --use-pool-dir /datamesh-test-pools/"+poolId+
-		" --use-pool-name "+poolId,
-	)
-
-	time.Sleep(time.Second * 5)
+	node1 := f[0].Nodes[0].Container
 
 	// Sub-tests, to reuse common setup code.
 	t.Run("Commit", func(t *testing.T) {
@@ -533,54 +553,18 @@ func TestSingleNode(t *testing.T) {
 func TestTwoNodesSameCluster(t *testing.T) {
 	teardownFinishedTestRuns()
 
+	f := Federation{NewCluster(2)}
+
 	startTiming()
-	now := time.Now().UnixNano()
-	err := testSetup(2, now)
-	defer testMarkForCleanup(2, now)
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
 	if err != nil {
 		t.Error(err)
 	}
 	logTiming("setup")
-	node1 := fmt.Sprintf("node_%d_1", now)
-	node2 := fmt.Sprintf("node_%d_2", now)
-	poolId1 := fmt.Sprintf("testpool_%d_1", now)
-	poolId2 := fmt.Sprintf("testpool_%d_2", now)
 
-	st, err := docker(
-		node1, "dm cluster init "+localImageArgs()+
-			" --use-pool-dir /datamesh-test-pools/"+poolId1+
-			" --use-pool-name "+poolId1,
-	)
-	if err != nil {
-		t.Error(err)
-	}
-	lines := strings.Split(st, "\n")
-	joinUrl := func(lines []string) string {
-		for _, line := range lines {
-			shrap := strings.Fields(line)
-			if len(shrap) > 3 {
-				if shrap[0] == "dm" && shrap[1] == "cluster" && shrap[2] == "join" {
-					return shrap[3]
-				}
-			}
-		}
-		return ""
-	}(lines)
-	if joinUrl == "" {
-		t.Error("unable to find join url in 'dm cluster init' output")
-	}
-	logTiming("init")
-	_, err = docker(node2, fmt.Sprintf(
-		"dm cluster join %s %s %s",
-		localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId2,
-		joinUrl,
-		" --use-pool-name "+poolId2,
-	))
-	if err != nil {
-		t.Error(err)
-	}
-	logTiming("join")
-	dumpTiming()
+	node1 := f[0].Nodes[0].Container
+	node2 := f[0].Nodes[1].Container
 
 	t.Run("Move", func(t *testing.T) {
 		fsname := uniqName()
@@ -592,135 +576,183 @@ func TestTwoNodesSameCluster(t *testing.T) {
 	})
 }
 
-func TestTwoSingleNodeClusters(t *testing.T) {
-	teardownFinishedTestRuns()
+type Node struct {
+	ClusterName string
+	Container   string
+	IP          string
+	ApiKey      string
+}
 
-	startTiming()
-	now := time.Now().UnixNano()
-	err := testSetup(2, now)
-	defer testMarkForCleanup(2, now)
-	if err != nil {
-		t.Error(err)
-	}
-	logTiming("setup")
+type Cluster struct {
+	DesiredNodeCount int
+	Nodes            []Node
+}
 
-	node1 := fmt.Sprintf("node_%d_1", now)
-	node2 := fmt.Sprintf("node_%d_2", now)
-	poolId1 := fmt.Sprintf("testpool_%d_1", now)
-	poolId2 := fmt.Sprintf("testpool_%d_2", now)
+type Pair struct {
+	From Node
+	To   Node
+}
 
-	_, err = docker(
-		node1, "dm cluster init "+localImageArgs()+
-			" --use-pool-dir /datamesh-test-pools/"+poolId1+
-			" --use-pool-name "+poolId1,
-	)
-	if err != nil {
-		t.Error(err)
-	}
-	logTiming("init1")
+func NewCluster(desiredNodeCount int) *Cluster {
+	return &Cluster{DesiredNodeCount: desiredNodeCount}
+}
 
-	_, err = docker(
-		node2, "dm cluster init "+localImageArgs()+
-			" --use-pool-dir /datamesh-test-pools/"+poolId2+
-			" --use-pool-name "+poolId2,
-	)
-	if err != nil {
-		t.Error(err)
-	}
-	logTiming("init2")
+type Federation []*Cluster
 
-	node1IP := s(t,
-		node1,
+func nodeName(now int64, i, j int) string {
+	return fmt.Sprintf("cluster_%d_%d_node_%d", now, i, j)
+}
+
+func poolId(now int64, i, j int) string {
+	return fmt.Sprintf("testpool_%d_%d_node_%d", now, i, j)
+}
+
+func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Node {
+	nodeIP := s(t,
+		nodeName(now, i, j),
 		`ifconfig eth0 | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1`,
 	)
-	fmt.Printf("IP of node1: %s\n", node1IP)
-
 	config := s(t,
-		node1,
+		nodeName(now, i, j),
 		"cat /root/.datamesh/config",
 	)
-	fmt.Printf("dm config on node1: %s\n", config)
+	fmt.Printf("dm config on %s: %s\n", nodeName(now, i, j), config)
 
 	m := struct {
 		Remotes struct{ Local struct{ ApiKey string } }
 	}{}
 	json.Unmarshal([]byte(config), &m)
 
-	type Node struct {
-		Name      string
-		Container string
-		IP        string
-		ApiKey    string
+	return Node{
+		ClusterName: clusterName,
+		Container:   nodeName(now, i, j),
+		IP:          nodeIP,
+		ApiKey:      m.Remotes.Local.ApiKey,
 	}
-	type Pair struct {
-		From Node
-		To   Node
+}
+
+func (f Federation) Start(t *testing.T) error {
+	teardownFinishedTestRuns()
+
+	startTiming()
+	now := time.Now().UnixNano()
+	err := testSetup(f, now)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		return err
 	}
-	node1node := Node{
-		Name:      "node1",
-		Container: node1,
-		IP:        node1IP,
-		ApiKey:    m.Remotes.Local.ApiKey,
-	}
+	logTiming("setup")
 
-	node2IP := s(t,
-		node2,
-		`ifconfig eth0 | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1`,
-	)
-	fmt.Printf("IP of node2: %s\n", node2IP)
+	for i, c := range f {
+		// init the first node in the cluster, join the rest
+		if c.DesiredNodeCount == 0 {
+			panic("no such thing as a zero-node cluster")
+		}
+		st, err := docker(
+			nodeName(now, i, 0), "dm cluster init "+localImageArgs()+
+				" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
+				" --use-pool-name "+poolId(now, i, 0),
+		)
+		if err != nil {
+			return err
+		}
+		clusterName := fmt.Sprintf("cluster_%d", i)
+		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
 
-	config = s(t,
-		node2,
-		"cat /root/.datamesh/config",
-	)
-	fmt.Printf("dm config on node2: %s\n", config)
-
-	// re-use m
-	json.Unmarshal([]byte(config), &m)
-	node2node := Node{
-		Name:      "node2",
-		Container: node2,
-		IP:        node2IP,
-		ApiKey:    m.Remotes.Local.ApiKey,
-	}
-
-	remoteAdd := func(t *testing.T) {
-		for _, pair := range []Pair{
-			Pair{From: node1node, To: node2node},
-			Pair{From: node2node, To: node1node}} {
-			found := false
-			for _, remote := range strings.Split(s(t, pair.From.Container, "dm remote"), "\n") {
-				if remote == pair.To.Name {
-					found = true
+		lines := strings.Split(st, "\n")
+		joinUrl := func(lines []string) string {
+			for _, line := range lines {
+				shrap := strings.Fields(line)
+				if len(shrap) > 3 {
+					if shrap[0] == "dm" && shrap[1] == "cluster" && shrap[2] == "join" {
+						return shrap[3]
+					}
 				}
 			}
-			if !found {
-				d(t, pair.From.Container, fmt.Sprintf(
-					"echo %s |dm remote add %s admin@%s",
-					pair.To.ApiKey,
-					pair.To.Name,
-					pair.To.IP,
-				))
-				res := s(t, pair.From.Container, "dm remote -v")
-				if !strings.Contains(res, pair.To.Name) {
-					t.Errorf("can't find %s in %s's remote config", pair.To.Name, pair.From.Name)
-				}
-				d(t, pair.From.Container, "dm remote switch local")
+			return ""
+		}(lines)
+		if joinUrl == "" {
+			return fmt.Errorf("unable to find join url in 'dm cluster init' output")
+		}
+		logTiming("init_" + poolId(now, i, 0))
+		for j := 1; j < c.DesiredNodeCount; j++ {
+			// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
+			// node).
+			_, err = docker(nodeName(now, i, j), fmt.Sprintf(
+				"dm cluster join %s %s %s",
+				localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, j),
+				joinUrl,
+				" --use-pool-name "+poolId(now, i, j),
+			))
+			if err != nil {
+				return err
+			}
+			c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
+
+			logTiming("join_" + poolId(now, i, j))
+		}
+	}
+	// TODO refactor the following so that each node has one other node on the
+	// other cluster as a remote named 'cluster0' or 'cluster1', etc.
+
+	// for each node in each cluster, add remotes for all the other clusters
+	// O(n^3)
+	pairs := []Pair{}
+	for _, c := range f {
+		for _, node := range c.Nodes {
+			for _, otherCluster := range f {
+				first := otherCluster.Nodes[0]
+				pairs = append(pairs, Pair{
+					From: node,
+					To:   first,
+				})
 			}
 		}
 	}
+	for _, pair := range pairs {
+		found := false
+		for _, remote := range strings.Split(s(t, pair.From.Container, "dm remote"), "\n") {
+			if remote == pair.To.ClusterName {
+				found = true
+			}
+		}
+		if !found {
+			d(t, pair.From.Container, fmt.Sprintf(
+				"echo %s |dm remote add %s admin@%s",
+				pair.To.ApiKey,
+				pair.To.ClusterName,
+				pair.To.IP,
+			))
+			res := s(t, pair.From.Container, "dm remote -v")
+			if !strings.Contains(res, pair.To.ClusterName) {
+				t.Errorf("can't find %s in %s's remote config", pair.To.ClusterName, pair.From.ClusterName)
+			}
+			d(t, pair.From.Container, "dm remote switch local")
+		}
+	}
+	return nil
+}
 
-	t.Run("RemoteAdd", func(t *testing.T) {
-		remoteAdd(t)
-	})
+func TestTwoSingleNodeClusters(t *testing.T) {
+
+	f := Federation{
+		NewCluster(1), // cluster_0_node_0
+		NewCluster(1), // cluster_1_node_0
+	}
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		t.Error(err)
+	}
+	node1 := f[0].Nodes[0].Container
+	node2 := f[1].Nodes[0].Container
 
 	t.Run("PushCommitBranchExtantBase", func(t *testing.T) {
-		remoteAdd(t)
 		fsname := uniqName()
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -729,7 +761,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 		// test incremental push
 		d(t, node2, "dm commit -m 'again'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		resp = s(t, node1, "dm log")
 		if !strings.Contains(resp, "again") {
@@ -738,7 +770,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// test pushing branch with extant base
 		d(t, node2, "dm checkout -b newbranch")
 		d(t, node2, "dm commit -m 'branchy'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm checkout newbranch")
 		resp = s(t, node1, "dm log")
@@ -747,7 +779,6 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 	})
 	t.Run("PushCommitBranchNoExtantBase", func(t *testing.T) {
-		remoteAdd(t)
 		fsname := uniqName()
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		// test pushing branch with no base on remote
@@ -759,7 +790,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		d(t, node2, "dm commit -m 'branchy2'")
 		d(t, node2, "dm checkout -b newbranch3")
 		d(t, node2, "dm commit -m 'branchy3'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		d(t, node1, "dm checkout newbranch3")
@@ -769,12 +800,11 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 	})
 	t.Run("DirtyDetected", func(t *testing.T) {
-		remoteAdd(t)
 		fsname := uniqName()
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -800,19 +830,18 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 
 		// test incremental push
 		d(t, node2, "dm commit -m 'again'")
-		result := s(t, node2, "dm push node1 || true") // an error code is ok
+		result := s(t, node2, "dm push cluster_0 || true") // an error code is ok
 
 		if !strings.Contains(result, "uncommitted") {
 			t.Error("pushing didn't fail when there were known uncommited changes on the peer")
 		}
 	})
 	t.Run("DirtyImmediate", func(t *testing.T) {
-		remoteAdd(t)
 		fsname := uniqName()
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -824,7 +853,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 
 		// test incremental push
 		d(t, node2, "dm commit -m 'again'")
-		result := s(t, node2, "dm push node1 || true") // an error code is ok
+		result := s(t, node2, "dm push cluster_0 || true") // an error code is ok
 
 		if !strings.Contains(result, "has been modified") {
 			t.Error(
@@ -833,12 +862,11 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 	})
 	t.Run("Diverged", func(t *testing.T) {
-		remoteAdd(t)
 		fsname := uniqName()
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -850,7 +878,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 
 		// test incremental push
 		d(t, node2, "dm commit -m 'node2 commit'")
-		result := s(t, node2, "dm push node1 || true") // an error code is ok
+		result := s(t, node2, "dm push cluster_0 || true") // an error code is ok
 
 		if !strings.Contains(result, "diverged") && !strings.Contains(result, "hello") {
 			t.Error(
@@ -859,7 +887,6 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 	})
 	t.Run("ResetAfterPushThenPushMySQL", func(t *testing.T) {
-		remoteAdd(t)
 		fsname := uniqName()
 		d(t, node2, dockerRun(
 			fsname, "-d -e MYSQL_ROOT_PASSWORD=secret", "mysql:5.7.17", "/var/lib/mysql",
@@ -867,7 +894,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		time.Sleep(10 * time.Second)
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -884,7 +911,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		if strings.Contains(resp, "node1 commit") {
 			t.Error("found 'node1 commit' in dm log when i shouldn't have")
 		}
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 		resp = s(t, node1, "dm log")
 		if !strings.Contains(resp, "node2 commit") {
 			t.Error("'node2 commit' didn't make it over to node1 after reset-and-push")
@@ -905,7 +932,6 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// to their volume.
 	})
 	t.Run("Clone", func(t *testing.T) {
-		remoteAdd(t)
 		fsname := uniqName()
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
@@ -915,7 +941,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// new filesystem with the same name. if the same named filesystem
 		// already exists, it should error (and instruct the user to 'dm switch
 		// foo; dm pull foo' instead).
-		d(t, node1, "dm clone node2 "+fsname)
+		d(t, node1, "dm clone cluster_1 "+fsname)
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
 		if !strings.Contains(resp, "hello") {
@@ -924,7 +950,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 		// test incremental pull
 		d(t, node2, "dm commit -m 'again'")
-		d(t, node1, "dm pull node2 "+fsname)
+		d(t, node1, "dm pull cluster_1 "+fsname)
 
 		resp = s(t, node1, "dm log")
 		if !strings.Contains(resp, "again") {
@@ -933,7 +959,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// test pulling branch with extant base
 		d(t, node2, "dm checkout -b newbranch")
 		d(t, node2, "dm commit -m 'branchy'")
-		d(t, node1, "dm pull node2 "+fsname+" newbranch")
+		d(t, node1, "dm pull cluster_1 "+fsname+" newbranch")
 
 		d(t, node1, "dm checkout newbranch")
 		resp = s(t, node1, "dm log")
