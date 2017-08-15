@@ -17,13 +17,6 @@ sync_github:
         # this is a comment
         - git push github $CI_BUILD_REF_NAME
 
-cleanup_frontend:
-    # push all commits to all branches to github for safe keeping
-    stage: sync
-    script:
-        - cd frontend
-        - sh ./cleanbuild.sh
-
 before_script:
     - mkdir -p gopath
     - export GOPATH=$(pwd)/gopath
@@ -71,7 +64,7 @@ build_server:
             - cmd/datamesh-server/target
         expire_in: 1 week
 
-build_frontend:
+build_frontend2:
     stage: build
     tags:
         - ubuntu-16.10
