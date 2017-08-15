@@ -38,6 +38,9 @@ const config = {
       menuOpen: false
     }
   },
+  images: {
+    appbar: '/images/datamesh-on-dark.png'
+  },
   menu: {
     guest: [
       ['/', 'Home', icons.dashboard],
