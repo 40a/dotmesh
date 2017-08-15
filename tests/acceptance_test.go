@@ -744,15 +744,15 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	node1 := f[0].Nodes[0].IP
-	node2 := f[1].Nodes[0].IP
+	node1 := f[0].Nodes[0].Container
+	node2 := f[1].Nodes[0].Container
 
 	t.Run("PushCommitBranchExtantBase", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -761,7 +761,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 		// test incremental push
 		d(t, node2, "dm commit -m 'again'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		resp = s(t, node1, "dm log")
 		if !strings.Contains(resp, "again") {
@@ -770,7 +770,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// test pushing branch with extant base
 		d(t, node2, "dm checkout -b newbranch")
 		d(t, node2, "dm commit -m 'branchy'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm checkout newbranch")
 		resp = s(t, node1, "dm log")
@@ -790,7 +790,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		d(t, node2, "dm commit -m 'branchy2'")
 		d(t, node2, "dm checkout -b newbranch3")
 		d(t, node2, "dm commit -m 'branchy3'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		d(t, node1, "dm checkout newbranch3")
@@ -804,7 +804,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -830,7 +830,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 
 		// test incremental push
 		d(t, node2, "dm commit -m 'again'")
-		result := s(t, node2, "dm push node1 || true") // an error code is ok
+		result := s(t, node2, "dm push cluster_0 || true") // an error code is ok
 
 		if !strings.Contains(result, "uncommitted") {
 			t.Error("pushing didn't fail when there were known uncommited changes on the peer")
@@ -841,7 +841,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -853,7 +853,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 
 		// test incremental push
 		d(t, node2, "dm commit -m 'again'")
-		result := s(t, node2, "dm push node1 || true") // an error code is ok
+		result := s(t, node2, "dm push cluster_0 || true") // an error code is ok
 
 		if !strings.Contains(result, "has been modified") {
 			t.Error(
@@ -866,7 +866,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -878,7 +878,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 
 		// test incremental push
 		d(t, node2, "dm commit -m 'node2 commit'")
-		result := s(t, node2, "dm push node1 || true") // an error code is ok
+		result := s(t, node2, "dm push cluster_0 || true") // an error code is ok
 
 		if !strings.Contains(result, "diverged") && !strings.Contains(result, "hello") {
 			t.Error(
@@ -894,7 +894,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		time.Sleep(10 * time.Second)
 		d(t, node2, "dm switch "+fsname)
 		d(t, node2, "dm commit -m 'hello'")
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
@@ -911,7 +911,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		if strings.Contains(resp, "node1 commit") {
 			t.Error("found 'node1 commit' in dm log when i shouldn't have")
 		}
-		d(t, node2, "dm push node1")
+		d(t, node2, "dm push cluster_0")
 		resp = s(t, node1, "dm log")
 		if !strings.Contains(resp, "node2 commit") {
 			t.Error("'node2 commit' didn't make it over to node1 after reset-and-push")
@@ -941,7 +941,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// new filesystem with the same name. if the same named filesystem
 		// already exists, it should error (and instruct the user to 'dm switch
 		// foo; dm pull foo' instead).
-		d(t, node1, "dm clone node2 "+fsname)
+		d(t, node1, "dm clone cluster_1 "+fsname)
 		d(t, node1, "dm switch "+fsname)
 		resp := s(t, node1, "dm log")
 		if !strings.Contains(resp, "hello") {
@@ -950,7 +950,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 		// test incremental pull
 		d(t, node2, "dm commit -m 'again'")
-		d(t, node1, "dm pull node2 "+fsname)
+		d(t, node1, "dm pull cluster_1 "+fsname)
 
 		resp = s(t, node1, "dm log")
 		if !strings.Contains(resp, "again") {
@@ -959,7 +959,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// test pulling branch with extant base
 		d(t, node2, "dm checkout -b newbranch")
 		d(t, node2, "dm commit -m 'branchy'")
-		d(t, node1, "dm pull node2 "+fsname+" newbranch")
+		d(t, node1, "dm pull cluster_1 "+fsname+" newbranch")
 
 		d(t, node1, "dm checkout newbranch")
 		resp = s(t, node1, "dm log")
