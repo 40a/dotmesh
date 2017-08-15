@@ -83,11 +83,13 @@ const AuthSagas = (opts = {}) => {
     }
     
     // run the login api
-    const { user, error } = yield call(apis.login.loader, {
+    const result = yield call(apis.login.loader, {
       credentials: sendCredentials
     })
+    const error = result.error
+    const loggedIn = result.answer
 
-    if(error) {
+    if(error || loggedIn !== true) {
       yield put(actions.router.hook('authLoginError', 'incorrect details'))
       return
     }
@@ -99,8 +101,8 @@ const AuthSagas = (opts = {}) => {
       }
 
       // save the credentials to local storage so upon re-opening browser we are authenticated
-      yield put(actions.router.hook('authLoginSuccess', user))
-      return user
+      yield put(actions.router.hook('authLoginSuccess', credentials))
+      return credentials
     }
   }
 
@@ -123,14 +125,19 @@ const AuthSagas = (opts = {}) => {
     }
 
     // run the register api
-    const { user, error } = yield call(apis.register.loader, sendCredentials)
+    const result = yield call(apis.register.loader, sendCredentials)
+    const error = result.error
+    const user = result.answer
 
     if(error) {
       yield put(actions.router.hook('authRegisterError', error))
       return
     }
+    else if(!user || !user.Created) {
+      yield put(actions.router.hook('authRegisterError', 'user was not created'))
+      return
+    }
     else {
-      
       yield call(login, credentials)
       yield put(actions.router.hook('authRegisterSuccess', user))
       return user
