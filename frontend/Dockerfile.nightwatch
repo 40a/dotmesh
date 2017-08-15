@@ -1,4 +1,0 @@
-FROM binocarlos/nightwatch:v15
-RUN rm -rf /home/node/specs
-ADD ./test/specs /home/node/specs
-ADD ./test/lib /home/node/lib

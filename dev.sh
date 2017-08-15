@@ -21,37 +21,6 @@ export NIGHTWATCH_NAME=${NIGHTWATCH_NAME:="datamesh-nightwatch"}
 export DATAMESH_SERVER_NAME=${DATAMESH_SERVER_NAME:="datamesh-server-inner"}
 export DATAMESH_SERVER_PORT=${DATAMESH_SERVER_PORT:="6969"}
 
-
-function chromedriver-start() {
-  docker run -d \
-    --name ${CHROME_DRIVER_NAME} \
-    -e VNC_ENABLED=true \
-    -e EXPOSE_X11=true \
-    ${CHROME_DRIVER_IMAGE}
-}
-
-function chromedriver-stop() {
-  docker rm -f ${CHROME_DRIVER_NAME} || true
-}
-
-function frontend-test-build() {
-  docker build -t ${NIGHTWATCH_IMAGE} -f ${DIR}/frontend/Dockerfile.nightwatch ${DIR}/frontend
-}
-
-function frontend-test() {
-  docker run --rm \
-    --name ${NIGHTWATCH_NAME} \
-    --link ${CHROME_DRIVER_NAME}:chromedriver \
-    --link ${DATAMESH_SERVER_NAME}:server \
-    -e "LAUNCH_URL=server:${DATAMESH_SERVER_PORT}" \
-    -e "WAIT_FOR_HOSTS=server:${DATAMESH_SERVER_PORT} chromedriver:4444 chromedriver:6060" \
-    -v "${DIR}/frontend/.media/screenshots:/home/node/screenshots" \
-    -v "${DIR}/frontend/.media/videos:/home/node/videos" \
-    -v "${DIR}/frontend/test/specs:/home/node/specs" \
-    -v "${DIR}/frontend/test/lib:/home/node/lib" \
-    ${NIGHTWATCH_IMAGE} "${@}"
-}
-
 function cli-build() {
   echo "building datamesh CLI binary"
   cd "${DIR}/cmd/dm" && bash rebuild_docker.sh
@@ -141,6 +110,39 @@ function frontend-dist() {
   docker run -it --rm \
     -v "${DIR}/frontend:/app" \
     ${FRONTEND_IMAGE} release
+}
+
+
+function frontend-test-build() {
+  docker build -t ${NIGHTWATCH_IMAGE} -f ${DIR}/frontend/test/Dockerfile ${DIR}/frontend/test
+}
+
+function frontend-test() {
+  frontend-test-build
+  rm -rf ${DIR}/frontend/.media
+  docker run --rm \
+    --name ${NIGHTWATCH_NAME} \
+    --link "${DATAMESH_SERVER_NAME}:server" \
+    --link "${CHROME_DRIVER_NAME}:chromedriver" \
+    -e "LAUNCH_URL=server:${DATAMESH_SERVER_PORT}" \
+    -e "SELENIUM_HOST=chromedriver" \
+    -e "WAIT_FOR_HOSTS=server:${DATAMESH_SERVER_PORT} chromedriver:4444 chromedriver:6060" \
+    -v "${DIR}/frontend/.media/screenshots:/home/node/screenshots" \
+    -v "${DIR}/frontend/.media/videos:/home/node/videos" \
+    ${NIGHTWATCH_IMAGE} "${@}"
+}
+
+function chromedriver-start() {
+  docker run -d \
+    --name ${CHROME_DRIVER_NAME} \
+    --link "${DATAMESH_SERVER_NAME}:server" \
+    -e VNC_ENABLED=true \
+    -e EXPOSE_X11=true \
+    ${CHROME_DRIVER_IMAGE}
+}
+
+function chromedriver-stop() {
+  docker rm -f ${CHROME_DRIVER_NAME} || true
 }
 
 function build() {
