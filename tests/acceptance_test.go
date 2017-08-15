@@ -156,12 +156,6 @@ func testMarkForCleanup(f Federation) {
 	}
 }
 
-// this starts a chromedriver container
-// it expects a datamesh-server-inner to be running
-func startChromeDriver() error {
-
-}
-
 func testSetup(f Federation, stamp int64) error {
 	err := system("bash", "-c", `
 		# Create a home for the test pools to live that can have the same path
