@@ -27,6 +27,13 @@ type WebServer struct {
 	state *InMemoryState
 }
 
+func folderExists(path string) (bool, error) {
+    _, err := os.Stat(path)
+    if err == nil { return true, nil }
+    if os.IsNotExist(err) { return false, nil }
+    return true, err
+}
+
 func (s *InMemoryState) NewWebServer() http.Handler {
 	return WebServer{
 		state: s,
@@ -240,7 +247,13 @@ func (state *InMemoryState) runServer() {
 	// TODO: we need a way for /admin/some/sub/route to return frontendStaticFolder + '/admin/index.html'
 	// this is to account for HTML5 routing which is the same index.html with lots of sub-routes the browser will sort out
 	frontendStaticFolder := os.Getenv("FRONTEND_STATIC_FOLDER")
-	if frontendStaticFolder != "" {
+	if frontendStaticFolder == "" {
+		frontendStaticFolder = "/www"
+	}
+
+	exists, err := folderExists(frontendStaticFolder)
+
+	if exists {
 		log.Printf(
 			"Serving static frontend files from %s",
 			frontendStaticFolder,
