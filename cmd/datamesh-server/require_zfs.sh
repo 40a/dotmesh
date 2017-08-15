@@ -177,7 +177,6 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -l traefik.frontend.rule=Host:cloud.datamesh.io \
     $net \
     $link \
-    --link datamesh-etcd:datamesh-etcd \
     -e "PATH=$PATH" \
     -e "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \
     -e "MOUNT_PREFIX=$MOUNTPOINT" \
@@ -188,7 +187,6 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -e "HOMEPAGE_URL=$HOMEPAGE_URL" \
     -e "TRACE_ADDR=$TRACE_ADDR" \
     -e "DATAMESH_ETCD_ENDPOINT=$DATAMESH_ETCD_ENDPOINT" \
-    -e "FRONTEND_STATIC_FOLDER=$FRONTEND_STATIC_FOLDER" \
     $secret \
     $log_opts \
     $pki_volume_mount \
