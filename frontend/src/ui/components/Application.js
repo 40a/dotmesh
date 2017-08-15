@@ -5,16 +5,12 @@ import AppBar from 'react-toolbox/lib/app_bar'
 import ListMenu from 'template-ui/lib/components/ListMenu'
 import IconMenu from 'template-ui/lib/components/IconMenu'
 
+import config from '../config'
+
 import appBarTheme from './theme/appBar.css'
 
 class ApplicationComponent extends Component {
   render() {
-    if(!this.props.initialized) {
-      return (
-        <div>loading...</div>
-      )
-    }
-
     const bodyScroll = typeof(this.props.autoScroll) == 'boolean' ?
       !this.props.autoScroll :
       false
@@ -36,7 +32,7 @@ class ApplicationComponent extends Component {
     const title = (
       <div className={ appBarTheme.title } onClick={ this.props.toggleMenu }>
         <div className={ appBarTheme.titleContent }>
-          <img src="/images/datamesh-on-dark.png" />
+          <img src={ config.images.appbar } />
           <div>
             { this.props.title }
           </div>
@@ -64,7 +60,13 @@ class ApplicationComponent extends Component {
           { appbarMenu }
         </AppBar>
         <Panel bodyScroll={ bodyScroll }>
-          { this.props.children }
+          {
+            this.props.initialized ?
+              this.props.children : 
+              (
+                <div>loading...</div>
+              ) 
+          }
         </Panel>
       </Layout>
     )
