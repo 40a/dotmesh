@@ -12,6 +12,46 @@ export SERVER_IMAGE=${SERVER_IMAGE:="datamesh-server:latest"}
 export FRONTEND_IMAGE=${FRONTEND_IMAGE:="datamesh-frontend:latest"}
 export DATAMESH_HOME=${DATAMESH_HOME:="~/.datamesh"}
 
+export CHROME_DRIVER_IMAGE=${CHROME_DRIVER_IMAGE:="blueimp/chromedriver"}
+export CHROME_DRIVER_NAME=${CHROME_DRIVER_NAME:="datamesh-chromedriver"}
+
+export NIGHTWATCH_IMAGE=${NIGHTWATCH_IMAGE:="datamesh-nightwatch"}
+export NIGHTWATCH_NAME=${NIGHTWATCH_NAME:="datamesh-nightwatch"}
+
+export DATAMESH_SERVER_NAME=${DATAMESH_SERVER_NAME:="datamesh-server-inner"}
+export DATAMESH_SERVER_PORT=${DATAMESH_SERVER_PORT:="6969"}
+
+
+function chromedriver-start() {
+  docker run -d \
+    --name ${CHROME_DRIVER_NAME} \
+    -e VNC_ENABLED=true \
+    -e EXPOSE_X11=true \
+    ${CHROME_DRIVER_IMAGE}
+}
+
+function chromedriver-stop() {
+  docker rm -f ${CHROME_DRIVER_NAME} || true
+}
+
+function frontend-test-build() {
+  docker build -t ${NIGHTWATCH_IMAGE} -f ${DIR}/frontend/Dockerfile.nightwatch ${DIR}/frontend
+}
+
+function frontend-test() {
+  docker run --rm \
+    --name ${NIGHTWATCH_NAME} \
+    --link ${CHROME_DRIVER_NAME}:chromedriver \
+    --link ${DATAMESH_SERVER_NAME}:server \
+    -e "LAUNCH_URL=server:${DATAMESH_SERVER_PORT}" \
+    -e "WAIT_FOR_HOSTS=server:${DATAMESH_SERVER_PORT} chromedriver:4444 chromedriver:6060" \
+    -v "${DIR}/frontend/.media/screenshots:/home/node/screenshots" \
+    -v "${DIR}/frontend/.media/videos:/home/node/videos" \
+    -v "${DIR}/frontend/test/specs:/home/node/specs" \
+    -v "${DIR}/frontend/test/lib:/home/node/lib" \
+    ${NIGHTWATCH_IMAGE} "${@}"
+}
+
 function cli-build() {
   echo "building datamesh CLI binary"
   cd "${DIR}/cmd/dm" && bash rebuild_docker.sh
@@ -111,7 +151,7 @@ function build() {
 
 function reset() {
   dm cluster reset
-  docker rm -f datamesh-frontend
+  docker rm -f datamesh-frontend || true
 }
 
 function usage() {
@@ -123,10 +163,14 @@ Usage:
   cluster-start        create a new cluster
   cluster-stop         stop a running cluster
   cluster-upgrade      update a cluster after build-server
+  chromedriver-start   start chromedriver
+  chromedriver-stop    stop chromedriver
   frontend-build       rebuild the frontend image
   frontend-start       start the frontend dev container
   frontend-stop        stop the frontend dev container
   frontend-dist        export the production build of the frontend
+  frontend-test-build  build the frontend test image
+  frontend-test        run the frontend tests
   build                rebuild all images
   reset                reset the cluster
   help                 display this message
@@ -142,6 +186,10 @@ function main() {
   cluster-start)       shift; cluster-start $@;;
   cluster-stop)        shift; cluster-stop $@;;
   cluster-upgrade)     shift; cluster-upgrade $@;;
+  chromedriver-start)  shift; chromedriver-start $@;;
+  chromedriver-stop)   shift; chromedriver-stop $@;;
+  frontend-test-build) shift; frontend-test-build $@;;
+  frontend-test)       shift; frontend-test $@;;
   frontend-build)      shift; frontend-build $@;;
   frontend-start)      shift; frontend-start $@;;
   frontend-stop)       shift; frontend-stop $@;;

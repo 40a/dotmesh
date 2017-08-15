@@ -36,6 +36,12 @@ frontend.stop: ; bash dev.sh frontend-stop
 .PHONY: frontend.dist
 frontend.dist: ; bash dev.sh frontend-dist
 
+.PHONY: frontend.test.build
+frontend.test.build: ; bash dev.sh frontend-test-build
+
+.PHONY: frontend.test
+frontend.test: ; bash dev.sh frontend-test
+
 .PHONY: frontend.dev
 frontend.dev: ; CLI=1 make frontend.start
 
@@ -44,6 +50,12 @@ frontend.link: ; CLI=1 LINKMODULES=1 make frontend.start
 
 .PHONY: frontend.logs
 frontend.logs: ; docker logs -f datamesh-frontend
+
+.PHONY: chromedriver.start
+chromedriver.start: ; bash dev.sh chromedriver-start
+
+.PHONY: chromedriver.stop
+chromedriver.stop: ; bash dev.sh chromedriver-stop
 
 .PHONY: prod
 prod:

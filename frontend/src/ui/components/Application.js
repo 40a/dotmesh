@@ -33,7 +33,7 @@ class ApplicationComponent extends Component {
       <div className={ appBarTheme.title } onClick={ this.props.toggleMenu }>
         <div className={ appBarTheme.titleContent }>
           <img src={ config.images.appbar } />
-          <div>
+          <div id="appBarTitle">
             { this.props.title }
           </div>
         </div>
