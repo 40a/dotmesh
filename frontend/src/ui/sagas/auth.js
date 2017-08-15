@@ -66,12 +66,12 @@ const AuthSagas = (opts = {}) => {
   function* initialize() {
     const cachedCredentials = loadCachedCredentials()
     if(cachedCredentials) {
-      yield call(login, cachedCredentials)
+      yield call(login, cachedCredentials, true)
     }
   }
 
   // given some credentials - login
-  function* login(credentials) {
+  function* login(credentials, headless) {
     if(!credentials) throw new Error('credentials required for login saga')
 
     // save the credentials to the store
@@ -90,7 +90,9 @@ const AuthSagas = (opts = {}) => {
     const loggedIn = result.answer
 
     if(error || loggedIn !== true) {
-      yield put(actions.router.hook('authLoginError', 'incorrect details'))
+      if(!headless) {
+        yield put(actions.router.hook('authLoginError', 'incorrect details'))  
+      }
       return
     }
     else {
@@ -100,8 +102,11 @@ const AuthSagas = (opts = {}) => {
         saveCachedCredentials(sendCredentials)
       }
 
-      // save the credentials to local storage so upon re-opening browser we are authenticated
-      yield put(actions.router.hook('authLoginSuccess', credentials))
+      if(!headless) {
+        // save the credentials to local storage so upon re-opening browser we are authenticated
+        yield put(actions.router.hook('authLoginSuccess', credentials))  
+      }
+      
       return credentials
     }
   }
