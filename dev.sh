@@ -141,8 +141,8 @@ function frontend-test() {
     -e "WAIT_FOR_HOSTS=server:${linkport} chromedriver:4444 chromedriver:6060" \
     -v "${DIR}/frontend/.media/screenshots:/home/node/screenshots" \
     -v "${DIR}/frontend/.media/videos:/home/node/videos" \
-    -v "${DIR}/frontend/test/specs:/home/node/test/specs" \
-    -v "${DIR}/frontend/test/lib:/home/node/test/lib" \
+    -v "${DIR}/frontend/test/specs:/home/node/specs" \
+    -v "${DIR}/frontend/test/lib:/home/node/lib" \
     ${NIGHTWATCH_IMAGE}
 }
 

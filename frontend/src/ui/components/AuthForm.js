@@ -8,7 +8,7 @@ import colors from './theme/colors.css'
 class AuthForm extends Component {
   render() {
     return (
-      <div>
+      <div className={this.props.id}>
         <FormWrapper
           title={ this.props.title }
           submitTitle='Submit'

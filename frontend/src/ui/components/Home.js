@@ -14,6 +14,7 @@ class Home extends Component {
           </Col>
           <Col xs={12} className={ spacing.marginTop }>
             <LinkButton
+              className='homePageRegisterLink'
               label='Register'
               primary
               raised
@@ -22,6 +23,7 @@ class Home extends Component {
           </Col>
           <Col xs={12} className={ spacing.marginTop }>
             <LinkButton
+              className='homePageLoginLink'
               label='Login'
               primary
               raised

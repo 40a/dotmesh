@@ -7,6 +7,12 @@ module.exports = {
   elements: {
     title: {
       selector: 'header #appBarTitle'
+    },
+    registerLink: {
+      selector: '.homePageRegisterLink'
+    },
+    loginLink: {
+      selector: '.homePageLoginLink'
     }
   }
 }

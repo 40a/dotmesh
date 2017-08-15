@@ -10,6 +10,7 @@ class LinkButton extends Component {
   render() {
     return (
       <Button
+        className={ this.props.className }
         label={ this.props.label }
         primary={ this.props.primary }
         raised={ this.props.raised }

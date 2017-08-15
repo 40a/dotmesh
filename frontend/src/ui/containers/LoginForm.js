@@ -17,6 +17,7 @@ class LoginFormContainer extends Component {
     return (
       <AuthForm
         {...this.props}
+        id='RegisterForm'
         title='Login'
         link='register'
         fields={ <Fields /> }
