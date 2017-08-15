@@ -7,3 +7,10 @@
 .yellow {
   color: #ff9800
 }
+.grey {
+  color: #999;
+}
+.link {
+  text-decoration: underline;
+  color: #cc4400;
+}
