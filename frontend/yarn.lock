@@ -4383,9 +4383,9 @@ template-tools@^1.0.1, template-tools@^1.1.0:
     moment "^2.18.1"
     moment-range "^3.0.3"
 
-template-ui@^1.1.7:
-  version "1.1.7"
-  resolved "https://registry.yarnpkg.com/template-ui/-/template-ui-1.1.7.tgz#207a234a32df590a6ac55988e08bc5033cdd4658"
+template-ui@^1.1.8:
+  version "1.1.8"
+  resolved "https://registry.yarnpkg.com/template-ui/-/template-ui-1.1.8.tgz#e658408f538e40933705dc006273339bfd872471"
   dependencies:
     axios "^0.15.3"
     immutability-helper "^2.0.0"
