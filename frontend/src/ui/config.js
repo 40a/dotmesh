@@ -20,7 +20,9 @@ const icons = {
   folder: 'folder',
   folderadd: 'create_new_folder',
   settings: 'settings',
-  search: 'search'
+  search: 'search',
+  disk: 'storage',
+  server: 'computer'
 }
 
 const config = {
@@ -53,6 +55,8 @@ const config = {
     ],
     user: [
       ['/dashboard', 'Dashboard', icons.dashboard],
+      ['/volumes', 'Volumes', icons.disk],
+      ['/servers', 'Servers', icons.server],
       ['-'],
       ['/help', 'Help', icons.help],
       ['-'],

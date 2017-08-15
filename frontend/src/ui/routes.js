@@ -11,20 +11,26 @@ import config from './config'
 import Application from './containers/Application'
 import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
+import VolumeTable from './containers/VolumeTable'
+import ServerTable from './containers/ServerTable'
 
 import Home from './components/Home'
 
 const Route = RouteFactory(config.basepath)
 
+const loadVolumeRoute = () => ({
+  user: true,
+  authRedirect: '/login',
+  onEnter: ['volumeList', 'volumeStartLoop'],
+  onLeave: ['volumeStopLoop']  
+})
+
 export const routeConfig = processRoutes({
   '/': {},
   '/help': {},
-  '/dashboard': {
-    user: true,
-    authRedirect: '/login',
-    onEnter: ['volumeList', 'volumeStartLoop'],
-    onLeave: ['volumeStopLoop']
-  },
+  '/dashboard': loadVolumeRoute(),
+  '/servers': loadVolumeRoute(),
+  '/volumes': loadVolumeRoute(),
   '/login': {
     user: false,
     authRedirect: '/dashboard'
@@ -44,7 +50,11 @@ export const routes = (
             <Home />
           </UserWrapper>
           <UserWrapper loggedIn={ true }>
-            Logged In!
+            <Section>
+              <h1>Volumes</h1>
+                <hr />
+              <VolumeTable />
+            </Section>
           </UserWrapper>
         </Section>
       </Route>
@@ -56,9 +66,27 @@ export const routes = (
       </Route>
 
       <Route path='/dashboard'>
-        <div>
-          dashboard
-        </div>
+        <Section>
+          <h1>Volumes</h1>
+          <hr />
+          <VolumeTable />
+        </Section>
+      </Route>
+
+      <Route path='/volumes'>
+        <Section>
+          <h1>Volumes</h1>
+          <hr />
+          <VolumeTable />
+        </Section>
+      </Route>
+
+      <Route path='/servers'>
+        <Section>
+          <h1>Servers</h1>
+          <hr />
+          <ServerTable />
+        </Section>
       </Route>
 
       <Route path='/login'>
