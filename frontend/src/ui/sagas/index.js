@@ -30,7 +30,16 @@ const hooks = Hooks({
 
 const router = RouterSaga({
   hooks,
-  basepath: config.basepath
+  basepath: config.basepath,
+  authenticate: auth.authenticateRoute,
+  trigger: (name, payload) => {
+    if(process.env.NODE_ENV=='development') {
+      console.log('-------------------------------------------');
+      console.log('hook')
+      console.log(name)
+      console.dir(payload)
+    }
+  }
 })
 
 function* initialize() {

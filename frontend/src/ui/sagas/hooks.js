@@ -21,11 +21,6 @@ const Hooks = (opts = {}) => {
   const volume = opts.volume
   return {
 
-    // router hooks for authenticating route
-    routerChanged: [
-      auth.authenticateRoute
-    ],
-
     // auth hooks for register/login
     authLogout: auth.logout,
     authLoginSubmit: auth.loginSubmit,

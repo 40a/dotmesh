@@ -177,13 +177,15 @@ const AuthSagas = (opts = {}) => {
     const userSetting = yield select(state => selectors.router.firstValue(state, 'user'))
     const redirectSetting = yield select(state => selectors.router.firstValue(state, 'authRedirect'))
     // this route has no opinion about the user
-    if(typeof(userSetting) != 'boolean') return
+    if(typeof(userSetting) != 'boolean') return true
     const user = yield select(state => selectors.valueSelector(state, 'user'))
     const hasUser = user ? true : false
     const isRouteAuthenticated = hasUser == userSetting
     if(!isRouteAuthenticated) {
       yield put(actions.router.redirect(redirectSetting || '/'))
+      return false
     }
+    return true
   }
 
   ///////////////////////////////////////
