@@ -360,21 +360,6 @@ func docker(node string, cmd string) (string, error) {
 
 }
 
-func dockerCopy(node string, source string, dest string) (string, error) {
-	c := exec.Command("docker", "cp", fmt.Sprintf("%s:%s", node, source), dest)
-
-	var b bytes.Buffer
-
-	o := io.MultiWriter(&b, os.Stdout)
-	e := io.MultiWriter(&b, os.Stderr)
-
-	c.Stdout = o
-	c.Stderr = e
-	err := c.Run()
-	return string(b.Bytes()), err
-
-}
-
 func dockerSystem(node string, cmd string) error {
 	return system("docker", "exec", "-i", node, "sh", "-c", cmd)
 }
@@ -1078,11 +1063,11 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 	    -e "TEST_USER=%s" \
 	    -e "TEST_EMAIL=%s" \
 	    -e "TEST_PASSWORD=%s" \
-	    -v /tmp/media/screenshots:/home/node/screenshots \
-	    -v /tmp/media/videos:/home/node/videos \
+	    -v /test_media/screenshots:/home/node/screenshots \
+	    -v /test_media/videos:/home/node/videos \
 	    %s %s
-	  ls -la /tmp/media/screenshots
-	  ls -la /tmp/media/videos
+	  ls -la /test_media/screenshots
+	  ls -la /test_media/videos
 	`, 
 		login.Username,
 		login.Email,
@@ -1090,6 +1075,15 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 		runnerImage,
 		testName,
 	))
+}
+
+func copyMedia(node string) error {
+	err := system("bash", "-c", fmt.Sprintf(`
+		NODE=%s
+		docker cp $NODE:/test_media ../frontend/.media
+	`, node))
+
+	return err
 }
 
 func TestFrontend(t *testing.T) {
@@ -1118,8 +1112,8 @@ func TestFrontend(t *testing.T) {
 		overwriteConfigFile(t, node1, userLogin)
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
-		docker(node1, "ls -la /tmp/media")
-		dockerCopy(node1, "/tmp/media", "frontend/.media")
+		docker(node1, "ls -la /test_media")
+		copyMedia(node1)
 
 		// run auth tests
 
