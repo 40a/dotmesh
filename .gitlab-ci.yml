@@ -174,11 +174,5 @@ frontend:
         - fast
     script:
         - ./test.sh -run TestFrontend
-        - gzip -dc frontend_test_media.tar.gz | tar -xof -
+        - gzip -dc frontend_test_media.tar.gz | tar -xof - -C frontend_test_artifacts
         - ls -la
-        - ls -la frontend_test_media
-        - ls -la frontend_test_media/videos
-        - ls -la frontend_test_media/screenshots
-    artifacts:
-        paths:
-            - frontend_test_media
