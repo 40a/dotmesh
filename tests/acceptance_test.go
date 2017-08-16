@@ -1080,7 +1080,7 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 
 func copyMedia(node string) error {
 	err := system("bash", "-c", fmt.Sprintf(`
-		docker exec %s bash -c "tar -C /test_media -c ." | tar -x -C ../frontend_artifacts -
+		docker exec %s bash -c "tar -C /test_media -c ." > ../frontend_artifacts.tar
 	`, node))
 
 	return err
