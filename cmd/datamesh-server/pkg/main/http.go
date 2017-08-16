@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"path"
 	"io"
 	"log"
 	"net/http"
@@ -258,7 +259,28 @@ func (state *InMemoryState) runServer() {
 			"Serving static frontend files from %s",
 			frontendStaticFolder,
 		)
-		router.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir(frontendStaticFolder))))
+		// trying to get the fonts to load in production
+		injectFontHeaders := func(h http.Handler) http.HandlerFunc { 
+			var mimeTypes = map[string]string{
+		    ".woff2": "font/woff2",
+		    ".woff": "application/x-font-woff",
+		    ".ttf": "application/font-sfnt",
+		    ".eot": "application/vnd.ms-fontobject",
+			}
+	    return func(w http.ResponseWriter, r *http.Request) { 	    
+	      ext := path.Ext(r.URL.Path)
+	      fmt.Println("ext")
+	      fmt.Println(ext)
+	      mimeType := mimeTypes[ext]
+	      fmt.Println("mimeType")
+	      fmt.Println(mimeType)
+	      if mimeType != "" {
+	      	w.Header().Add("Content-Type", mimeType)
+	      }
+	      h.ServeHTTP(w, r)
+	    } 
+	  } 
+		router.PathPrefix("/").Handler(http.StripPrefix("/", injectFontHeaders(http.FileServer(http.Dir(frontendStaticFolder)))))
 	}
 
 	loggedRouter := handlers.LoggingHandler(getLogfile("requests"), router)
