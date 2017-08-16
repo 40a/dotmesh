@@ -411,6 +411,14 @@ func localFrontendTestRunnerImage() string {
 	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-frontend-test-runner:pushpull", hostname)
 }
 
+func localChromeDriverImage() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-chromedriver:pushpull", hostname)
+}
+
 func localEtcdImage() string {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -1001,14 +1009,15 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 // zpool. Test dynamic provisioning, and so on.
 
 func startChromeDriver(t *testing.T, node string) {
+	chromeDriverImage := localChromeDriverImage()
 	d(t, node, fmt.Sprintf(`
 		docker run -d \
 			--name datamesh-chromedriver \
 			--link datamesh-server-inner:server \
 			-e VNC_ENABLED=true \
 			-e EXPOSE_X11=true \
-			blueimp/chromedriver
-	`))
+			%s
+	`, chromeDriverImage))
 }
 
 func stopChromeDriver(t *testing.T, node string) {
