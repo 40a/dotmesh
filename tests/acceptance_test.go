@@ -1068,8 +1068,7 @@ EOF
 func runFrontendTest(t *testing.T, node string, testName string, login UserLogin) {
 	runnerImage := localFrontendTestRunnerImage()
 	d(t, node, fmt.Sprintf(`
-		docker rm -f datamesh-frontend-test-runner || true
-		docker run \
+		docker run --rm \
 	    --name datamesh-frontend-test-runner \
 	    --link "datamesh-server-inner:server" \
 	    --link "datamesh-chromedriver:chromedriver" \
@@ -1079,11 +1078,11 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 	    -e "TEST_USER=%s" \
 	    -e "TEST_EMAIL=%s" \
 	    -e "TEST_PASSWORD=%s" \
+	    -v /tmp/media/screenshots:/home/node/screenshots \
+	    -v /tmp/media/videos:/home/node/videos \
 	    %s %s
-	  docker cp datamesh-frontend-test-runner:/home/node/screenshots /tmp/media/screenshots
-	  docker cp datamesh-frontend-test-runner:/home/node/videos /tmp/media/videos
 	  ls -la /tmp/media/screenshots
-	  docker rm -f datamesh-frontend-test-runner || true
+	  ls -la /tmp/media/videos
 	`, 
 		login.Username,
 		login.Email,

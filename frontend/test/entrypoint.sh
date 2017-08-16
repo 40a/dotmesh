@@ -29,6 +29,3 @@ NIGHTWATCH_JSON
 exec /sbin/tini -g -- \
   wait-for --timeout "${WAIT_FOR_TIMEOUT:-10}" $WAIT_FOR_HOSTS -- \
   nightwatch "$@"
-ls -la /home/node
-ls -la /home/node/screenshots
-ls -la /home/node/videos
