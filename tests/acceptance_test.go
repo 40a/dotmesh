@@ -1090,7 +1090,7 @@ func TestFrontend(t *testing.T) {
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
 
-		d(t, node1, fmt.Sprintf("DATAMESH_PASWORD=%s dm remote add testremote %s@localhost", userLogin.Pasword, userLogin.Username))
+		d(t, node1, fmt.Sprintf("DATAMESH_PASWORD=%s dm remote add testremote %s@localhost", userLogin.Password, userLogin.Username))
 		d(t, node1, "dm init testvolume")
 		d(t, node1, "dm list")
 
