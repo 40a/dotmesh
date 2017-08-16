@@ -1080,8 +1080,7 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 
 func copyMedia(node string) error {
 	err := system("bash", "-c", fmt.Sprintf(`
-		mkdir -p ../frontend_test_media
-		docker exec %s bash -c "tar -c /test_media" > tar -xf - -C ../frontend_test_media
+		docker exec %s bash -c "tar -c /test_media" | gzip > ../frontend_test_media.tar.gz
 	`, node))
 
 	return err
@@ -1113,8 +1112,7 @@ func TestFrontend(t *testing.T) {
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
 
-		// TODO - work out why latest binary is not making it here for this feature to work
-		//d(t, node1, fmt.Sprintf("DATAMESH_PASWORD=%s dm remote add testremote %s@localhost", userLogin.Password, userLogin.Username))
+		//d(t, node1, fmt.Sprintf("DATAMESH_PASSWORD=%s dm remote add testremote %s@localhost", userLogin.Password, userLogin.Username))
 
 		d(t, node1, "dm remote switch local")
 		d(t, node1, "dm init testvolume")
