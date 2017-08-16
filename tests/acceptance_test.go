@@ -1113,6 +1113,7 @@ func TestFrontend(t *testing.T) {
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
 
+		// TODO - work out why latest binary is not making it here for this feature to work
 		//d(t, node1, fmt.Sprintf("DATAMESH_PASWORD=%s dm remote add testremote %s@localhost", userLogin.Password, userLogin.Username))
 
 		d(t, node1, "dm remote switch local")
