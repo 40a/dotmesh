@@ -1027,6 +1027,29 @@ func uniqLogin() UserLogin {
 	}	
 }
 
+
+// overwrites ~/.datamesh/config so we can `dm` using our newly registered user
+// TODO: don't overwrite the admin credentials decode the JSON and inject our user
+// TODO: have 'dm login'
+func overwriteConfigFile(t *testing.T, node string, login UserLogin) {
+  d(t, node, fmt.Sprintf(`
+    cat << EOF > ~/.datamesh/config
+{
+  "CurrentRemote": "local",
+  "Remotes": {
+    "local": {
+      "User": "%s",
+      "Hostname": "127.0.0.1",
+      "ApiKey": "%s",
+      "CurrentVolume": "",
+      "CurrentBranches": null
+    }
+  }
+}
+EOF
+  `, login.Username, login.Password))
+}
+
 // run the frontend tests - then copy the media out onto the dind host
 func runFrontendTest(t *testing.T, node string, testName string, login UserLogin) {
 	runnerImage := localFrontendTestRunnerImage()
@@ -1058,9 +1081,12 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 func copyMedia(node string) error {
 	err := system("bash", "-c", fmt.Sprintf(`
 		NODE=%s
+		docker exec $NODE bash -c "ls -la /test_media/screenshots"
+		docker exec $NODE bash -c "ls -la /test_media/videos"
 		docker cp $NODE:/test_media ../frontend_test_media
-		tar -cf ../frontend_test_media.tar ../frontend_test_media/*
-		gzip ../frontend_test_media.tar
+		ls -la ../frontend_test_media
+		#tar -cf ../frontend_test_media.tar ../frontend_test_media
+		#gzip ../frontend_test_media.tar
 	`, node))
 
 	return err
@@ -1084,13 +1110,17 @@ func TestFrontend(t *testing.T) {
 	
 	t.Run("Authenticate", func(t *testing.T) {
 
+		overwriteConfigFile(t, node1, userLogin)
+
 		// start chrome driver
 		startChromeDriver(t, node1)
 		defer stopChromeDriver(t, node1)
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
 
-		d(t, node1, fmt.Sprintf("DATAMESH_PASWORD=%s dm remote add testremote %s@localhost", userLogin.Password, userLogin.Username))
+		//d(t, node1, fmt.Sprintf("DATAMESH_PASWORD=%s dm remote add testremote %s@localhost", userLogin.Password, userLogin.Username))
+
+		d(t, node1, "dm remote switch local")
 		d(t, node1, "dm init testvolume")
 		d(t, node1, "dm list")
 
