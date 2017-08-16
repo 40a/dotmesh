@@ -1081,7 +1081,8 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 	    -e "TEST_PASSWORD=%s" \
 	    %s %s
 	  docker cp datamesh-frontend-test-runner:/home/node/screenshots /tmp/media/screenshots
-	  docker cp datamesh-frontend-test-runner:/home/node/screenshots /tmp/media/videos
+	  docker cp datamesh-frontend-test-runner:/home/node/videos /tmp/media/videos
+	  ls -la /tmp/media/screenshots
 	  docker rm -f datamesh-frontend-test-runner || true
 	`, 
 		login.Username,
