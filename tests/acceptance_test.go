@@ -360,6 +360,21 @@ func docker(node string, cmd string) (string, error) {
 
 }
 
+func dockerCopy(node string, source string, dest string) (string, error) {
+	c := exec.Command("docker", "cp", fmt.Sprintf("%s:%s", node, source), dest)
+
+	var b bytes.Buffer
+
+	o := io.MultiWriter(&b, os.Stdout)
+	e := io.MultiWriter(&b, os.Stderr)
+
+	c.Stdout = o
+	c.Stderr = e
+	err := c.Run()
+	return string(b.Bytes()), err
+
+}
+
 func dockerSystem(node string, cmd string) error {
 	return system("docker", "exec", "-i", node, "sh", "-c", cmd)
 }
@@ -386,6 +401,14 @@ func localImage() string {
 		panic(err)
 	}
 	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-server:pushpull", hostname)
+}
+
+func localFrontendTestRunnerImage() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-frontend-test-runner:pushpull", hostname)
 }
 
 func localEtcdImage() string {
@@ -977,12 +1000,96 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 // run offline. Figure out how to configure each cluster node with its own
 // zpool. Test dynamic provisioning, and so on.
 
+func startChromeDriver(t *testing.T, node string) {
+	d(t, node, fmt.Sprintf(`
+		docker run -d \
+			--name datamesh-chromedriver \
+			--link datamesh-server-inner:server \
+			-e VNC_ENABLED=true \
+			-e EXPOSE_X11=true \
+			blueimp/chromedriver
+	`))
+}
+
+func stopChromeDriver(t *testing.T, node string) {
+	d(t, node, "docker rm -f datamesh-chromedriver || true")
+}
+
+
+type UserLogin struct {
+	Email  			string
+	Username 		string
+	Password    string
+}
+
+var uniqUserNumber int
+
+func uniqLogin() UserLogin {
+	uniqUserNumber++
+	return &UserLogin{
+		Email: fmt.Sprintf("test%d@test.com", uniqUserNumber),
+		Username: fmt.Sprintf("test%d", uniqUserNumber),
+		Password: "test",
+	}	
+}
+
+// overwrites ~/.datamesh/config so we can `dm` using our newly registered user
+// TODO: don't overwrite the admin credentials decode the JSON and inject our user
+// TODO: have 'dm login'
+func overwriteConfigFile(t *testing.T, node string, login UserLogin) {
+	d(t, node, fmt.Sprintf(`
+		cat << EOF > ~/.datamesh/config
+{
+  "CurrentRemote": "local",
+  "Remotes": {
+    "local": {
+      "User": "%s",
+      "Hostname": "127.0.0.1",
+      "ApiKey": "%s",
+      "CurrentVolume": "",
+      "CurrentBranches": null
+    }
+  }
+}
+EOF
+	`, login.Username, login.Password))
+}
+
+// run the frontend tests - then copy the media out onto the dind host
+func runFrontendTest(t *testing.T, node string, testName string, login UserLogin) {
+	runnerImage := localFrontendTestRunnerImage()
+	d(t, node, fmt.Sprintf(`
+		docker rm -f datamesh-frontend-test-runner || true
+		docker run --rm \
+	    --name datamesh-frontend-test-runner \
+	    --link "datamesh-server-inner:server" \
+	    --link "datamesh-chromedriver:chromedriver" \
+	    -e "LAUNCH_URL=server:6969/ui" \
+	    -e "SELENIUM_HOST=chromedriver" \
+	    -e "WAIT_FOR_HOSTS=server:6969 chromedriver:4444 chromedriver:6060" \
+	    -e "TEST_USER=%s" \
+	    -e "TEST_EMAIL=%s" \
+	    -e "TEST_PASSWORD=%s" \
+	    %s %s
+	  docker cp datamesh-frontend-test-runner:/home/node/screenshots /tmp/media/screenshots
+	  docker cp datamesh-frontend-test-runner:/home/node/screenshots /tmp/media/videos
+	  docker rm -f datamesh-frontend-test-runner || true
+	`, 
+		login.username,
+		login.email,
+		login.password,
+		runnerImage,
+		testName,
+	))
+}
 
 func TestFrontend(t *testing.T) {
 	// single node tests
 	teardownFinishedTestRuns()
 
 	f := Federation{NewCluster(1)}
+
+	userLogin := uniqLogin()
 
 	startTiming()
 	err := f.Start(t)
@@ -991,8 +1098,25 @@ func TestFrontend(t *testing.T) {
 		t.Error(err)
 	}
 	node1 := f[0].Nodes[0].Container
+	
 	t.Run("Authenticate", func(t *testing.T) {
-		d(t, node1, "docker ps -a")
+
+		// start chrome driver
+		startChromeDriver(t, node1)
+		defer stopChromeDriver(f, node1)
+
+		// write userLogin to ~/.datamesh/config
+		overwriteConfigFile(t, node1, userLogin)
+
+		runFrontendTest(t, node1, "specs/auth.js", userLogin)
+
+		// run auth tests
+
+		// dm switch
+		// dm create volume
+
+		// run login -> volume list tests
+		dockerCopy(node1, "/tmp/media", "frontend/.media")
 	})
 
 }
