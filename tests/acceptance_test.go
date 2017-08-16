@@ -1027,28 +1027,6 @@ func uniqLogin() UserLogin {
 	}	
 }
 
-// overwrites ~/.datamesh/config so we can `dm` using our newly registered user
-// TODO: don't overwrite the admin credentials decode the JSON and inject our user
-// TODO: have 'dm login'
-func overwriteConfigFile(t *testing.T, node string, login UserLogin) {
-	d(t, node, fmt.Sprintf(`
-		cat << EOF > ~/.datamesh/config
-{
-  "CurrentRemote": "local",
-  "Remotes": {
-    "local": {
-      "User": "%s",
-      "Hostname": "127.0.0.1",
-      "ApiKey": "%s",
-      "CurrentVolume": "",
-      "CurrentBranches": null
-    }
-  }
-}
-EOF
-	`, login.Username, login.Password))
-}
-
 // run the frontend tests - then copy the media out onto the dind host
 func runFrontendTest(t *testing.T, node string, testName string, login UserLogin) {
 	runnerImage := localFrontendTestRunnerImage()
@@ -1109,9 +1087,6 @@ func TestFrontend(t *testing.T) {
 		// start chrome driver
 		startChromeDriver(t, node1)
 		defer stopChromeDriver(t, node1)
-
-		// write userLogin to ~/.datamesh/config
-		overwriteConfigFile(t, node1, userLogin)
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
 
