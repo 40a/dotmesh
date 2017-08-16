@@ -174,3 +174,6 @@ frontend:
         - fast
     script:
         - ./test.sh -run TestFrontend
+    artifacts:
+        paths:
+            - frontend/.media

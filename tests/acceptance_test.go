@@ -1060,7 +1060,7 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 	runnerImage := localFrontendTestRunnerImage()
 	d(t, node, fmt.Sprintf(`
 		docker rm -f datamesh-frontend-test-runner || true
-		docker run --rm \
+		docker run \
 	    --name datamesh-frontend-test-runner \
 	    --link "datamesh-server-inner:server" \
 	    --link "datamesh-chromedriver:chromedriver" \
