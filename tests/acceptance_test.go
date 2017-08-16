@@ -1119,6 +1119,7 @@ func TestFrontend(t *testing.T) {
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
 		docker(node1, "ls -la /tmp/media")
+		dockerCopy(node1, "/tmp/media", "frontend/.media")
 
 		// run auth tests
 
