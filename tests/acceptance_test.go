@@ -1080,7 +1080,8 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 
 func copyMedia(node string) error {
 	err := system("bash", "-c", fmt.Sprintf(`
-		docker exec %s bash -c "tar -c /test_media" | gzip > ../frontend_test_media.tar.gz
+		mkdir -p ../frontend_test_media
+		docker exec %s bash -c "tar -c /test_media" |  tar -xz - -C ../frontend_test_media --strip-components=1
 	`, node))
 
 	return err
@@ -1121,14 +1122,6 @@ func TestFrontend(t *testing.T) {
 		runFrontendTest(t, node1, "specs/volumes.js", userLogin)
 
 		copyMedia(node1)
-
-		// run auth tests
-
-		// dm switch
-		// dm create volume
-
-		// run login -> volume list tests
-		//dockerCopy(node1, "/tmp/media", "frontend/.media")
 	})
 
 }
