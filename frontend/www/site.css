@@ -9,12 +9,12 @@ html,body,#mount {
   font-family: 'Material Icons';
   font-style: normal;
   font-weight: 400;
-  src: url(/fonts/icons/material-icons.woff2); /* For IE6-8 */
+  src: url(fonts/icons/material-icons.woff2); /* For IE6-8 */
   src: local('Material Icons'),
     local('MaterialIcons-Regular'),
-    url(/fonts/icons/MaterialIcons-Regular.woff2) format('woff2'),
-    url(/fonts/icons/MaterialIcons-Regular.woff) format('woff'),
-    url(/fonts/icons/MaterialIcons-Regular.ttf) format('truetype');
+    url(fonts/icons/MaterialIcons-Regular.woff2) format('woff2'),
+    url(fonts/icons/MaterialIcons-Regular.woff) format('woff'),
+    url(fonts/icons/MaterialIcons-Regular.ttf) format('truetype');
 }
 .material-icons {
   font-family: 'Material Icons';
@@ -46,8 +46,8 @@ html,body,#mount {
   font-style: normal;
   font-weight: 400;
   src: local('Roboto'), local('Roboto-Regular'),
-       url('/fonts/roboto/roboto-v16-latin-regular.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
-       url('/fonts/roboto/roboto-v16-latin-regular.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+       url('fonts/roboto/roboto-v16-latin-regular.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+       url('fonts/roboto/roboto-v16-latin-regular.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
 }
 /* roboto-500 - latin */
 @font-face {
@@ -55,8 +55,8 @@ html,body,#mount {
   font-style: normal;
   font-weight: 500;
   src: local('Roboto Medium'), local('Roboto-Medium'),
-       url('/fonts/roboto/roboto-v16-latin-500.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
-       url('/fonts/roboto/roboto-v16-latin-500.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+       url('fonts/roboto/roboto-v16-latin-500.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+       url('fonts/roboto/roboto-v16-latin-500.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
 }
 /* roboto-700 - latin */
 @font-face {
@@ -64,6 +64,6 @@ html,body,#mount {
   font-style: normal;
   font-weight: 700;
   src: local('Roboto Bold'), local('Roboto-Bold'),
-       url('/fonts/roboto/roboto-v16-latin-700.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
-       url('/fonts/roboto/roboto-v16-latin-700.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+       url('fonts/roboto/roboto-v16-latin-700.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+       url('fonts/roboto/roboto-v16-latin-700.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
 }
