@@ -98,5 +98,6 @@ module.exports = {
     volumes.waitForElementVisible('@title', 2000)
     utils.checkUrl(browser, '/dashboard', 'the page is now on dashboard and logged in')
     utils.screenshot(browser, '/postLoginDashboard.png')
+    browser.end()
   }
 }

@@ -176,4 +176,4 @@ frontend:
         - ./test.sh -run TestFrontend
     artifacts:
         paths:
-            - frontend/.media
+            - frontend_test_media.tar.gz

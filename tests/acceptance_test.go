@@ -1080,7 +1080,9 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 func copyMedia(node string) error {
 	err := system("bash", "-c", fmt.Sprintf(`
 		NODE=%s
-		docker cp $NODE:/test_media ../frontend/.media
+		docker cp $NODE:/test_media ../frontend_test_media
+		tar -cf ../frontend_test_media.tar ../frontend_test_media/*
+		gzip ../frontend_test_media.tar
 	`, node))
 
 	return err
@@ -1112,7 +1114,13 @@ func TestFrontend(t *testing.T) {
 		overwriteConfigFile(t, node1, userLogin)
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
-		docker(node1, "ls -la /test_media")
+
+		d(t, node1, fmt.Sprintf("DATAMESH_PASWORD=%s dm remote add testremote %s@localhost", userLogin.Pasword, userLogin.Username))
+		d(t, node1, "dm init testvolume")
+		d(t, node1, "dm list")
+
+		runFrontendTest(t, node1, "specs/volumes.js", userLogin)
+
 		copyMedia(node1)
 
 		// run auth tests

@@ -18,5 +18,6 @@ module.exports = {
     login.click('@submitButton')
     volumes.waitForElementVisible('@title', 2000)
     utils.checkUrl(browser, '/dashboard', 'the page is now on dashboard and logged in')
+    browser.end()
   }
 }
