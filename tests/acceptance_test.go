@@ -1118,7 +1118,7 @@ func TestFrontend(t *testing.T) {
 		overwriteConfigFile(t, node1, userLogin)
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
-		dockerCopy(node1, "ls -la /tmp/media")
+		docker(node1, "ls -la /tmp/media")
 
 		// run auth tests
 
