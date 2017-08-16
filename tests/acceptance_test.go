@@ -1026,7 +1026,7 @@ var uniqUserNumber int
 
 func uniqLogin() UserLogin {
 	uniqUserNumber++
-	return &UserLogin{
+	return UserLogin{
 		Email: fmt.Sprintf("test%d@test.com", uniqUserNumber),
 		Username: fmt.Sprintf("test%d", uniqUserNumber),
 		Password: "test",
@@ -1075,9 +1075,9 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 	  docker cp datamesh-frontend-test-runner:/home/node/screenshots /tmp/media/videos
 	  docker rm -f datamesh-frontend-test-runner || true
 	`, 
-		login.username,
-		login.email,
-		login.password,
+		login.Username,
+		login.Email,
+		login.Password,
 		runnerImage,
 		testName,
 	))
@@ -1103,7 +1103,7 @@ func TestFrontend(t *testing.T) {
 
 		// start chrome driver
 		startChromeDriver(t, node1)
-		defer stopChromeDriver(f, node1)
+		defer stopChromeDriver(t, node1)
 
 		// write userLogin to ~/.datamesh/config
 		overwriteConfigFile(t, node1, userLogin)
