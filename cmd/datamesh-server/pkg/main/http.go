@@ -284,7 +284,7 @@ func (state *InMemoryState) runServer() {
 				h.ServeHTTP(w, r)
 			}
 		}
-		router.PathPrefix("/ui").HandlerFunc(
+		router.PathPrefix("/ui/").HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
 				http.ServeFile(w, r, frontendStaticFolder+"/ui/index.html")
 			},
