@@ -77,14 +77,9 @@ const AuthSagas = (opts = {}) => {
     // save the credentials to the store
     yield call(reduceCredentials, credentials)
 
-    const sendCredentials = {
-      username: credentials.username,
-      password: credentials.password
-    }
-    
     // run the login api
     const result = yield call(apis.login.loader, {
-      credentials: sendCredentials
+      credentials
     })
     const error = result.error
     const loggedIn = result.answer
@@ -97,10 +92,8 @@ const AuthSagas = (opts = {}) => {
     }
     else {
       
-      // save credentials to local storage if remember
-      if(credentials.remember) {
-        saveCachedCredentials(sendCredentials)
-      }
+      // save credentials to local storage
+      saveCachedCredentials(credentials)
 
       if(!headless) {
         // save the credentials to local storage so upon re-opening browser we are authenticated
