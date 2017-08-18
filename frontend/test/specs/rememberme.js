@@ -23,6 +23,7 @@ module.exports = {
   refresh: (browser) => {
      browser
         .refresh()
-    browser.pause(3000)  
+    browser.pause(3000)
+    browser.end()
   }
 }
