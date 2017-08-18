@@ -6,12 +6,12 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
-	"path"
 	"io"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"path"
 	"text/template"
 
 	"github.com/gorilla/handlers"
@@ -29,10 +29,14 @@ type WebServer struct {
 }
 
 func folderExists(path string) (bool, error) {
-    _, err := os.Stat(path)
-    if err == nil { return true, nil }
-    if os.IsNotExist(err) { return false, nil }
-    return true, err
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
 }
 
 func (s *InMemoryState) NewWebServer() http.Handler {
@@ -260,27 +264,34 @@ func (state *InMemoryState) runServer() {
 			frontendStaticFolder,
 		)
 		// trying to get the fonts to load in production
-		injectFontHeaders := func(h http.Handler) http.HandlerFunc { 
+		injectFontHeaders := func(h http.Handler) http.HandlerFunc {
 			var mimeTypes = map[string]string{
-		    ".woff2": "font/woff2",
-		    ".woff": "application/x-font-woff",
-		    ".ttf": "application/font-sfnt",
-		    ".eot": "application/vnd.ms-fontobject",
+				".woff2": "font/woff2",
+				".woff":  "application/x-font-woff",
+				".ttf":   "application/font-sfnt",
+				".eot":   "application/vnd.ms-fontobject",
 			}
-	    return func(w http.ResponseWriter, r *http.Request) { 	    
-	      ext := path.Ext(r.URL.Path)
-	      fmt.Println("ext")
-	      fmt.Println(ext)
-	      mimeType := mimeTypes[ext]
-	      fmt.Println("mimeType")
-	      fmt.Println(mimeType)
-	      if mimeType != "" {
-	      	w.Header().Add("Content-Type", mimeType)
-	      }
-	      h.ServeHTTP(w, r)
-	    } 
-	  } 
-		router.PathPrefix("/").Handler(http.StripPrefix("/", injectFontHeaders(http.FileServer(http.Dir(frontendStaticFolder)))))
+			return func(w http.ResponseWriter, r *http.Request) {
+				ext := path.Ext(r.URL.Path)
+				fmt.Println("ext")
+				fmt.Println(ext)
+				mimeType := mimeTypes[ext]
+				fmt.Println("mimeType")
+				fmt.Println(mimeType)
+				if mimeType != "" {
+					w.Header().Add("Content-Type", mimeType)
+				}
+				h.ServeHTTP(w, r)
+			}
+		}
+		router.PathPrefix("/ui").Handler(
+			http.ServeFile(frontendStaticFolder + "/ui/index.html"),
+		)
+		router.PathPrefix("/").Handler(
+			http.StripPrefix("/",
+				injectFontHeaders(http.FileServer(http.Dir(frontendStaticFolder))),
+			),
+		)
 	}
 
 	loggedRouter := handlers.LoggingHandler(getLogfile("requests"), router)
