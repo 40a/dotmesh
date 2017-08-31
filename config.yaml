@@ -1,0 +1,19 @@
+plans:
+  - 
+    id: free
+    name: Free
+    totalSize: 100M
+    transfer: 1G
+    volumeCount: 5
+  - 
+    id: developer
+    name: "Developer Plan"
+    totalSize: 1G
+    transfer: 10G
+    volumeCount: 10
+  - 
+    id: team
+    name: team
+    totalSize: 10G
+    transfer: 100G
+    volumeCount: 100
