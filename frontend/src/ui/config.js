@@ -41,7 +41,7 @@ const config = {
     }
   },
   // milliseconds delay for backend volume polling
-  volumeLoopInterval: 10000000,
+  volumeLoopInterval: 1000,
   images: {
     appbar: '/images/datamesh-on-dark.png'
   },

@@ -37,7 +37,7 @@ const VolumeSagas = (opts = {}) => {
   }
 
   // load the current volume list
-  function* list() {
+  function* list() {    
     const { answer, error } = yield call(apis.list.loader)
 
     if(error) {
@@ -62,12 +62,10 @@ const VolumeSagas = (opts = {}) => {
   }
 
   function* startLoop() {
-    console.log('starting loop')
     currentLoopTask = yield fork(listLoop)
   }
 
   function* stopLoop() {
-    console.log('stopping loop')
     if(currentLoopTask) {
       yield cancel(currentLoopTask)  
     }
