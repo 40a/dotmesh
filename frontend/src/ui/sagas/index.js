@@ -43,10 +43,8 @@ const router = RouterSaga({
   }
 })
 
-const controllerLoop = ControllerSaga({
-  handlers: [
-    volume.loop
-  ]
+const controllerLoop = Controller({
+  
 })
 
 function* initialize() {
@@ -56,7 +54,7 @@ function* initialize() {
   ])
   yield put(actions.value.set('initialized', true))
   yield call(router.initialize)
-  yield call(controller.start)
+  yield call(controllerLoop.start)
 }
 
 export default function* root() {

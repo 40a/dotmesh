@@ -18,19 +18,39 @@ import Home from './components/Home'
 
 const Route = RouteFactory(config.basepath)
 
-const loadVolumeRoute = () => ({
-  user: true,
-  authRedirect: '/login',
-  onEnter: ['volumeList', 'volumeStartLoop'],
-  onLeave: ['volumeStopLoop']  
-})
-
 export const routeConfig = processRoutes({
-  '/': {},
+  '/': {
+    controlLoopHooks: [
+      'volumeList'
+    ]
+  },
+  '': {
+    controlLoopHooks: [
+      'volumeList'
+    ]
+  },
   '/help': {},
-  '/dashboard': loadVolumeRoute(),
-  '/servers': loadVolumeRoute(),
-  '/volumes': loadVolumeRoute(),
+  '/dashboard': {
+    user: true,
+    authRedirect: '/login',
+    controlLoopHooks: [
+      'volumeList'
+    ]
+  },
+  '/servers': {
+    user: true,
+    authRedirect: '/login',
+    controlLoopHooks: [
+      'volumeList'
+    ]
+  },
+  '/volumes': {
+    user: true,
+    authRedirect: '/login',
+    controlLoopHooks: [
+      'volumeList'
+    ]
+  },
   '/login': {
     user: false,
     authRedirect: '/dashboard'

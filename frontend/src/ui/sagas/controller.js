@@ -9,7 +9,7 @@ import * as selectors from '../selectors'
 import tools from '../tools'
 
 const REQUIRED_OPTS = [
-  'handlers'
+  
 ]
 
 /*
@@ -27,8 +27,17 @@ const ControllerLoop = (opts = {}) => {
   let currentLoopTask = null
 
   function* singleLoop() {
-    const routerResults = yield select(state => state.router.results)
+    const routerResults = yield select(state => state.router.result)
+
+    const hooks = routerResults.controlLoopHooks || []
+
+    console.log('-------------------------------------------');
+    console.log('running hooks')
+    console.log(hooks)
+
+    yield all(hooks.map(hookName => put(actions.router.hook(hookName))))
     
+    console.dir(routerResults)
 
   }
 
@@ -36,7 +45,7 @@ const ControllerLoop = (opts = {}) => {
     try {
       while (true) {
         yield call(singleLoop)
-        yield call(delay, config.volumeLoopInterval)
+        yield call(delay, config.controlLoopInterval)
       }
     } finally {
       if (yield cancelled()) {
