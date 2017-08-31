@@ -40,8 +40,8 @@ const config = {
       menuOpen: false
     }
   },
-  // milliseconds delay for backend volume polling
-  volumeLoopInterval: 1000,
+  // milliseconds delay for each iteration of the control loop
+  controlLoopInterval: 1000,
   images: {
     appbar: '/images/datamesh-on-dark.png'
   },
