@@ -31,13 +31,7 @@ const ControllerLoop = (opts = {}) => {
 
     const hooks = routerResults.controlLoopHooks || []
 
-    console.log('-------------------------------------------');
-    console.log('running hooks')
-    console.log(hooks)
-
     yield all(hooks.map(hookName => put(actions.router.hook(hookName))))
-    
-    console.dir(routerResults)
 
   }
 
