@@ -7,10 +7,12 @@ import (
 )
 
 type User struct {
-	Id     string
-	Name   string
-	Email  string
-	ApiKey string
+	Id          string
+	Name        string
+	Email       string
+	ApiKey      string
+	CustomerID  string
+	CurrentPlan string
 }
 
 type SafeUser struct {
