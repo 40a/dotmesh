@@ -1,0 +1,3 @@
+FROM blueimp/chromedriver
+
+MAINTAINER Sebastian Tschan <mail@blueimp.net>

@@ -1,6 +1,7 @@
 stages:
     - sync
     - build
+    - merge
     - test
     - deploy
 
@@ -12,7 +13,8 @@ sync_github:
         - git remote add github git@github.com:lukemarsden/datamesh || true
         - git checkout -b $CI_BUILD_REF_NAME || true
         - pwd
-        - git push github $CI_BUILD_REF_NAME
+        - git remote -v
+        - git push --force github $CI_BUILD_REF_NAME
 
 before_script:
     - mkdir -p gopath
@@ -60,6 +62,46 @@ build_server:
         paths:
             - cmd/datamesh-server/target
         expire_in: 1 week
+
+build_frontend:
+    stage: build
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - cd frontend
+        - ./rebuild.sh
+    artifacts:
+        paths:
+            - frontend/dist.tar.gz
+
+build_frontend_test_runner:
+    stage: build
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - cd frontend
+        - ./rebuild_test_runner.sh
+
+# we have already built the binaries and frontend code
+# let's produce a final production image of the inner server
+# that has the frontend files burnt
+# it will overwrite $(hostname).local:80/lukemarsden/datamesh-server:pushpull
+# so the tests use the image with the frontend
+merge_frontend:
+    stage: merge
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - cd frontend
+        - ls -la
+        - gzip -dc dist.tar.gz | tar -xof -
+        - cd ..
+        - mv frontend/dist cmd/datamesh-server/dist
+        - cd cmd/datamesh-server
+        - ./mergebuild.sh
 
 # run sanity check that things still work on macOS
 macos:
@@ -123,3 +165,19 @@ deploy_server_docker_image:
         - docker push quay.io/lukemarsden/datamesh-server:pushpull
     only:
         - master
+
+frontend:
+    stage: test
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - mkdir frontend_artifacts
+        - ./test.sh -run TestFrontend
+        - tar -xf frontend_artifacts.tar -C frontend_artifacts
+        - sudo rm frontend_artifacts.tar
+        - ls -la frontend_artifacts
+    artifacts:
+        paths:
+            - frontend_artifacts
+

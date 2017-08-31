@@ -11,6 +11,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"path"
 	"text/template"
 
 	"github.com/gorilla/handlers"
@@ -25,6 +26,17 @@ import (
 
 type WebServer struct {
 	state *InMemoryState
+}
+
+func folderExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
 }
 
 func (s *InMemoryState) NewWebServer() http.Handler {
@@ -236,6 +248,54 @@ func (state *InMemoryState) runServer() {
 		),
 	).Methods("POST")
 
+	// setup a static file server from the configured directory
+	// TODO: we need a way for /admin/some/sub/route to return frontendStaticFolder + '/admin/index.html'
+	// this is to account for HTML5 routing which is the same index.html with lots of sub-routes the browser will sort out
+	frontendStaticFolder := os.Getenv("FRONTEND_STATIC_FOLDER")
+	if frontendStaticFolder == "" {
+		frontendStaticFolder = "/www"
+	}
+
+	exists, err := folderExists(frontendStaticFolder)
+
+	if exists {
+		log.Printf(
+			"Serving static frontend files from %s",
+			frontendStaticFolder,
+		)
+		// trying to get the fonts to load in production
+		injectFontHeaders := func(h http.Handler) http.HandlerFunc {
+			var mimeTypes = map[string]string{
+				".woff2": "font/woff2",
+				".woff":  "application/x-font-woff",
+				".ttf":   "application/font-sfnt",
+				".eot":   "application/vnd.ms-fontobject",
+			}
+			return func(w http.ResponseWriter, r *http.Request) {
+				ext := path.Ext(r.URL.Path)
+				fmt.Println("ext")
+				fmt.Println(ext)
+				mimeType := mimeTypes[ext]
+				fmt.Println("mimeType")
+				fmt.Println(mimeType)
+				if mimeType != "" {
+					w.Header().Add("Content-Type", mimeType)
+				}
+				h.ServeHTTP(w, r)
+			}
+		}
+		router.PathPrefix("/ui/").HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, frontendStaticFolder+"/ui/index.html")
+			},
+		)
+		router.PathPrefix("/").Handler(
+			http.StripPrefix("/",
+				injectFontHeaders(http.FileServer(http.Dir(frontendStaticFolder))),
+			),
+		)
+	}
+
 	loggedRouter := handlers.LoggingHandler(getLogfile("requests"), router)
 	err = http.ListenAndServe(":6969", loggedRouter)
 	if err != nil {
@@ -248,9 +308,14 @@ type AuthHandler struct {
 	subHandler http.Handler
 }
 
+var DISABLE_BASIC_AUTH_NAME string = "disableBasicAuthWindow"
+
 func (a AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	notAuth := func(w http.ResponseWriter) {
-		w.Header().Set("WWW-Authenticate", "Basic")
+		disableBasicAuth := r.URL.Query().Get(DISABLE_BASIC_AUTH_NAME)
+		if len(disableBasicAuth) <= 0 {
+			w.Header().Set("WWW-Authenticate", "Basic")
+		}
 		http.Error(w, "Unauthorized.", 401)
 	}
 	// check for empty username, if so show a login box

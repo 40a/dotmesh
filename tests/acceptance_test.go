@@ -388,6 +388,22 @@ func localImage() string {
 	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-server:pushpull", hostname)
 }
 
+func localFrontendTestRunnerImage() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-frontend-test-runner:pushpull", hostname)
+}
+
+func localChromeDriverImage() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-chromedriver:pushpull", hostname)
+}
+
 func localEtcdImage() string {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -976,3 +992,113 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 // kubernetes/ against the resulting (3 node by default) cluster. Ensure things
 // run offline. Figure out how to configure each cluster node with its own
 // zpool. Test dynamic provisioning, and so on.
+
+func startChromeDriver(t *testing.T, node string) {
+	chromeDriverImage := localChromeDriverImage()
+	d(t, node, fmt.Sprintf(`
+		docker run -d \
+			--name datamesh-chromedriver \
+			--link datamesh-server-inner:server \
+			-e VNC_ENABLED=true \
+			-e EXPOSE_X11=true \
+			%s
+	`, chromeDriverImage))
+}
+
+func stopChromeDriver(t *testing.T, node string) {
+	d(t, node, "docker rm -f datamesh-chromedriver || true")
+}
+
+
+type UserLogin struct {
+	Email  			string
+	Username 		string
+	Password    string
+}
+
+var uniqUserNumber int
+
+func uniqLogin() UserLogin {
+	uniqUserNumber++
+	return UserLogin{
+		Email: fmt.Sprintf("test%d@test.com", uniqUserNumber),
+		Username: fmt.Sprintf("test%d", uniqUserNumber),
+		Password: "test",
+	}	
+}
+
+// run the frontend tests - then copy the media out onto the dind host
+func runFrontendTest(t *testing.T, node string, testName string, login UserLogin) {
+	runnerImage := localFrontendTestRunnerImage()
+	d(t, node, fmt.Sprintf(`
+		docker run --rm \
+	    --name datamesh-frontend-test-runner \
+	    --link "datamesh-server-inner:server" \
+	    --link "datamesh-chromedriver:chromedriver" \
+	    -e "LAUNCH_URL=server:6969/ui" \
+	    -e "SELENIUM_HOST=chromedriver" \
+	    -e "WAIT_FOR_HOSTS=server:6969 chromedriver:4444 chromedriver:6060" \
+	    -e "TEST_USER=%s" \
+	    -e "TEST_EMAIL=%s" \
+	    -e "TEST_PASSWORD=%s" \
+	    -v /test_media/screenshots:/home/node/screenshots \
+	    -v /test_media/videos:/home/node/videos \
+	    %s %s
+	  ls -la /test_media/screenshots
+	  ls -la /test_media/videos
+	`, 
+		login.Username,
+		login.Email,
+		login.Password,
+		runnerImage,
+		testName,
+	))
+}
+
+func copyMedia(node string) error {
+	err := system("bash", "-c", fmt.Sprintf(`
+		docker exec %s bash -c "tar -C /test_media -c ." > ../frontend_artifacts.tar
+	`, node))
+
+	return err
+}
+
+func TestFrontend(t *testing.T) {
+	// single node tests
+	teardownFinishedTestRuns()
+
+	f := Federation{NewCluster(1)}
+
+	userLogin := uniqLogin()
+
+	startTiming()
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		t.Error(err)
+	}
+	node1 := f[0].Nodes[0].Container
+	
+	t.Run("Authenticate", func(t *testing.T) {
+
+		// start chrome driver
+		startChromeDriver(t, node1)
+		defer stopChromeDriver(t, node1)
+
+		runFrontendTest(t, node1, "specs/auth.js", userLogin)
+
+		// create the account locally so we can 'dm' with the same user that we register with
+		// need to do this AFTER we have register because dm remote add will check the api server with deets
+		d(t, node1, fmt.Sprintf("DATAMESH_PASSWORD=%s dm remote add testremote %s@localhost", userLogin.Password, userLogin.Username))
+
+		d(t, node1, "dm remote switch local")
+		d(t, node1, "dm init testvolume")
+		d(t, node1, "dm list")
+
+		runFrontendTest(t, node1, "specs/volumes.js", userLogin)
+		runFrontendTest(t, node1, "specs/rememberme.js", userLogin)
+
+		copyMedia(node1)
+	})
+
+}
