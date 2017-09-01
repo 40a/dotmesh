@@ -25,6 +25,26 @@ func NewDatameshRPC(state *InMemoryState) *DatameshRPC {
 	return &DatameshRPC{state: state}
 }
 
+func safeConfig(c Config) SafeConfig {
+	safe := SafeConfig{
+		Plans:           c.Plans,
+		StripePublicKey: c.StripePublicKey,
+	}
+	return safe
+}
+
+func (d *DatameshRPC) Config(
+	r *http.Request, args *struct{}, result *SafeConfig) error {
+	*result = safeConfig(d.state.config)
+	return nil
+}
+
+func (d *DatameshRPC) Email(
+	r *http.Request, args *struct{}, result *string) error {
+	*result = "email@domain.com"
+	return nil
+}
+
 func (d *DatameshRPC) Get(
 	r *http.Request, filesystemId *string, result *DatameshVolume) error {
 	v, err := d.state.getOne(r.Context(), *filesystemId)

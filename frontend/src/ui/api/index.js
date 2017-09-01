@@ -6,6 +6,7 @@ import JsonRpc from './jsonrpc'
 // switch which type of auth driver we are using here
 import auth from './auth/basic'
 import volume from './volume'
+import config from './config'
 
 // a HTTP Basic auth version of the JSONRPC connector
 // you can switch out this connector / use multiple connectors
@@ -45,7 +46,8 @@ const loaders = {
   authRegister: auth.register,
 
   // all these methods need to be wrapped - they need auth
-  volumeList: wrapper(volume.list)
+  volumeList: wrapper(volume.list),
+  configLoad: wrapper(config.load)
 }
 
 const processedLoaders = processLoaders(loaders)

@@ -81,6 +81,7 @@ const AuthSagas = (opts = {}) => {
     const result = yield call(apis.login.loader, {
       credentials
     })
+    
     const error = result.error
     const loggedIn = result.answer
 
@@ -99,6 +100,8 @@ const AuthSagas = (opts = {}) => {
         // save the credentials to local storage so upon re-opening browser we are authenticated
         yield put(actions.router.hook('authLoginSuccess', credentials))  
       }
+
+      yield put(actions.router.hook('configLoad'))
       
       return credentials
     }
@@ -137,6 +140,7 @@ const AuthSagas = (opts = {}) => {
     }
     else {
       yield call(login, credentials)
+      yield put(actions.router.hook('configLoad'))
       yield put(actions.router.hook('authRegisterSuccess', user))
       return user
     }

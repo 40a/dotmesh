@@ -16,10 +16,14 @@ class PaymentPageContainer extends Component {
 
 export default connect(
   (state, ownProps) => ({
+    config: selectors.valueSelector(state, 'config'),
+    email: selectors.auth.user(state).email
   }),
   (dispatch) => ({
     onToken: (token) => {
-      dispatch(actions.router.hook('paymentToken', token))
+      console.log('HAVE TOKEN')
+      console.dir(token)
+      //dispatch(actions.router.hook('paymentToken', token))
     }
   })
 )(PaymentPageContainer)

@@ -17,8 +17,10 @@ const Logger = (type) => {
 const Hooks = (opts = {}) => {
   if(!opts.auth) throw new Error('auth opt required for hooks')
   if(!opts.volume) throw new Error('volume opt required for hooks')
+  if(!opts.config) throw new Error('config opt required for hooks')
   const auth = opts.auth
   const volume = opts.volume
+  const config = opts.config
   return {
 
     // auth hooks for register/login
@@ -30,8 +32,9 @@ const Hooks = (opts = {}) => {
 
     // volume
     volumeList: volume.list,
-    volumeStartLoop: volume.startLoop,
-    volumeStopLoop: volume.stopLoop,
+
+    // config
+    configLoad: config.load,
 
     // generic hooks for logging
     apiRequest: Logger('request'),

@@ -28,7 +28,7 @@ type WebServer struct {
 	state *InMemoryState
 }
 
-func folderExists(path string) (bool, error) {
+func pathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
@@ -226,20 +226,6 @@ func (state *InMemoryState) runServer() {
 		},
 	)
 
-	router.HandleFunc("/config",
-		authHandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				b, err := json.Marshal(state.config)
-				if err != nil {
-					http.Error(w, "Unable to unmarshal config.", 500)
-					return
-				}
-				w.Header().Add("Content-Type", "application/json")
-				w.Write(b)
-			},
-		),
-	)
-
 	router.Handle("/ux", NewAuthHandler(state.NewWebServer()))
 
 	router.HandleFunc("/",
@@ -270,7 +256,7 @@ func (state *InMemoryState) runServer() {
 		frontendStaticFolder = "/www"
 	}
 
-	exists, err := folderExists(frontendStaticFolder)
+	exists, err := pathExists(frontendStaticFolder)
 
 	if exists {
 		log.Printf(

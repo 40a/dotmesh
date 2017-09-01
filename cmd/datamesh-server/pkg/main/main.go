@@ -27,7 +27,7 @@ const ZPOOL = "zpool"
 const META_KEY_PREFIX = "io.datamesh:meta-"
 const ETCD_PREFIX = "/datamesh.io"
 const CONTAINER_MOUNT_PREFIX = "/var/datamesh"
-const CONFIG_PATH = "/etc/datamesh/config.yml"
+const CONFIG_PATH = "/etc/datamesh/config.yaml"
 
 var LOG_TO_STDOUT bool
 var POOL string
@@ -102,9 +102,9 @@ func main() {
 	setupLogging()
 	log.Print("Oh, hello.")
 	if foundConfig {
-		log.Print("Successfully loaded config from %s.", CONFIG_PATH)
+		log.Printf("Successfully loaded config from %s.", CONFIG_PATH)
 	} else {
-		log.Print("No config found at %s, using defaults.", CONFIG_PATH)
+		log.Printf("No config found at %s, using defaults.", CONFIG_PATH)
 	}
 
 	localPoolId, err := findLocalPoolId()

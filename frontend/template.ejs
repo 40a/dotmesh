@@ -13,6 +13,7 @@
 
   <body>
     <div id="mount"></div>
+    <script src="https://checkout.stripe.com/checkout.js"></script>
     <% htmlWebpackPlugin.files.js.map(function(file){ %>
       <script src="<%- file %>"></script>
     <% }) %>

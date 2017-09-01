@@ -9,30 +9,28 @@ import * as selectors from '../selectors'
 import tools from '../tools'
 
 const REQUIRED_APIS = [
-  'list'
+  'load'
 ]
 
-const VolumeSagas = (opts = {}) => {
-  if(!opts.apis) throw new Error('auth saga requires a api option')
+const ConfigSagas = (opts = {}) => {
+  if(!opts.apis) throw new Error('config saga requires a api option')
   const apis = opts.apis
   REQUIRED_APIS.forEach(name => {
     if(!apis[name]) throw new Error(`${name} api required`)
   })
-
+  
   function* setData(payload) {
-    yield put(actions.value.set('volumes', payload.Volumes || []))
-    yield put(actions.value.set('servers', payload.Servers || []))
+    yield put(actions.value.set('config', payload || {}))
   }
 
   // called if there is an error so the user is not looking at stale data
   function* resetData() {
-    yield put(actions.value.set('volumes', []))
-    yield put(actions.value.set('servers', []))
+    yield put(actions.value.set('config', {}))
   }
 
-  // load the current volume list
-  function* list() {    
-    const { answer, error } = yield call(apis.list.loader)
+  // load the current config
+  function* load() {    
+    const { answer, error } = yield call(apis.load.loader)
 
     if(error) {
       yield call(resetData)
@@ -43,8 +41,8 @@ const VolumeSagas = (opts = {}) => {
   }
 
   return {
-    list
+    load
   }
 }
 
-export default VolumeSagas
+export default ConfigSagas

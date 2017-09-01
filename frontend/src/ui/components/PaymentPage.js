@@ -7,11 +7,11 @@ class PaymentPage extends Component {
     return (
       <div id="paymentPage">
         <StripeButton
-          name={ this.props.config.name }
-          description={ this.props.config.description }
-          panelLabel={ this.props.config.panelLabel }
-          stripeKey={ this.props.config.stripeKey }
-          amount={ this.props.amount }
+          name="Datamesh Developer Plan"
+          description="Payment for Datamesh Cloud"
+          panelLabel="Rock on!"
+          stripeKey={ this.props.config.StripePublicKey }
+          amount={ 10000 }
           email={ this.props.email }
           onToken={ this.props.onToken }
         />
@@ -20,4 +20,4 @@ class PaymentPage extends Component {
   }
 }
 
-export default ServerTable
+export default PaymentPage 

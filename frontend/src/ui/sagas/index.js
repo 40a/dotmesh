@@ -9,6 +9,7 @@ import config from '../config'
 import Hooks from './hooks'
 import Auth from './auth'
 import Volume from './volume'
+import Config from './config'
 import Controller from './controller'
 
 const auth = Auth({
@@ -24,9 +25,16 @@ const volume = Volume({
   }
 })
 
+const configSaga = Config({
+  apis: {
+    load: apis.configLoad
+  }
+})
+
 const hooks = Hooks({
   auth,
-  volume
+  volume,
+  config: configSaga
 })
 
 const router = RouterSaga({
@@ -49,9 +57,8 @@ const controllerLoop = Controller({
 
 function* initialize() {
   yield call(delay, 1)
-  yield all([
-    call(auth.initialize)
-  ])
+  yield call(auth.initialize)
+  yield call(configSaga.load)
   yield put(actions.value.set('initialized', true))
   yield call(router.initialize)
   yield call(controllerLoop.start)

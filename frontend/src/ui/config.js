@@ -22,7 +22,8 @@ const icons = {
   settings: 'settings',
   search: 'search',
   disk: 'storage',
-  server: 'computer'
+  server: 'computer',
+  payment: 'credit_card'
 }
 
 const config = {
@@ -41,7 +42,7 @@ const config = {
     }
   },
   // milliseconds delay for each iteration of the control loop
-  controlLoopInterval: 1000,
+  controlLoopInterval: 1000000,
   images: {
     appbar: '/images/datamesh-on-dark.png'
   },
@@ -57,6 +58,7 @@ const config = {
       ['/dashboard', 'Dashboard', icons.dashboard],
       ['/volumes', 'Volumes', icons.disk],
       ['/servers', 'Servers', icons.server],
+      ['/payment', 'Payment', icons.payment],
       ['-'],
       ['/help', 'Help', icons.help],
       ['-'],

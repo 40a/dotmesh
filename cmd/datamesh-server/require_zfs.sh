@@ -170,12 +170,17 @@ if [[ "$INITIAL_ADMIN_PASSWORD_FILE" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]]
     echo "set secret: $secret"
 fi
 
+if [ -f /etc/datamesh/config.yaml ]; then
+    config_path="-v /etc/datamesh/config.yaml:/etc/datamesh/config.yaml"
+fi
+
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /var/lib/docker:/var/lib/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /run/docker/plugins:/run/docker/plugins \
     -v $MOUNTPOINT:$MOUNTPOINT:rshared \
     -v /var/datamesh:/var/datamesh \
+    $config_path \
     -l traefik.port=6969 \
     -l traefik.frontend.rule=Host:cloud.datamesh.io \
     $net \

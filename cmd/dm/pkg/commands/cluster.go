@@ -45,6 +45,7 @@ var (
 	assetsURLPrefix          string
 	homepageURL              string
 	frontendStaticFolder     string
+	configFile               string
 )
 
 var timings map[string]float64
@@ -152,6 +153,10 @@ another.`,
 	cmd.PersistentFlags().StringVar(
 		&frontendStaticFolder, "frontend-static-folder", "",
 		"local folder to serve frontend assets - used in production",
+	)
+	cmd.PersistentFlags().StringVar(
+		&configFile, "config-file", "/etc/datamesh/config.yaml",
+		"datamesh config file (optional)", // TODO: document the config file in the docs!
 	)
 	return cmd
 }
@@ -492,6 +497,17 @@ func guessHostname() (string, error) {
 	return hostnameString, nil
 }
 
+func pathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
+}
+
 func startDatameshContainer(pkiPath string) error {
 	if traceAddr != "" {
 		fmt.Printf("Trace address: %s\n", traceAddr)
@@ -503,6 +519,19 @@ func startDatameshContainer(pkiPath string) error {
 	if allowPublicRegistrations {
 		regStr = "1"
 		fmt.Printf("Allowing public registration.\n")
+	}
+	var absoluteConfigPath string
+	var configFileExists bool
+	e, err := pathExists(configFile)
+	if err != nil {
+		return err
+	}
+	if e {
+		absoluteConfigPath, err = filepath.Abs(configFile)
+		if err != nil {
+			return err
+		}
+		configFileExists = true
 	}
 	args := []string{
 		"run", "--restart=always",
@@ -539,6 +568,11 @@ func startDatameshContainer(pkiPath string) error {
 	}
 	if usePoolDir != "" {
 		args = append(args, []string{"-v", fmt.Sprintf("%s:%s", usePoolDir, usePoolDir)}...)
+	}
+	if configFileExists {
+		args = append(args, []string{
+			"-v", fmt.Sprintf("%s:%s", absoluteConfigPath, "/etc/datamesh/config.yaml"),
+		}...)
 	}
 	args = append(args, []string{
 		datameshDockerImage,
