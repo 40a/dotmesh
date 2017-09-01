@@ -30,8 +30,6 @@ Assuming you have set your GOPATH (e.g. to `$HOME/gocode`):
 mkdir -p $GOPATH/src/github.com/lukemarsden
 cd $GOPATH/src/github.com/lukemarsden
 git clone git@neo.lukemarsden.net:root/datamesh
-git clone git@github.com:lukemarsden/github.com/lukemarsden/datamesh-instrumentation
-cd datamesh
 ```
 
 We also assume you're OK to have `~/kubernetes` and
@@ -66,7 +64,7 @@ You have to do some one-off setup and priming of docker images before these
 tests will run:
 
 ```
-cd $GOCODE/src/lukemarsden/datamesh
+cd $GOPATH/src/github.com/lukemarsden/datamesh
 ./prime.sh
 ```
 
@@ -110,7 +108,7 @@ sysctl vm.max_map_count=262144
 To run the test suite, run:
 
 ```
-cd $GOCODE/src/lukemarsden/datamesh
+cd $GOPATH/src/github.com/lukemarsden/datamesh
 ./mark-cleanup.sh; ./rebuild.sh && ./test.sh
 ```
 
