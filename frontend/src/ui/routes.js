@@ -13,6 +13,7 @@ import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
 import VolumeTable from './containers/VolumeTable'
 import ServerTable from './containers/ServerTable'
+import PaymentPage from './containers/PaymentPage'
 
 import Home from './components/Home'
 
@@ -51,6 +52,10 @@ export const routeConfig = processRoutes({
       'volumeList'
     ]
   },
+  '/payment': {
+    user: true,
+    authRedirect: '/login'
+  },
   '/login': {
     user: false,
     authRedirect: '/dashboard'
@@ -86,6 +91,12 @@ export const routes = (
       <Route path='/dashboard'>
         <Section>
           <VolumeTable />
+        </Section>
+      </Route>
+
+      <Route path='/payment'>
+        <Section>
+          <PaymentPage />
         </Section>
       </Route>
 
