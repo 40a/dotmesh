@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash -e
 #
 # scripts to manage the developers local installation of datamesh
 #
