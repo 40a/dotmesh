@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 cd cmd/dm
 export PATH=/usr/local/go/bin:$PATH
 set -xe

@@ -1,4 +1,5 @@
-#!/usr/bin/env bash -xe
+#!/usr/bin/env bash
+set +xe
 cd ~/kubernetes
 dind/dind-cluster.sh bare prime-images
 docker rm -f prime-images
