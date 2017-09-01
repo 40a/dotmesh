@@ -64,7 +64,7 @@ You have to do some one-off setup and priming of docker images before these
 tests will run:
 
 ```
-cd $GOCODE/src/github.com/lukemarsden/datamesh
+cd $GOPATH/src/github.com/lukemarsden/datamesh
 ./prime.sh
 ```
 
@@ -108,7 +108,7 @@ sysctl vm.max_map_count=262144
 To run the test suite, run:
 
 ```
-cd $GOCODE/src/lukemarsden/datamesh
+cd $GOPATH/src/github.com/lukemarsden/datamesh
 ./mark-cleanup.sh; ./rebuild.sh && ./test.sh
 ```
 
