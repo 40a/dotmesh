@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 if [ "$1" == "" ]; then
     echo "Upgrades datamesh on N nodes, assuming hostnames are in form <node-prefix><N>."
     echo "Usage: ./up.sh <node-prefix> <N> <arguments-passed-to-upgrade>"

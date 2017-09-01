@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"io/ioutil"
+	"encoding/json"
 	"net/http"
+	"mime"
 	"os"
 	"strings"
 	"text/template"
@@ -25,69 +28,187 @@ func (s *InMemoryState) NewRegistrationServer() http.Handler {
 	}
 }
 
-func (web RegistrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	emailError := ""
-	usernameError := ""
-	passwordError := ""
-	created := false
-	if r.FormValue("submit") != "" {
-		// Form submission. We'll need an etcd connection.
-		kapi, err := getEtcdKeysApi()
+func HasContentType(r *http.Request, mimetype string) bool {
+	contentType := r.Header.Get("Content-type")
+	if contentType == "" {
+		return mimetype == "application/octet-stream"
+	}
+
+	for _, v := range strings.Split(contentType, ",") {
+		t, _, err := mime.ParseMediaType(v)
 		if err != nil {
-			log.Printf("[RegistrationServer] Error talking to etcd: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Internal server error. Please check logs.")))
-			return
+			break
 		}
-		// Do validation...
-		if r.FormValue("password") == "" {
-			passwordError = "Password cannot be empty."
-		}
-		if r.FormValue("email") == "" {
-			emailError = "Email address cannot be empty."
-		}
-		username := r.FormValue("username")
-		if username == "" {
-			usernameError = "Username cannot be empty."
-		} else if strings.Contains(username, "/") {
-			usernameError = "Invalid username."
-		} else {
-			// lookup username in etcd, bail if it exists
-			_, err = kapi.Get(
-				context.Background(),
-				fmt.Sprintf(
-					"%s/users/%s", ETCD_PREFIX, username,
-				),
-				nil,
-			)
-			if !client.IsKeyNotFound(err) && err != nil {
-				log.Printf("[RegistrationServer] Error checking username %v: %v", username, err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("Internal server error. Please check logs.")))
-				return
-			}
-			if err == nil {
-				usernameError = "Username already exists, please choose another."
-			}
-		}
-		if emailError == "" && usernameError == "" && passwordError == "" {
-			user, err := NewUser(username, r.FormValue("email"), r.FormValue("password"))
-			if err != nil {
-				log.Printf("[RegistrationServer] Error creating user %v: %v", username, err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("Internal server error. Please check logs.")))
-				return
-			}
-			err = user.Save()
-			if err != nil {
-				log.Printf("[RegistrationServer] Error saving user %v: %v", username, err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("Internal server error. Please check logs.")))
-				return
-			}
-			created = true
+		if t == mimetype {
+			return true
 		}
 	}
+	return false
+}
+
+func IsRequestJSON(r *http.Request) bool {
+	return HasContentType(r, "application/json")
+}
+
+
+func WriteError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(fmt.Sprintf("Internal server error. Please check logs.")))
+}
+
+type RegistrationPayload struct {
+	Username string
+	Email string
+	Password string
+	EmailError string
+	UsernameError string
+	PasswordError string
+	Created bool
+	Submit bool
+	Json bool
+}
+
+type JSONPayload struct {
+	Username string `json:"username"`
+  Email string `json:"email"`
+  Password string `json:"password"`
+}
+
+func (payload *RegistrationPayload) Validate() bool {
+	if payload.Password == "" {
+		payload.PasswordError = "Password cannot be empty."
+	}
+	if payload.Email == "" {
+		payload.EmailError = "Email address cannot be empty."
+	}
+	if payload.Username == "" {
+		payload.UsernameError = "Username cannot be empty."
+	} else if strings.Contains(payload.Username, "/") {
+		payload.UsernameError = "Invalid username."
+	}
+	return payload.EmailError == "" && payload.UsernameError == "" && payload.PasswordError == ""
+}
+
+func NewRegistrationPayload(r *http.Request) (RegistrationPayload, error) {
+	payload := RegistrationPayload{
+		Username: "",
+		Email: "",
+		Password: "",
+		EmailError: "",
+		UsernameError: "",
+		PasswordError: "",
+		Created: false,
+		Submit: false,
+		Json: false,
+	}
+
+	if IsRequestJSON(r) {
+		body, err := ioutil.ReadAll(r.Body)
+
+		if err != nil {
+      log.Printf("[RegistrationServer] Error reading HTTP body: %v", err)
+			return payload, err
+    }
+
+    log.Println(string(body))
+    var jsonPacket JSONPayload
+    err = json.Unmarshal(body, &jsonPacket)
+
+    if err != nil {
+      log.Printf("[RegistrationServer] Error decoding JSON payload: %v - %s", err, body)
+			return payload, err
+    }
+
+    payload.Username = jsonPacket.Username
+		payload.Email = jsonPacket.Email
+		payload.Password = jsonPacket.Password
+    payload.Json = true
+		payload.Submit = true
+
+		
+	} else {
+		r.ParseForm()
+		payload.Username = r.FormValue("username")
+		payload.Email = r.FormValue("email")
+		payload.Password = r.FormValue("password")
+		payload.Submit = r.FormValue("submit") != ""
+	}
+
+	log.Printf("[RegistrationServer] payload: %v", payload)
+
+	return payload, nil
+}
+
+func (web *RegistrationServer) registerUser(payload *RegistrationPayload) error {
+	log.Printf("[RegistrationServer] registerUser: %v", payload)
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		log.Printf("[RegistrationServer] Error talking to etcd: %v", err)
+		return err
+	}
+
+	if payload.Validate() {
+		// lookup username in etcd, bail if it exists
+		_, err = kapi.Get(
+			context.Background(),
+			fmt.Sprintf(
+				"%s/users/%s", ETCD_PREFIX, payload.Username,
+			),
+			nil,
+		)
+		if !client.IsKeyNotFound(err) && err != nil {
+			log.Printf("[RegistrationServer] Error checking username %v: %v", payload.Username, err)
+			return err
+		}
+		if err == nil {
+			payload.UsernameError = "Username already exists, please choose another."
+		}
+	}
+
+	// validate the second time because we have just loaded the UsernameError
+	if payload.Validate() {
+		user, err := NewUser(payload.Username, payload.Email, payload.Password)
+		if err != nil {
+			log.Printf("[RegistrationServer] Error creating user %v: %v", payload.Username, err)
+			return err
+		}
+		err = user.Save()
+		if err != nil {
+			log.Printf("[RegistrationServer] Error saving user %v: %v", payload.Username, err)
+			return err
+		}
+		payload.Created = true
+	}
+
+	return nil
+}
+
+
+func (web RegistrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	
+	payload, err := NewRegistrationPayload(r)
+
+	if err != nil {
+		WriteError(w)
+		return
+	}
+
+	if payload.Submit {
+		err := web.registerUser(&payload)
+		if err != nil {
+			WriteError(w)
+			return
+		}	
+	}
+
+	if payload.Json {
+		web.RespondJSON(&payload, w, r)
+	} else {
+		web.RespondHTML(&payload, w, r)
+	}
+}
+
+func (web RegistrationServer) RespondHTML(payload *RegistrationPayload, w http.ResponseWriter, r *http.Request) {
 	tmplStr := `<!DOCTYPE html>
 <html>
 
@@ -204,15 +325,15 @@ func (web RegistrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	assetsURLPrefix := os.Getenv("ASSETS_URL_PREFIX")
 	homepageURL := os.Getenv("HOMEPAGE_URL")
 	t := TemplateArgs{
-		FormEmail:       htmlEscape(r.FormValue("email")),
-		ErrorEmail:      emailError,
-		FormUsername:    htmlEscape(r.FormValue("username")),
-		ErrorUsername:   usernameError,
-		FormPassword:    htmlEscape(r.FormValue("password")),
-		ErrorPassword:   passwordError,
+		FormEmail:       htmlEscape(payload.Email),
+		ErrorEmail:      payload.EmailError,
+		FormUsername:    htmlEscape(payload.Username),
+		ErrorUsername:   payload.UsernameError,
+		FormPassword:    htmlEscape(payload.Password),
+		ErrorPassword:   payload.PasswordError,
 		AssetsURLPrefix: assetsURLPrefix,
 		HomepageURL:     homepageURL,
-		Complete:        created,
+		Complete:        payload.Created,
 	}
 	tmpl, err := template.New("t").Parse(tmplStr)
 	if err != nil {
@@ -226,6 +347,10 @@ func (web RegistrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		fmt.Fprintf(w, "Error with template.")
 		return
 	}
+}
+
+func (web RegistrationServer) RespondJSON(payload *RegistrationPayload, w http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(w).Encode(payload)
 }
 
 // copied from the stdlib

@@ -137,16 +137,21 @@ func NewCmdRemote(out io.Writer) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				fmt.Printf("API key: ")
-				apiKey, err := gopass.GetPasswd()
-				fmt.Printf("\n")
-				if err != nil {
-					return err
+				// allow this to be used be a script
+				apiKey := os.Getenv("DATAMESH_PASSWORD")
+				if apiKey == "" {
+					fmt.Printf("API key: ")
+					enteredApiKey, err := gopass.GetPasswd()
+					fmt.Printf("\n")
+					if err != nil {
+						return err
+					}
+					apiKey = string(enteredApiKey)
 				}
 				client := &remotes.JsonRpcClient{
 					User:     user,
 					Hostname: hostname,
-					ApiKey:   string(apiKey),
+					ApiKey:   apiKey,
 				}
 				var result bool
 				err = client.CallRemote(context.Background(), "DatameshRPC.Ping", nil, &result)

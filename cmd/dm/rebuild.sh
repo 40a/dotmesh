@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 if [ "$1" == "" ]; then
     echo "Must specify Linux or Darwin as first argument"
     exit 1

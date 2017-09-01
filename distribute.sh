@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 if [ "$DATAMESH_DOCKER_IMAGE" == "" ]; then
     DATAMESH_DOCKER_IMAGE="$(hostname).local:80/lukemarsden/datamesh-server:pushpull"

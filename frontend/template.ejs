@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
+    <title><%= htmlWebpackPlugin.options.title %></title>
+    <link rel="shortcut icon" type="image/png" href="/images/datamesh.png">
+    <meta name="viewport" content="initial-scale=1.0,user-scalable=no,maximum-scale=1,width=device-width">
+    <link rel="stylesheet" href="/site.css">
+    <% htmlWebpackPlugin.files.css.map(function(file){ %>
+      <link rel="stylesheet" href="<%- file %>">
+    <% }) %>
+  </head>
+
+  <body>
+    <div id="mount"></div>
+    <% htmlWebpackPlugin.files.js.map(function(file){ %>
+      <script src="<%- file %>"></script>
+    <% }) %>
+  </body>
+</html>

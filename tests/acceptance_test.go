@@ -2,89 +2,8 @@ package main
 
 /*
 
-Datamesh acceptance test suite. Run with "sudo -E `which go` test" from
-datamesh/cmd/datamesh-server.
+Take a look at docs/dev-commands.md to see how to run these tests.
 
-** Assumes Ubuntu 16.10 **
-
-This acceptance test suite uses docker-in-docker, kubeadm style. It creates
-docker containers which simulate entire computers, each running systemd, and
-then uses 'dm cluster init', etc, to set up datamesh. It requires internet
-access only for the small amounts of configuration data and PKI material stored
-in the datamesh discovery service. After the initial setup and priming of
-docker images, which takes quite some time, it should take ~60 seconds to spin
-up a 2 node datamesh cluster to run a test.
-
-You should put the following docker config in /etc/docker/daemon.json:
-
-{
-    "storage-driver": "overlay2",
-    "insecure-registries": ["$(hostname).local:80"]
-}
-
-Replacing $(hostname) with your hostname, and then `systemctl restart docker`.
-
-You need to be running a local registry, as well as everything else in the
-github.com/lukemarsden/datamesh-instrumentation pack, which requires
-docker-compose (run up.sh with a password as the first argument).
-
-Finally, you need to be running github.com/lukemarsden/discovery.datamesh.io
-on port 8087:
-
-	git clone git@github.com:lukemarsden/discovery.datamesh.io
-	cd discovery.datamesh.io
-	./start-local.sh
-
-You have to do some one-off setup and priming of docker images before these
-tests will run:
-
-	cd $GOPATH/src; mkdir -p github.com/lukemarsden; cd github.com/lukemarsden
-	git clone git@github.com:lukemarsden/datamesh
-	cd ~/
-	git clone git@github.com:kubernetes/kubernetes
-	cd kubernetes
-	git clone git@github.com:lukemarsden/kubeadm-dind-cluster dind
-	dind/dind-cluster.sh bare prime-images
-	docker rm -f prime-images
-	cd $GOPATH/src/github.com/lukemarsden/datamesh/cmd/datamesh-server
-	./rebuild.sh
-	docker build -t $(hostname).local:80/lukemarsden/datamesh-server:pushpull .
-	docker push $(hostname).local:80/lukemarsden/datamesh-server:pushpull
-
-	docker pull quay.io/coreos/etcd:v3.0.15
-	docker tag quay.io/coreos/etcd:v3.0.15 $(hostname).local:80/coreos/etcd:v3.0.15
-	docker push $(hostname).local:80/coreos/etcd:v3.0.15
-
-	docker pull busybox
-	docker tag busybox $(hostname).local:80/busybox
-	docker push $(hostname).local:80/busybox
-
-	docker pull mysql:5.7.17
-	docker tag mysql:5.7.17 $(hostname).local:80/mysql:5.7.17
-	docker push $(hostname).local:80/mysql:5.7.17
-
-	cd ~/
-	git clone git@github.com:lukemarsden/datamesh-instrumentation
-	cd datamesh-instrumentation
-	cd etcd-browser
-	docker build -t $(hostname).local:80/lukemarsden/etcd-browser:v1 .
-	docker push $(hostname).local:80/lukemarsden/etcd-browser:v1
-
-Now install some deps (for tests only; as root):
-
-	go get github.com/tools/godep
-	apt install zfsutils-linux jq
-	echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
-	sysctl vm.max_map_count=262144
-
-You can now run tests, like:
-
-	./mark-cleanup.sh; ./rebuild.sh && ./test.sh -run TestTwoSingleNodeClusters
-
-To open a bunch of debug tools, run (where 'secret' is the pasword you
-specified when you ran 'up.sh' in datamesh-instrumentation):
-
-	ADMIN_PW=secret ./creds.sh
 */
 
 import (
@@ -386,6 +305,22 @@ func localImage() string {
 		panic(err)
 	}
 	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-server:pushpull", hostname)
+}
+
+func localFrontendTestRunnerImage() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-frontend-test-runner:pushpull", hostname)
+}
+
+func localChromeDriverImage() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-chromedriver:pushpull", hostname)
 }
 
 func localEtcdImage() string {
@@ -976,3 +911,112 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 // kubernetes/ against the resulting (3 node by default) cluster. Ensure things
 // run offline. Figure out how to configure each cluster node with its own
 // zpool. Test dynamic provisioning, and so on.
+
+func startChromeDriver(t *testing.T, node string) {
+	chromeDriverImage := localChromeDriverImage()
+	d(t, node, fmt.Sprintf(`
+		docker run -d \
+			--name datamesh-chromedriver \
+			--link datamesh-server-inner:server \
+			-e VNC_ENABLED=true \
+			-e EXPOSE_X11=true \
+			%s
+	`, chromeDriverImage))
+}
+
+func stopChromeDriver(t *testing.T, node string) {
+	d(t, node, "docker rm -f datamesh-chromedriver || true")
+}
+
+type UserLogin struct {
+	Email    string
+	Username string
+	Password string
+}
+
+var uniqUserNumber int
+
+func uniqLogin() UserLogin {
+	uniqUserNumber++
+	return UserLogin{
+		Email:    fmt.Sprintf("test%d@test.com", uniqUserNumber),
+		Username: fmt.Sprintf("test%d", uniqUserNumber),
+		Password: "test",
+	}
+}
+
+// run the frontend tests - then copy the media out onto the dind host
+func runFrontendTest(t *testing.T, node string, testName string, login UserLogin) {
+	runnerImage := localFrontendTestRunnerImage()
+	d(t, node, fmt.Sprintf(`
+		docker run --rm \
+	    --name datamesh-frontend-test-runner \
+	    --link "datamesh-server-inner:server" \
+	    --link "datamesh-chromedriver:chromedriver" \
+	    -e "LAUNCH_URL=server:6969/ui" \
+	    -e "SELENIUM_HOST=chromedriver" \
+	    -e "WAIT_FOR_HOSTS=server:6969 chromedriver:4444 chromedriver:6060" \
+	    -e "TEST_USER=%s" \
+	    -e "TEST_EMAIL=%s" \
+	    -e "TEST_PASSWORD=%s" \
+	    -v /test_media/screenshots:/home/node/screenshots \
+	    -v /test_media/videos:/home/node/videos \
+	    %s %s
+	  ls -la /test_media/screenshots
+	  ls -la /test_media/videos
+	`,
+		login.Username,
+		login.Email,
+		login.Password,
+		runnerImage,
+		testName,
+	))
+}
+
+func copyMedia(node string) error {
+	err := system("bash", "-c", fmt.Sprintf(`
+		docker exec %s bash -c "tar -C /test_media -c ." > ../frontend_artifacts.tar
+	`, node))
+
+	return err
+}
+
+func TestFrontend(t *testing.T) {
+	// single node tests
+	teardownFinishedTestRuns()
+
+	f := Federation{NewCluster(1)}
+
+	userLogin := uniqLogin()
+
+	startTiming()
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		t.Error(err)
+	}
+	node1 := f[0].Nodes[0].Container
+
+	t.Run("Authenticate", func(t *testing.T) {
+
+		// start chrome driver
+		startChromeDriver(t, node1)
+		defer stopChromeDriver(t, node1)
+
+		runFrontendTest(t, node1, "specs/auth.js", userLogin)
+
+		// create the account locally so we can 'dm' with the same user that we register with
+		// need to do this AFTER we have register because dm remote add will check the api server with deets
+		d(t, node1, fmt.Sprintf("DATAMESH_PASSWORD=%s dm remote add testremote %s@localhost", userLogin.Password, userLogin.Username))
+
+		d(t, node1, "dm remote switch local")
+		d(t, node1, "dm init testvolume")
+		d(t, node1, "dm list")
+
+		runFrontendTest(t, node1, "specs/volumes.js", userLogin)
+		runFrontendTest(t, node1, "specs/rememberme.js", userLogin)
+
+		copyMedia(node1)
+	})
+
+}
