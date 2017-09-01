@@ -1,6 +1,122 @@
-# dev commands
+# developing datamesh via local federation integration tests
 
-How to develop the datamesh server, frontend and CLI locally with Docker.
+This is the recommended way to develop Datamesh backend code, where you care
+about exercising multi-node or multi-cluster behaviour (e.g. federated
+push/pull).
+
+We will use the Datamesh acceptance test suite, which starts a set of
+docker-in-docker environments, one for each node in your cluster and each
+cluster in your federation (as configured by the integration test(s) you choose
+to run).
+
+The test suite intentionally leaves the docker-in-docker environments running
+so that you can do ad-hoc poking or log/trace viewing after running a test.
+
+To run the test suite, run:
+
+```
+cd datamesh
+sudo -E `which go` test
+```
+
+This acceptance test suite uses docker-in-docker, kubeadm style. It creates
+docker containers which simulate entire computers, each running systemd, and
+then uses 'dm cluster init', etc, to set up datamesh. It requires internet
+access only for the small amounts of configuration data and PKI material stored
+in the datamesh discovery service. After the initial setup and priming of
+docker images, which takes quite some time, it should take ~60 seconds to spin
+up a 2 node datamesh cluster to run a test.
+
+You should put the following docker config in /etc/docker/daemon.json:
+
+```
+{
+    "storage-driver": "overlay2",
+    "insecure-registries": ["$(hostname).local:80"]
+}
+```
+
+Replacing `$(hostname)` with your hostname, and then `systemctl restart
+docker`.
+
+You need to be running a local registry, as well as everything else in the
+`github.com/lukemarsden/datamesh-instrumentation` pack, which requires
+`docker-compose` (run `up.sh` with a password as the first argument).
+
+Finally, you need to be running github.com/lukemarsden/discovery.datamesh.io
+on port 8087:
+
+```
+git clone git@github.com:lukemarsden/discovery.datamesh.io
+cd discovery.datamesh.io
+./start-local.sh
+```
+
+You have to do some one-off setup and priming of docker images before these
+tests will run:
+
+```
+cd $GOPATH/src; mkdir -p github.com/lukemarsden; cd github.com/lukemarsden
+git clone git@github.com:lukemarsden/datamesh
+cd ~/
+git clone git@github.com:kubernetes/kubernetes
+cd kubernetes
+git clone git@github.com:lukemarsden/kubeadm-dind-cluster dind
+dind/dind-cluster.sh bare prime-images
+docker rm -f prime-images
+cd $GOPATH/src/github.com/lukemarsden/datamesh/cmd/datamesh-server
+./rebuild.sh
+docker build -t $(hostname).local:80/lukemarsden/datamesh-server:pushpull .
+docker push $(hostname).local:80/lukemarsden/datamesh-server:pushpull
+
+docker pull quay.io/coreos/etcd:v3.0.15
+docker tag quay.io/coreos/etcd:v3.0.15 $(hostname).local:80/coreos/etcd:v3.0.15
+docker push $(hostname).local:80/coreos/etcd:v3.0.15
+
+docker pull busybox
+docker tag busybox $(hostname).local:80/busybox
+docker push $(hostname).local:80/busybox
+
+docker pull mysql:5.7.17
+docker tag mysql:5.7.17 $(hostname).local:80/mysql:5.7.17
+docker push $(hostname).local:80/mysql:5.7.17
+
+cd ~/
+git clone git@github.com:lukemarsden/datamesh-instrumentation
+cd datamesh-instrumentation
+cd etcd-browser
+docker build -t $(hostname).local:80/lukemarsden/etcd-browser:v1 .
+docker push $(hostname).local:80/lukemarsden/etcd-browser:v1
+```
+
+Now install some deps (for tests only; as root):
+
+```
+go get github.com/tools/godep
+apt install zfsutils-linux jq
+echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
+sysctl vm.max_map_count=262144
+```
+
+You can now run tests, like:
+
+```
+./mark-cleanup.sh; ./rebuild.sh && ./test.sh -run TestTwoSingleNodeClusters
+```
+
+To open a bunch of debug tools (including etcd browser), run (where 'secret' is
+the pasword you specified when you ran 'up.sh' in datamesh-instrumentation):
+
+```
+ADMIN_PW=secret ./creds.sh
+```
+
+
+# single server local dev
+
+How to develop a single datamesh server, frontend and CLI locally with Docker.
+
+*These instructions are most useful for developing the Javascript frontend.*
 
 ## building images
 
