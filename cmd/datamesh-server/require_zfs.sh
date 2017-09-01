@@ -53,6 +53,7 @@ SYSTEM_LIB=/system-lib
 # Set up mounts that are needed
 nsenter -t 1 -m -u -n -i sh -c \
     'set -xe
+    source /etc/profile
     if [ $(mount |grep '$MOUNTPOINT' |wc -l) -eq 0 ]; then
         echo "Creating and bind-mounting shared '$MOUNTPOINT'"
         mkdir -p '$MOUNTPOINT' && \
@@ -69,16 +70,18 @@ fi
 if [ ! -d $DIR ]; then
     mkdir -p $DIR
 fi
-if ! modinfo zfs >/dev/null 2>&1; then
+
+if [ -n "`lsmod|grep zfs`" ]; then 
+    echo "ZFS already loaded :)"
+else 
     depmod -b /system-lib || true
     if ! modprobe -d /system-lib zfs; then
         fetch_zfs
     else
         echo "Successfully loaded system ZFS :)"
     fi
-else
-    echo "ZFS already loaded :)"
 fi
+
 if [ ! -e /dev/zfs ]; then
     mknod -m 660 /dev/zfs c $(cat /sys/class/misc/zfs/dev |sed 's/:/ /g')
 fi

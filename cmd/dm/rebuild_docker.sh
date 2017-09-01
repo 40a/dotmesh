@@ -13,6 +13,7 @@ docker run -ti --rm \
   -v "${DIR}:/go/src/github.com/lukemarsden/datamesh/cmd/dm" \
   -v "${OUTPUT_DIR}:/target" \
   -e GOOS \
+  -e CGO_ENABLED=0 \
   --entrypoint godep \
   datamesh-cli-builder \
-  go build -i -o /target/dm .
+  go build -a -installsuffix cgo -ldflags '-s' -o /target/dm .

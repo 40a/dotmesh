@@ -9,6 +9,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log" // TODO start using https://github.com/Sirupsen/logrus
 	"os"
 	"strings"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	zipkin "github.com/openzipkin/zipkin-go-opentracing"
+	"gopkg.in/yaml.v2"
 )
 
 // initial setup
@@ -25,11 +27,34 @@ const ZPOOL = "zpool"
 const META_KEY_PREFIX = "io.datamesh:meta-"
 const ETCD_PREFIX = "/datamesh.io"
 const CONTAINER_MOUNT_PREFIX = "/var/datamesh"
+const CONFIG_PATH = "/etc/datamesh/config.yml"
 
 var LOG_TO_STDOUT bool
 var POOL string
 
 func main() {
+
+	var config Config
+	var foundConfig bool
+
+	dat, err := ioutil.ReadFile(CONFIG_PATH)
+
+	if os.IsNotExist(err) {
+		config = Config{}
+		foundConfig = false
+	} else {
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		err := yaml.Unmarshal(dat, &config)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		foundConfig = true
+	}
+
 	POOL = os.Getenv("POOL")
 	if POOL == "" {
 		POOL = "pool"
@@ -65,7 +90,7 @@ func main() {
 		return
 	}
 	if len(os.Args) > 1 && os.Args[1] == "--temporary-error-plugin" {
-		s := NewInMemoryState("<unknown>")
+		s := NewInMemoryState("<unknown>", config)
 		s.runErrorPlugin()
 		return
 	}
@@ -76,6 +101,12 @@ func main() {
 	}
 	setupLogging()
 	log.Print("Oh, hello.")
+	if foundConfig {
+		log.Print("Successfully loaded config from %s.", CONFIG_PATH)
+	} else {
+		log.Print("No config found at %s, using defaults.", CONFIG_PATH)
+	}
+
 	localPoolId, err := findLocalPoolId()
 	if err != nil {
 		out("Unable to determine pool ID. Make sure to run me as root.\n" +
@@ -91,7 +122,7 @@ func main() {
 	}
 	ips, _ := guessIPv4Addresses()
 	log.Printf("Detected my node ID as %s (%s)", localPoolId, ips)
-	s := NewInMemoryState(localPoolId)
+	s := NewInMemoryState(localPoolId, config)
 
 	for _, filesystemId := range findFilesystemIdsOnSystem() {
 		log.Printf("Initializing fsMachine for %s", filesystemId)

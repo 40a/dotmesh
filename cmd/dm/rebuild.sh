@@ -6,4 +6,4 @@ fi
 export PATH=/usr/local/go/bin:$PATH
 set -xe
 mkdir -p ../../binaries/$1
-GOOS=${1,,} godep go build -i -o ../../binaries/$1/dm .
+CGO_ENABLED=0 GOOS=${1,,} godep go build -a -installsuffix cgo -ldflags '-s' -o ../../binaries/$1/dm .

@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/lukemarsden/datamesh/cmd/datamesh-server",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v75",
+	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
 	],
@@ -263,6 +263,10 @@
 		{
 			"ImportPath": "golang.org/x/net/trace",
 			"Rev": "d513e58596cd55e6f47cd1dcbff6b46035baeccb"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "eb3733d160e74a9c7e442f435eb3bea458e1d19f"
 		}
 	]
 }

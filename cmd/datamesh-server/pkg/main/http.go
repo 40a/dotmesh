@@ -226,6 +226,20 @@ func (state *InMemoryState) runServer() {
 		},
 	)
 
+	router.HandleFunc("/config",
+		authHandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				b, err := json.Marshal(state.config)
+				if err != nil {
+					http.Error(w, "Unable to unmarshal config.", 500)
+					return
+				}
+				w.Header().Add("Content-Type", "application/json")
+				w.Write(b)
+			},
+		),
+	)
+
 	router.Handle("/ux", NewAuthHandler(state.NewWebServer()))
 
 	router.HandleFunc("/",
@@ -310,7 +324,7 @@ type AuthHandler struct {
 
 var DISABLE_BASIC_AUTH_NAME string = "disableBasicAuthWindow"
 
-func (a AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func auth(w http.ResponseWriter, r *http.Request) (*http.Request, error) {
 	notAuth := func(w http.ResponseWriter) {
 		disableBasicAuth := r.URL.Query().Get(DISABLE_BASIC_AUTH_NAME)
 		if len(disableBasicAuth) <= 0 {
@@ -322,7 +336,7 @@ func (a AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user, pass, _ := r.BasicAuth()
 	if user == "" {
 		notAuth(w)
-		return
+		return r, fmt.Errorf("Permission denied.")
 	}
 	// ok, user has provided u/p, try to log them in
 	authorized, err := check(user, pass)
@@ -332,11 +346,11 @@ func (a AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			user, err,
 		)
 		http.Error(w, fmt.Sprintf("Error: %s.", err), 401)
-		return
+		return r, err
 	}
 	if !authorized {
 		notAuth(w)
-		return
+		return r, fmt.Errorf("Permission denied.")
 	}
 	u, err := GetUserByName(user)
 	if err != nil {
@@ -344,16 +358,35 @@ func (a AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"[AuthHandler] Unable to locate user %v: %v", user, err,
 		)
 		notAuth(w)
-		return
+		return r, fmt.Errorf("Permission denied.")
 	}
 	r = r.WithContext(
 		context.WithValue(r.Context(), "authenticated-user-id", u.Id),
 	)
+	return r, nil
+}
+
+func (a AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r, err := auth(w, r)
+	if err != nil {
+		// Communicating the error upstream is handled by auth
+		return
+	}
 	a.subHandler.ServeHTTP(w, r)
 }
 
 func NewAuthHandler(handler http.Handler) http.Handler {
 	return AuthHandler{subHandler: handler}
+}
+
+func authHandlerFunc(f func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r, err := auth(w, r)
+		if err != nil {
+			return
+		}
+		f(w, r)
+	}
 }
 
 func getPassword(user string) (string, error) {

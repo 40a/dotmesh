@@ -17,12 +17,13 @@ import (
 
 // typically methods on the InMemoryState "god object"
 
-func NewInMemoryState(localPoolId string) *InMemoryState {
+func NewInMemoryState(localPoolId string, config Config) *InMemoryState {
 	d, err := NewDockerClient()
 	if err != nil {
 		panic(err)
 	}
 	s := &InMemoryState{
+		config:          config,
 		filesystems:     &fsMap{},
 		filesystemsLock: &sync.Mutex{},
 		myNodeId:        localPoolId,

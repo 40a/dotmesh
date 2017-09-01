@@ -139,6 +139,7 @@ type TransferPollResult struct {
 
 // A container for some state that is truly global to this process.
 type InMemoryState struct {
+	config                     Config
 	filesystems                *fsMap
 	filesystemsLock            *sync.Mutex
 	myNodeId                   string
@@ -284,3 +285,15 @@ type transferFn func(
 	transferRequestId string, pollResult *TransferPollResult,
 	client *JsonRpcClient, transferRequest *TransferRequest,
 ) (*Event, stateFn)
+
+type Config struct {
+	Plans []Plan
+}
+
+type Plan struct {
+	Id             string
+	Name           string
+	VolumeCount    int64
+	TotalSizeBytes int64
+	TransferBytes  int64
+}

@@ -112,7 +112,7 @@ another.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&etcdDockerImage, "etcd-image",
-		"quay.io/coreos/etcd:v3.0.15",
+		"quay.io/lukemarsden/etcd:v3.0.15",
 		"etcd docker image to use",
 	)
 	cmd.PersistentFlags().StringVar(
@@ -556,6 +556,18 @@ func startDatameshContainer(pkiPath string) error {
 	return nil
 }
 
+// exists returns whether the given file or directory exists or not
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
+}
+
 func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string) error {
 	// - Start etcd with discovery token on non-standard ports (to avoid
 	//   conflicting with an existing etcd).
@@ -587,8 +599,6 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 		"docker", "run", "--restart=always",
 		"-d", "--name=datamesh-etcd",
 		"-p", "42379:42379", "-p", "42380:42380",
-		// XXX the following apparently doesn't work on CentOS :/
-		"-v", "/etc/ssl/certs:/etc/ssl/certs",
 		"-v", "datamesh-etcd-data:/var/lib/etcd",
 		// XXX assuming you can bind-mount a path from the host is dubious,
 		// hopefully it works well enough on docker for mac and docker machine.
