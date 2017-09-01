@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ "$ADMIN_PW" == "" ]; then
     echo "Please set ADMIN_PW"

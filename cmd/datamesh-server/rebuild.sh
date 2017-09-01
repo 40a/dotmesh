@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -xe
 
 IMAGE=${IMAGE:=$(hostname).local:80/lukemarsden/datamesh-server:pushpull}

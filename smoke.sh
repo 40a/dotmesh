@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -xe
 
 # Smoke test to see whether basics still work on e.g. macOS

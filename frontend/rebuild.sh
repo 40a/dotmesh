@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #
 # the script that builds the frontend html, javascript and css (and images etc)
