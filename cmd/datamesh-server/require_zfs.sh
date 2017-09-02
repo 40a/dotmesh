@@ -53,7 +53,10 @@ SYSTEM_LIB=/system-lib
 # Set up mounts that are needed
 nsenter -t 1 -m -u -n -i sh -c \
     'set -xe
-    source /etc/profile
+    # make binaries findable on nixos host
+    if [ -f /etc/profile ]; then
+        source /etc/profile
+    fi
     if [ $(mount |grep '$MOUNTPOINT' |wc -l) -eq 0 ]; then
         echo "Creating and bind-mounting shared '$MOUNTPOINT'"
         mkdir -p '$MOUNTPOINT' && \
