@@ -64,8 +64,8 @@ cd $GOPATH/src/github.com/lukemarsden
 git clone git@neo.lukemarsden.net:root/datamesh
 ```
 
-We also assume you're OK to have `~/kubernetes` and
-`~/datamesh-instrumentation` directories:
+We're going to create `~/kubernetes`, `~/datamesh-instrumentation` and
+`~/discovery.datamesh.io` directories:
 
 ```
 cd ~/
@@ -89,6 +89,9 @@ git clone git@github.com:lukemarsden/discovery.datamesh.io
 cd discovery.datamesh.io
 ./start-local.sh
 ```
+
+The `discovery.datamesh.io` server provides a discovery service for datamesh
+clusters, we need to run a local one to make the tests work offline.
 
 You have to do some one-off setup and priming of docker images before these
 tests will run:
