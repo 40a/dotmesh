@@ -1,4 +1,4 @@
-# developing datamesh via local federation integration tests
+# developing datamesh via integration tests
 
 ## intro
 
@@ -21,6 +21,38 @@ then uses 'dm cluster init', etc, to set up datamesh. It does not require
 internet access.  After the initial setup and priming of docker images, which
 takes quite some time, it should take ~60 seconds to spin up a 2 node datamesh
 cluster to run a test.
+
+## setup - nixos
+
+Use a [config like this](https://github.com/lukemarsden/x1-carbon-nixos/blob/master/configuration.nix)
+for `/etc/nixos/configuration.nix`.
+
+Then run:
+```
+sudo nixos-rebuild switch
+```
+
+## setup - ubuntu
+
+[Install Docker](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/), then put the following docker config in /etc/docker/daemon.json:
+
+```
+{
+    "storage-driver": "overlay2",
+    "insecure-registries": ["$(hostname).local:80"]
+}
+```
+
+Replacing `$(hostname)` with your hostname, and then `systemctl restart docker`.
+
+Run (as root):
+```
+apt install zfsutils-linux jq
+echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
+sysctl vm.max_map_count=262144
+```
+
+[Install Docker Compose](https://docs.docker.com/compose/install/).
 
 ## setup
 
@@ -51,8 +83,6 @@ tracing, a local registry which is required for the integration tests, and an
 etcd-browser which is useful for inspecting the state in your test clusters'
 etcd instances.
 
-`docker-compose` (run `up.sh` with a password as the first argument).
-
 ```
 cd ~/
 git clone git@github.com:lukemarsden/discovery.datamesh.io
@@ -71,36 +101,6 @@ cd $GOPATH/src/github.com/lukemarsden/datamesh
 Now install some deps:
 ```
 go get github.com/tools/godep
-```
-
-## setup - nixos
-
-Use a [config like this](https://github.com/lukemarsden/x1-carbon-nixos/blob/master/configuration.nix)
-for `/etc/nixos/configuration.nix`.
-
-Then run:
-```
-sudo nixos-rebuild switch
-```
-
-## setup - ubuntu
-
-You should put the following docker config in /etc/docker/daemon.json:
-
-```
-{
-    "storage-driver": "overlay2",
-    "insecure-registries": ["$(hostname).local:80"]
-}
-```
-
-Replacing `$(hostname)` with your hostname, and then `systemctl restart docker`.
-
-Run (as root):
-```
-apt install zfsutils-linux jq
-echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
-sysctl vm.max_map_count=262144
 ```
 
 ## running tests
@@ -127,7 +127,6 @@ specified when you ran `up.sh` in `datamesh-instrumentation`):
 ```
 ADMIN_PW=secret ./creds.sh
 ```
-
 
 # single server local dev
 
@@ -386,5 +385,3 @@ If you are running the production trim (where the frontend code is burnt into th
 $ make chromedriver.start.prod
 $ make frontend.test.prod
 ```
-
-
