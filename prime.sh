@@ -11,7 +11,7 @@ docker push $(hostname).local:80/lukemarsden/datamesh-server:pushpull
 
 docker pull quay.io/lukemarsden/etcd:v3.0.15
 docker tag quay.io/lukemarsden/etcd:v3.0.15 $(hostname).local:80/lukemarsden/etcd:v3.0.15
-docker push $(hostname).local:80/coreos/etcd:v3.0.15
+docker push $(hostname).local:80/lukemarsden/etcd:v3.0.15
 
 docker pull busybox
 docker tag busybox $(hostname).local:80/busybox
