@@ -6,3 +6,6 @@ mkdir -p ../../binaries/Linux && GOOS=linux godep go build -o ../../binaries/Lin
 cd ../..
 cd cmd/datamesh-server
 ./rebuild.sh
+cd ../..
+cd frontend
+./rebuild_test_runner.sh

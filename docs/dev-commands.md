@@ -337,8 +337,7 @@ $ make frontend.dist
 
 This will create output in `frontend/dist` which can be copied into the server container for production.
 
-TODO: add the `dist` folder to the production build of the datamesh server
-
+The frontend `dist` folder is merged into the datamesh-server image in the `merge` CI job.
 
 ## running production mode
 
@@ -364,7 +363,9 @@ The difference in this mode is you need to hit `localhost:6969` to see it in the
 
 ## running frontend tests
 
-Whilst the local dev stack is running - you can run the frontend tests.
+TODO: the frontend tests require interaction between `dm`
+
+It is useful to run the frontend tests against a running hot-reloading development env.
 
 First - startup chromedriver and build the test image.
 
@@ -380,6 +381,8 @@ $ make frontend.test
 ```
 
 Videos & screenshots are produced after each test run - they live in `frontend/.media`
+
+#### production trim
 
 If you are running the production trim (where the frontend code is burnt into the server):
 
