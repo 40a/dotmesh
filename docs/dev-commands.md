@@ -17,15 +17,14 @@ test (using `creds.sh`).
 
 This acceptance test suite uses docker-in-docker, kubeadm style. It creates
 docker containers which simulate entire computers, each running systemd, and
-then uses 'dm cluster init', etc, to set up datamesh. It does not require
-internet access.  After the initial setup and priming of docker images, which
-takes quite some time, it should take ~60 seconds to spin up a 2 node datamesh
-cluster to run a test.
+then uses 'dm cluster init', etc, to set up datamesh. After the initial setup
+and priming of docker images, which takes quite some time, it should take ~60
+seconds to spin up a 2 node datamesh cluster to run a test. It then does not
+require internet access.
 
 ## setup - nixos
 
-Use a [config like this](https://github.com/lukemarsden/x1-carbon-nixos/blob/master/configuration.nix)
-for `/etc/nixos/configuration.nix`.
+Use a [config like this](https://github.com/lukemarsden/nixos/blob/master/vmware-guest/configuration.nix) for `/etc/nixos/configuration.nix`.
 
 Then run:
 ```
