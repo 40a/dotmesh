@@ -28,11 +28,12 @@ for node in $nodes; do
     ips[$node]=`docker exec -ti $node ifconfig $IFACE | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1`
 done
 
-echo "*****************************"
-echo "If running on a VM, try:"
-echo "    docker run -d --name=tinyproxy -p 6666:8888 dannydirect/tinyproxy:latest ANY"
-echo "Then configure your web browser to proxy all HTTP traffic through your VM's IP."
-echo "*****************************"
+echo "******************************************************************************"
+echo "If running on a headless VM, try:"
+echo "    docker run -d --name=tinyproxy --net=host dannydirect/tinyproxy:latest ANY"
+echo "Then configure your web browser to proxy all HTTP traffic through your VM's IP"
+echo "on port 8888."
+echo "******************************************************************************"
 
 for node in $nodes; do
     docker exec -i $node  \
