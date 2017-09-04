@@ -13,7 +13,7 @@ to run).
 
 The test suite intentionally leaves the last docker-in-docker environments
 running so that you can do ad-hoc poking or log/trace viewing after running a
-test (using `creds.sh`).
+test (using `debug-in-browser.sh`).
 
 This acceptance test suite uses docker-in-docker, kubeadm style. It creates
 docker containers which simulate entire computers, each running systemd, and
@@ -127,7 +127,7 @@ browsers for each cluster's etcd), run (where 'secret' is the pasword you
 specified when you ran `up.sh` in `datamesh-instrumentation`):
 
 ```
-ADMIN_PW=secret ./creds.sh
+ADMIN_PW=secret ./debug-in-browser.sh
 ```
 
 # single server local dev
