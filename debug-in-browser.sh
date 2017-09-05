@@ -30,7 +30,8 @@ done
 
 echo "******************************************************************************"
 echo "If running on a headless VM, try:"
-echo "    docker run -d --name=tinyproxy --net=host dannydirect/tinyproxy:latest ANY"
+echo "    docker run -d --restart=always --name=tinyproxy --net=host \\"
+echo "        dannydirect/tinyproxy:latest ANY"
 echo "Then configure your web browser to proxy all HTTP traffic through your VM's IP"
 echo "on port 8888."
 echo "******************************************************************************"
