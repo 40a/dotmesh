@@ -114,8 +114,8 @@ cd $GOPATH/src/github.com/lukemarsden/datamesh
 ./prep-tests.sh && ./test.sh
 ```
 
-You can pass `SKIP_FRONTEND=true` to `preptests.sh` if you want to trade having
-a working frontend for slightly faster builds.
+You can pass `SKIP_FRONTEND=true` to `prep-tests.sh` if you want to trade having
+a working frontend for slightly faster builds (this will break `TestFrontend`).
 
 To run just an individual set of tests, run:
 ```
