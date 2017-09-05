@@ -133,6 +133,14 @@ specified when you ran `up.sh` in `datamesh-instrumentation`):
 ADMIN_PW=secret ./debug-in-browser.sh
 ```
 
+The old UI, if you want to use that, depends on having the Jekyll site running on `localhost:4000`. The following is a portable way to do that:
+
+```
+git clone git@github.com:lukemarsden/datamesh-website
+cd datamesh-website
+docker run -ti --net=host -v $PWD:/srv/jekyll pwbgl/docker-jekyll-pygments jekyll serve /site
+```
+
 # single server local dev
 
 How to develop a single datamesh server, frontend and CLI locally with Docker.
