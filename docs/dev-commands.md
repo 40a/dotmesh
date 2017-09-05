@@ -111,12 +111,15 @@ To run the test suite, run:
 
 ```
 cd $GOPATH/src/github.com/lukemarsden/datamesh
-./mark-cleanup.sh; ./rebuild.sh && ./test.sh
+./prep-tests.sh && ./test.sh
 ```
+
+You can pass `SKIP_FRONTEND=true` to `preptests.sh` if you want to trade having
+a working frontend for slightly faster builds.
 
 To run just an individual set of tests, run:
 ```
-./mark-cleanup.sh; ./rebuild.sh && ./test.sh -run TestTwoSingleNodeClusters
+./prep-tests.sh && ./test.sh -run TestTwoSingleNodeClusters
 ```
 
 To run an individual test, specify `TestTwoSingleNodeClusters/TestName` for

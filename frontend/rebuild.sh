@@ -22,9 +22,9 @@ docker run \
   --name datamesh-frontend-builder \
   datamesh-frontend-builder \
   release
+rm -rf ./dist
 docker cp datamesh-frontend-builder:/app/dist ./dist
 docker rm -f datamesh-frontend-builder || true
 ls -la ./dist
-tar -cf dist.tar ./dist
-gzip dist.tar
-rm -rf ./dist
+rm -f dist.tar.gz
+tar cfz dist.tar.gz dist
