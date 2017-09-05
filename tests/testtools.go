@@ -48,22 +48,36 @@ func silentSystem(cmd string, args ...string) error {
 	return c.Run()
 }
 
+func tryUntilSucceeds(f func() error, desc string) error {
+	attempt := 0
+	for {
+		err := f()
+		if err != nil {
+			if attempt > 5 {
+				return err
+			} else {
+				fmt.Printf("Error %s: %v, pausing and trying again...\n", desc, err)
+				time.Sleep(time.Duration(attempt) * time.Second)
+			}
+		} else {
+			return nil
+		}
+		attempt++
+	}
+}
+
 func testMarkForCleanup(f Federation) {
 	for _, c := range f {
 		for _, n := range c.Nodes {
 			node := n.Container
-			err := system("bash", "-c", fmt.Sprintf(
-				`docker exec -t %s bash -c 'touch /CLEAN_ME_UP'`, node,
-			))
-			if err != nil {
-				fmt.Printf("Error marking %s for cleanup: %s, retrying...\n", node, err)
-				time.Sleep(1 * time.Second)
-				err := system("bash", "-c", fmt.Sprintf(
+			err := tryUntilSucceeds(func() error {
+				return system("bash", "-c", fmt.Sprintf(
 					`docker exec -t %s bash -c 'touch /CLEAN_ME_UP'`, node,
 				))
-				if err != nil {
-					fmt.Printf("Error marking %s for cleanup: %s, giving up.\n", node, err)
-				}
+			}, fmt.Sprintf("marking %s for cleanup", node))
+			if err != nil {
+				fmt.Printf("Error marking %s for cleanup: %s, giving up.\n", node, err)
+				panic("This is bad. Stop everything and clean up manually!")
 			}
 		}
 	}
