@@ -1500,130 +1500,133 @@ func (f *fsMachine) retryPush(
 	var responseEvent *Event
 	var nextState stateFn
 	for retry < 5 {
-		// Interpret empty toSnapshotId as "push to the latest snapshot"
-		if toSnapshotId == "" {
-			snaps, err := f.state.snapshotsForCurrentMaster(toFilesystemId)
+		// TODO refactor this wrt retryPull
+		responseEvent, nextState = func() (*Event, stateFn) {
+			// Interpret empty toSnapshotId as "push to the latest snapshot"
+			if toSnapshotId == "" {
+				snaps, err := f.state.snapshotsForCurrentMaster(toFilesystemId)
+				if err != nil {
+					return &Event{
+						Name: "failed-getting-local-snapshots", Args: &EventArgs{"err": err},
+					}, backoffState
+				}
+				if len(snaps) == 0 {
+					return &Event{
+						Name: "no-snapshots-of-that-filesystem",
+						Args: &EventArgs{"filesystemId": toFilesystemId},
+					}, backoffState
+				}
+				toSnapshotId = snaps[len(snaps)-1].Id
+			}
+			log.Printf(
+				"[retryPush] from (%s, %s) to (%s, %s), pollResult: %s",
+				fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId, pollResult,
+			)
+			var remoteSnaps []*snapshot
+			err := client.CallRemote(
+				context.Background(),
+				"DatameshRPC.SnapshotsById",
+				toFilesystemId,
+				&remoteSnaps,
+			)
 			if err != nil {
 				return &Event{
-					Name: "failed-getting-local-snapshots", Args: &EventArgs{"err": err},
+					Name: "failed-getting-remote-snapshots", Args: &EventArgs{"err": err},
 				}, backoffState
 			}
-			if len(snaps) == 0 {
+			fsMachine, err := f.state.maybeFilesystem(toFilesystemId)
+			if err != nil {
 				return &Event{
-					Name: "no-snapshots-of-that-filesystem",
-					Args: &EventArgs{"filesystemId": toFilesystemId},
+					Name: "retry-push-cant-find-filesystem-id",
+					Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
 				}, backoffState
 			}
-			toSnapshotId = snaps[len(snaps)-1].Id
-		}
-		log.Printf(
-			"[retryPush] from (%s, %s) to (%s, %s), pollResult: %s",
-			fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId, pollResult,
-		)
-		var remoteSnaps []*snapshot
-		err := client.CallRemote(
-			context.Background(),
-			"DatameshRPC.SnapshotsById",
-			toFilesystemId,
-			&remoteSnaps,
-		)
-		if err != nil {
-			return &Event{
-				Name: "failed-getting-remote-snapshots", Args: &EventArgs{"err": err},
-			}, backoffState
-		}
-		fsMachine, err := f.state.maybeFilesystem(toFilesystemId)
-		if err != nil {
-			return &Event{
-				Name: "retry-push-cant-find-filesystem-id",
-				Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
-			}, backoffState
-		}
-		fsMachine.snapshotsLock.Lock()
-		snaps := fsMachine.filesystem.snapshots
-		fsMachine.snapshotsLock.Unlock()
-		// if we're given a target snapshot, restrict f.filesystem.snapshots to
-		// that snapshot
-		localSnaps, err := restrictSnapshots(snaps, toSnapshotId)
-		if err != nil {
-			return &Event{
-				Name: "restrict-snapshots-error",
-				Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
-			}, backoffState
-		}
-		snapRange, err := canApply(localSnaps, remoteSnaps)
-		if err != nil {
-			switch err.(type) {
-			case *ToSnapsUpToDate:
-				// no action, we're up-to-date for this filesystem
-				pollResult.Status = "finished"
-				pollResult.Message = "remote already up-to-date, nothing to do"
+			fsMachine.snapshotsLock.Lock()
+			snaps := fsMachine.filesystem.snapshots
+			fsMachine.snapshotsLock.Unlock()
+			// if we're given a target snapshot, restrict f.filesystem.snapshots to
+			// that snapshot
+			localSnaps, err := restrictSnapshots(snaps, toSnapshotId)
+			if err != nil {
+				return &Event{
+					Name: "restrict-snapshots-error",
+					Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
+				}, backoffState
+			}
+			snapRange, err := canApply(localSnaps, remoteSnaps)
+			if err != nil {
+				switch err.(type) {
+				case *ToSnapsUpToDate:
+					// no action, we're up-to-date for this filesystem
+					pollResult.Status = "finished"
+					pollResult.Message = "remote already up-to-date, nothing to do"
 
-				e := updatePollResult(transferRequestId, *pollResult)
-				if e != nil {
+					e := updatePollResult(transferRequestId, *pollResult)
+					if e != nil {
+						return &Event{
+							Name: "push-initiator-cant-write-to-etcd", Args: &EventArgs{"err": e},
+						}, backoffState
+					}
 					return &Event{
-						Name: "push-initiator-cant-write-to-etcd", Args: &EventArgs{"err": e},
+						Name: "peer-up-to-date",
 					}, backoffState
 				}
 				return &Event{
-					Name: "peer-up-to-date",
+					Name: "error-in-canapply-when-pushing", Args: &EventArgs{"err": err},
 				}, backoffState
 			}
-			return &Event{
-				Name: "error-in-canapply-when-pushing", Args: &EventArgs{"err": err},
-			}, backoffState
-		}
-		// TODO peer may error out of pushPeerState, wouldn't we like to get them
-		// back into it somehow? we could attempt to do that with by sending a new
-		// RegisterTransfer rpc if necessary. or they could retry also.
+			// TODO peer may error out of pushPeerState, wouldn't we like to get them
+			// back into it somehow? we could attempt to do that with by sending a new
+			// RegisterTransfer rpc if necessary. or they could retry also.
 
-		var fromSnap string
-		if snapRange.fromSnap == nil {
-			fromSnap = "START"
-			if fromFilesystemId != "" {
-				// This is a send from a clone origin
-				fromSnap = fmt.Sprintf(
-					"%s@%s", fromFilesystemId, fromSnapshotId,
-				)
+			var fromSnap string
+			if snapRange.fromSnap == nil {
+				fromSnap = "START"
+				if fromFilesystemId != "" {
+					// This is a send from a clone origin
+					fromSnap = fmt.Sprintf(
+						"%s@%s", fromFilesystemId, fromSnapshotId,
+					)
+				}
+			} else {
+				fromSnap = snapRange.fromSnap.Id
 			}
-		} else {
-			fromSnap = snapRange.fromSnap.Id
-		}
 
-		pollResult.FilesystemId = toFilesystemId
-		pollResult.StartingSnapshot = fromSnap
-		pollResult.TargetSnapshot = snapRange.toSnap.Id
+			pollResult.FilesystemId = toFilesystemId
+			pollResult.StartingSnapshot = fromSnap
+			pollResult.TargetSnapshot = snapRange.toSnap.Id
 
-		err = updatePollResult(transferRequestId, *pollResult)
-		if err != nil {
-			return &Event{
-				Name: "push-initiator-cant-write-to-etcd", Args: &EventArgs{"err": err},
-			}, backoffState
-		}
+			err = updatePollResult(transferRequestId, *pollResult)
+			if err != nil {
+				return &Event{
+					Name: "push-initiator-cant-write-to-etcd", Args: &EventArgs{"err": err},
+				}, backoffState
+			}
 
-		// tell the remote what snapshot to expect
-		var result bool
-		err = client.CallRemote(
-			context.Background(), "DatameshRPC.RegisterTransfer", pollResult, &result,
-		)
-		if err != nil {
-			return &Event{
-				Name: "push-initiator-cant-register-transfer", Args: &EventArgs{"err": err},
-			}, backoffState
-		}
+			// tell the remote what snapshot to expect
+			var result bool
+			err = client.CallRemote(
+				context.Background(), "DatameshRPC.RegisterTransfer", pollResult, &result,
+			)
+			if err != nil {
+				return &Event{
+					Name: "push-initiator-cant-register-transfer", Args: &EventArgs{"err": err},
+				}, backoffState
+			}
 
-		err = updatePollResult(transferRequestId, *pollResult)
-		if err != nil {
-			return &Event{
-				Name: "push-initiator-cant-write-to-etcd", Args: &EventArgs{"err": err},
-			}, backoffState
-		}
+			err = updatePollResult(transferRequestId, *pollResult)
+			if err != nil {
+				return &Event{
+					Name: "push-initiator-cant-write-to-etcd", Args: &EventArgs{"err": err},
+				}, backoffState
+			}
 
-		responseEvent, nextState = f.push(
-			fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId,
-			snapRange, transferRequest, &transferRequestId, pollResult, client,
-		)
-		if responseEvent.Name == "finished-push" {
+			return f.push(
+				fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId,
+				snapRange, transferRequest, &transferRequestId, pollResult, client,
+			)
+		}()
+		if responseEvent.Name == "finished-push" || responseEvent.Name == "peer-up-to-date" {
 			log.Printf("[actualPush] Successful push!")
 			return responseEvent, nextState
 		}
@@ -1644,9 +1647,7 @@ func (f *fsMachine) retryPush(
 			"returning latest error: %s (to move into state %s)",
 		responseEvent, nextState,
 	)
-	return &Event{
-		Name: "maximum-retry-attempts-exceeded", Args: &EventArgs{"responseEvent": responseEvent},
-	}, backoffState
+	return responseEvent, nextState
 }
 
 func (f *fsMachine) errorDuringTransfer(desc string, err error) stateFn {
@@ -2574,11 +2575,12 @@ func (f *fsMachine) retryPull(
 	var responseEvent *Event
 	var nextState stateFn
 	for retry < 5 {
+		// XXX XXX XXX REFACTOR (retryPush)
 		responseEvent, nextState = f.pull(
 			fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId,
 			snapRange, transferRequest, &transferRequestId, pollResult, client,
 		)
-		if responseEvent.Name == "finished-pull" {
+		if responseEvent.Name == "finished-pull" || responseEvent.Name == "peer-up-to-date" {
 			log.Printf("[actualPull] Successful pull!")
 			return responseEvent, nextState
 		}

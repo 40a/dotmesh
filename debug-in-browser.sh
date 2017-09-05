@@ -47,12 +47,12 @@ for node in $nodes; do
             -t -i $(hostname).local:80/lukemarsden/etcd-browser:v1 > /dev/null 2>/dev/null &
 done
 
-echo "Kibana:                                           http://admin:$ADMIN_PW@localhost:83/"
+echo "Kibana:                                    http://admin:$ADMIN_PW@localhost:83/"
 
 # node uis
 for node in $nodes; do
-    echo "$node cluster:     http://admin:${passwords[$node]}@${ips[$node]}:6969/ux"
-    echo "$node frontend:    http://admin:${passwords[$node]}@${ips[$node]}:8080/ui"
+    echo "$node GUI:  http://admin:${passwords[$node]}@${ips[$node]}:6969/ux"
+    echo "$node GUI:  http://admin:${passwords[$node]}@${ips[$node]}:6969/ui"
 done
 
 for job in `jobs -p`; do
@@ -62,7 +62,7 @@ done
 # etcd viewers
 
 for node in $nodes; do
-    echo $node etcd viewer: http://${ips[$node]}:8000/
+    echo $node etcd: http://${ips[$node]}:8000/
 done
 
 # debug
