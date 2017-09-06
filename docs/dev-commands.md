@@ -237,7 +237,7 @@ $ make frontend.link
 $ yarn run watch
 ```
 
-Now - any changes made to `templatestack/template-ui` will hot-reload.
+Now - any changes made to `templatestack/template-ui` will hot-reload.  Changes made to template-ui must be published to npm!
 
 #### reset & boot errors
 
