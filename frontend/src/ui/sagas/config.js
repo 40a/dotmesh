@@ -29,7 +29,7 @@ const ConfigSagas = (opts = {}) => {
   }
 
   // load the current config
-  function* load() {    
+  function* load() {
     const { answer, error } = yield call(apis.load.loader)
 
     if(error) {

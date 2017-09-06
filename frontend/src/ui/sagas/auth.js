@@ -101,6 +101,7 @@ const AuthSagas = (opts = {}) => {
         yield put(actions.router.hook('authLoginSuccess', credentials))  
       }
 
+      // we can only load the config once we are logged in
       yield put(actions.router.hook('configLoad'))
       
       return credentials

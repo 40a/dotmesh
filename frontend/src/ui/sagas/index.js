@@ -43,9 +43,7 @@ const router = RouterSaga({
   authenticate: auth.authenticateRoute,
   trigger: (name, payload) => {
     if(process.env.NODE_ENV=='development') {
-      console.log('-------------------------------------------');
-      console.log('hook')
-      console.log(name)
+      console.log(`hook: ${name} ${payload && payload.name ? payload.name : ''}`)
       console.dir(payload)
     }
   }
@@ -58,7 +56,6 @@ const controllerLoop = Controller({
 function* initialize() {
   yield call(delay, 1)
   yield call(auth.initialize)
-  yield call(configSaga.load)
   yield put(actions.value.set('initialized', true))
   yield call(router.initialize)
   yield call(controllerLoop.start)
