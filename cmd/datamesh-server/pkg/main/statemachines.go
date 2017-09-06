@@ -2290,11 +2290,14 @@ func pushPeerState(f *fsMachine) stateFn {
 	}()
 
 	for {
-		log.Printf("[pushPeerState] about to read from externalSnapshotsChanged")
+		log.Printf("[pushPeerState:%s] about to read from externalSnapshotsChanged", f.filesystemId)
 
 		select {
 		case <-timeoutTimer.C:
-			log.Printf("[pushPeerState] Timed out waiting for externalSnapshotsChanged")
+			log.Printf(
+				"[pushPeerState:%s] Timed out waiting for externalSnapshotsChanged",
+				f.filesystemId,
+			)
 			f.innerResponses <- &Event{
 				Name: "timed-out-external-snaps",
 				Args: &EventArgs{},
@@ -2303,7 +2306,10 @@ func pushPeerState(f *fsMachine) stateFn {
 		case <-f.externalSnapshotsChanged:
 			// onwards!
 		}
-		log.Printf("[pushPeerState] read from externalSnapshotsChanged! doing inline load")
+		log.Printf(
+			"[pushPeerState:%s] read from externalSnapshotsChanged! doing inline load",
+			f.filesystemId,
+		)
 
 		// inline load, async because discover() blocks on publishing to
 		// newSnapsOnMaster chan, which we're subscribed to and so have to read

@@ -227,9 +227,9 @@ func (s *InMemoryState) notifyNewSnapshotsAfterPush(filesystemId string) {
 		log.Printf("[notifyNewSnapshotsAfterPush] No such filesystem id %s", filesystemId)
 		return
 	}
-	log.Printf("[notifyNewSnapshotsAfterPush] about to notify chan")
+	log.Printf("[notifyNewSnapshotsAfterPush:%s] about to notify chan", filesystemId)
 	f.externalSnapshotsChanged <- true
-	log.Printf("[notifyNewSnapshotsAfterPush] done notify chan")
+	log.Printf("[notifyNewSnapshotsAfterPush:%s] done notify chan", filesystemId)
 }
 
 func (s *InMemoryState) getCurrentState(filesystemId string) (string, error) {

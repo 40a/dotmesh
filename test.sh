@@ -4,4 +4,4 @@
 export PATH=/usr/local/go/bin:$PATH
 set -xe
 cd tests
-sudo -E `which go` test -v "$@"
+sudo -E `which go` test -timeout 0 -v "$@"
