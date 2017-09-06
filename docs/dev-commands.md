@@ -180,6 +180,12 @@ $ make cluster.start
 
 This will start an etcd and 2 datamesh containers - `docker ps` will show this.
 
+If this produces errors - you can use this command to reset and try again:
+
+```bash
+$ make reset
+```
+
 #### start frontend
 Then we bring up the frontend container (which proxies back to the cluster for api requests):
 
