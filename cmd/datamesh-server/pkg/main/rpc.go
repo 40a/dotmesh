@@ -577,54 +577,29 @@ func (d *DatameshRPC) RegisterTransfer(
 		return err
 	}
 
-	// be idempotent: only attempt to set the transfer object if it doesn't
-	// already exist.
-
-	key := fmt.Sprintf("%s/filesystems/transfers/%s", ETCD_PREFIX, args.TransferRequestId)
-
-	found := false
-
-	_, err = kapi.Get(
+	_, err = kapi.Set(
 		context.Background(),
-		key,
-		nil,
+		fmt.Sprintf(
+			"%s/filesystems/transfers/%s", ETCD_PREFIX, args.TransferRequestId,
+		),
+		string(serialized),
+		&client.SetOptions{PrevExist: client.PrevNoExist},
 	)
-	// key not found is ok (expected, no less)
-	if !client.IsKeyNotFound(err) && err != nil {
+	if err != nil {
 		return err
 	}
-	if err == nil {
-		found = true
-		log.Printf(
-			"[RegisterTransfer] succeeding without creating transfer object "+
-				"because it already existed and we want to be idempotent: %s",
-			args.TransferRequestId,
-		)
-	}
-
-	if !found {
-		_, err = kapi.Set(
-			context.Background(),
-			key,
-			string(serialized),
-			nil,
-		)
-		if err != nil {
-			return err
-		}
-		// XXX A transfer should be able to span multiple filesystemIds, really. So
-		// tying a transfer to a filesystem id is probably wrong. except, the thing
-		// being updated is a specific branch (filesystem id), it's ok if it drags
-		// dependent snapshots along with it.
-		_, err = d.state.globalFsRequest(args.FilesystemId, &Event{
-			Name: "peer-transfer",
-			Args: &EventArgs{
-				"Transfer": args,
-			},
-		})
-		if err != nil {
-			return err
-		}
+	// XXX A transfer should be able to span multiple filesystemIds, really. So
+	// tying a transfer to a filesystem id is probably wrong. except, the thing
+	// being updated is a specific branch (filesystem id), it's ok if it drags
+	// dependent snapshots along with it.
+	_, err = d.state.globalFsRequest(args.FilesystemId, &Event{
+		Name: "peer-transfer",
+		Args: &EventArgs{
+			"Transfer": args,
+		},
+	})
+	if err != nil {
+		return err
 	}
 	/*
 		// XXX should we be throwing away a result? not doing so probably leaks
