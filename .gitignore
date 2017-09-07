@@ -6,3 +6,5 @@ datamesh_install_log.txt
 binaries
 .media
 *.sw*
+*.log
+.vagrant
