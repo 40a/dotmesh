@@ -174,10 +174,11 @@ func (z ZFSReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if z.state.masterFor(z.filesystem) == z.state.myNodeId &&
-		state != "pushPeerState" && // we already know that we're receiving a transfer, or
-		state != "missingState" { // we're probably about to start knowing that we're receiving a transfer
+		state != "pushPeerState" {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Host is master for this filesystem, can't write to it.\n"))
+		w.Write([]byte(fmt.Sprintf(
+			"Host is master for this filesystem (%s), can't write to it. "+
+				"State is %s.\n", z.filesystem, state)))
 		return
 	}
 

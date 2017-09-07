@@ -277,17 +277,15 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// now make a commit that will diverge the filesystems
 		d(t, node1, "dm commit -m 'node1 commit'")
 
-		/*
-			// test incremental push
-			d(t, node2, "dm commit -m 'node2 commit'")
-			result := s(t, node2, "dm push cluster_0 || true") // an error code is ok
+		// test incremental push
+		d(t, node2, "dm commit -m 'node2 commit'")
+		result := s(t, node2, "dm push cluster_0 || true") // an error code is ok
 
-			if !strings.Contains(result, "diverged") && !strings.Contains(result, "hello") {
-				t.Error(
-					"pushing didn't fail when there was a divergence",
-				)
-			}
-		*/
+		if !strings.Contains(result, "diverged") && !strings.Contains(result, "hello") {
+			t.Error(
+				"pushing didn't fail when there was a divergence",
+			)
+		}
 	})
 	t.Run("ResetAfterPushThenPushMySQL", func(t *testing.T) {
 		fsname := uniqName()

@@ -602,12 +602,12 @@ func (d *DatameshRPC) RegisterTransfer(
 		)
 	}
 
-	if !found {
+	if !found || true {
 		_, err = kapi.Set(
 			context.Background(),
 			key,
 			string(serialized),
-			&client.SetOptions{PrevExist: client.PrevNoExist},
+			nil,
 		)
 		if err != nil {
 			return err
