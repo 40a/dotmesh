@@ -25,7 +25,11 @@ export DATAMESH_FRONTEND_PORT=${DATAMESH_FRONTEND_PORT:="80"}
 
 function cli-build() {
   echo "building datamesh CLI binary"
-  cd "${DIR}/cmd/dm" && GOOS=linux bash rebuild_docker.sh && GOOS=darwin bash rebuild_docker.sh
+  if [ -n "${GOOS}" ]; then
+    cd "${DIR}/cmd/dm" && bash rebuild_docker.sh
+  else
+    cd "${DIR}/cmd/dm" && GOOS=linux bash rebuild_docker.sh && GOOS=darwin bash rebuild_docker.sh
+  fi
 }
 
 function cluster-build() {
@@ -42,10 +46,11 @@ function cluster-prodbuild() {
 
 function cluster-start() {
   echo "creating cluster using ${SERVER_IMAGE}"
-  dm cluster init \
+  echo dm cluster init \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
-    --offline
+    --offline \
+    --config-file ${DIR}/config.yaml
 }
 
 function cluster-stop() {

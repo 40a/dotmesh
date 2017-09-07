@@ -5,7 +5,6 @@ import config from '../config'
 import forms from '../forms'
 import * as actions from '../actions'
 import * as selectors from '../selectors'
-
 import tools from '../tools'
 
 const REQUIRED_APIS = [
@@ -36,6 +35,12 @@ const ConfigSagas = (opts = {}) => {
       yield call(resetData)
     }
     else {
+      tools.devRun(() => {
+        console.log('config loaded')
+        console.log('-------------------------------------------');
+        console.log(JSON.stringify(answer, null, 4))
+        console.log('-------------------------------------------');
+      })
       yield call(setData, answer)
     }
   }
