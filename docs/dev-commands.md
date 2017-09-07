@@ -46,12 +46,45 @@ Replacing `$(hostname)` with your hostname, and then `systemctl restart docker`.
 
 Run (as root):
 ```
-apt install zfsutils-linux jq
+apt install zfsutils-linux jq golang
 echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
 sysctl vm.max_map_count=262144
 ```
 
 [Install Docker Compose](https://docs.docker.com/compose/install/).
+
+Add the hostname to the hosts file:
+
+```bash
+cat <<EOF >> /etc/hosts
+127.0.0.1 $(hostname).local
+EOF
+```
+
+## setup - vagrant
+
+First - install vagrant.
+
+Then:
+
+```bash
+$ vagrant up
+$ vagrant ssh
+$ ssh-keygen
+$ # yes to all options
+$ cat ~/.ssh/id_rsa.pub
+```
+
+Now paste this key into your github account AND your gitlab account.
+
+Now we login and run the `ubuntu` prepare script:
+
+```bash
+$ vagrant ssh
+$ bash /vagrant/scripts/prepare_vagrant.sh
+```
+
+Now you can skip directly to ["running tests"](#running-tests).
 
 ## setup
 
