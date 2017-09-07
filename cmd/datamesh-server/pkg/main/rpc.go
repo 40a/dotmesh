@@ -583,7 +583,7 @@ func (d *DatameshRPC) RegisterTransfer(
 			"%s/filesystems/transfers/%s", ETCD_PREFIX, args.TransferRequestId,
 		),
 		string(serialized),
-		&client.SetOptions{PrevExist: client.PrevNoExist},
+		nil,
 	)
 	if err != nil {
 		return err
