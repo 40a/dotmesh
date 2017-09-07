@@ -46,7 +46,7 @@ function cluster-prodbuild() {
 
 function cluster-start() {
   echo "creating cluster using ${SERVER_IMAGE}"
-  echo dm cluster init \
+  dm cluster init \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
     --offline \
