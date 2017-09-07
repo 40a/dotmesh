@@ -2256,8 +2256,26 @@ func pushPeerState(f *fsMachine) stateFn {
 	// what is the desired snapshot?
 	targetSnapshot := f.lastTransferRequest.TargetSnapshot
 
-	// TODO: first check whether we already have the snapshot. if so, early
+	// XXX are we allowed to transitively receive into other filesystems,
+	// without synchronizing with their state machines?
+
+	// first check whether we already have the snapshot. if so, early
 	// exit?
+	ss, err := f.state.snapshotsFor(f.state.myNodeId, f.filesystemId)
+	for _, s := range ss {
+		if s.Id == targetSnapshot {
+			f.innerResponses <- &Event{
+				Name: "receiving-push-complete",
+				Args: &EventArgs{},
+			}
+			log.Printf(
+				"[pushPeerState:%s] snaps-already-exist case, "+
+					"returning activeState on snap %s",
+				f.filesystemId, targetSnapshot,
+			)
+			return activeState
+		}
+	}
 
 	timeoutTimer := time.NewTimer(600 * time.Second)
 	finished := make(chan bool)
