@@ -602,7 +602,7 @@ func (d *DatameshRPC) RegisterTransfer(
 		)
 	}
 
-	if !found || true {
+	if !found {
 		_, err = kapi.Set(
 			context.Background(),
 			key,
