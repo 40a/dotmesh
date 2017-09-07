@@ -17,11 +17,18 @@ class VolumeTableContainer extends Component {
 }
 
 export default connect(
-  (state, ownProps) => ({
-    error: selectors.api.error(state, API_NAME),
-    loading: selectors.api.loading(state, API_NAME),
-    data: selectors.valueSelector(state, 'volumes')
-  }),
+  (state, ownProps) => {
+    const repoList = selectors.valueSelector(state, 'volumes') || []
+    const repos = repoList.map(selectors.repo)
+
+    console.log(JSON.stringify(repos, null, 4))
+
+    return {
+      error: selectors.api.error(state, API_NAME),
+      loading: selectors.api.loading(state, API_NAME),
+      data: repos
+    }
+  },
   (dispatch) => ({
     
   })

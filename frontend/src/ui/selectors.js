@@ -38,3 +38,31 @@ export const form = Object.keys(forms).reduce((all, name) => {
 export const auth = {
   user: value(config.userValueName)
 }
+
+const mapVolume = (data) => {
+  return {
+    Id: data.Id,
+    Name: data.Name,
+    Clone: data.Clone,
+    Master: data.Master,
+    SizeBytes: data.SizeBytes,
+    DirtyBytes: data.DirtyBytes,
+    CommitCount: data.CommitCount,
+    ServerStatuses: data.ServerStatuses
+  }   
+}
+
+// sub-selector - it operates on a single volume
+export const repo = (data) => {
+  const CloneVolumes = (data.CloneVolumes || []).map(mapVolume)
+
+  // there is always a master branch so +1
+  const CloneVolumeCount = (CloneVolumes || []).length + 1
+  return {
+    TopLevelVolume: mapVolume(data.TopLevelVolume),
+    CloneVolumes,
+    CloneVolumeCount,
+    Owner: data.Owner,
+    Collaborators: data.Collaborators
+  }
+}

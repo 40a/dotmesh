@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from 'react'
 import { Table, TableHead, TableRow, TableCell } from 'react-toolbox/lib/table'
 
+import labelUtils from '../utils/labels'
+
 class VolumeTable extends Component {
   render() {
     const data = this.props.data || []
@@ -11,15 +13,19 @@ class VolumeTable extends Component {
           <TableHead>
             <TableCell>Name</TableCell>
             <TableCell>Size</TableCell>
-            <TableCell>Master</TableCell>
+            <TableCell>Branches</TableCell>
           </TableHead>
           {data.map((item, idx) => {
             const volume = item.TopLevelVolume || {}
+            const clones = item.CloneVolumes || []
+            const CloneVolumeCount = item.CloneVolumeCount
+            const branchCountTitle = 'branch' + (CloneVolumeCount == 1 ? '' : 'es')
+
             return (
               <TableRow key={idx}>
                 <TableCell>{volume.Name || ''}</TableCell>
-                <TableCell>{volume.SizeBytes || ''}</TableCell>
-                <TableCell>{volume.Master || ''}</TableCell>
+                <TableCell>{labelUtils.size(volume.SizeBytes || 0)}</TableCell>
+                <TableCell>{CloneVolumeCount} {branchCountTitle}</TableCell>
               </TableRow>
             )
           })}
