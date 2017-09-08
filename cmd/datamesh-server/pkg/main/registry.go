@@ -300,7 +300,7 @@ func safeUser(u User) SafeUser {
 		Id:          u.Id,
 		Name:        u.Name,
 		Email:       u.Email,
-		CustomerID:  u.CustomerID,
+		CustomerId:  u.CustomerId,
 		CurrentPlan: u.CurrentPlan,
 	}
 }

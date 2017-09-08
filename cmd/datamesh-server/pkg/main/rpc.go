@@ -62,6 +62,21 @@ func (d *DatameshRPC) Get(
 	return nil
 }
 
+type PaymentDeets struct {
+	Something     string
+	SomethingElse string
+}
+
+func (d *DatameshRPC) SubmitPayment(
+	r *http.Request, paymentDeets *PaymentDeets, result *bool,
+) error {
+	// TODO: go talk to stripe, smash together some stuff and update the
+	// current user's CustomerId. Later, Stripe will tell us about an updated
+	// CurrentPlan.
+	*result = true
+	return nil
+}
+
 // List all filesystems in the cluster.
 func (d *DatameshRPC) List(
 	r *http.Request, args *struct{}, result *map[string]DatameshVolume) error {

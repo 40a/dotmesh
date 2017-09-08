@@ -249,6 +249,21 @@
 			"Rev": "ab2277b1c5d15c3cba104e9cbddbdfc622df5ad8"
 		},
 		{
+			"ImportPath": "github.com/stripe/stripe-go",
+			"Comment": "v25.1.0",
+			"Rev": "26bd5f484062ff4a6649626e8e8c0ed4aac1a9c1"
+		},
+		{
+			"ImportPath": "github.com/stripe/stripe-go/event",
+			"Comment": "v25.1.0",
+			"Rev": "26bd5f484062ff4a6649626e8e8c0ed4aac1a9c1"
+		},
+		{
+			"ImportPath": "github.com/stripe/stripe-go/orderitem",
+			"Comment": "v25.1.0",
+			"Rev": "26bd5f484062ff4a6649626e8e8c0ed4aac1a9c1"
+		},
+		{
 			"ImportPath": "github.com/ugorji/go/codec",
 			"Rev": "4a1cb5252a6951f715a85d0e4be334c2a2dbf2a2"
 		},
