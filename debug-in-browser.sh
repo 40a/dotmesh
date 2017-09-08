@@ -35,6 +35,10 @@ echo
 echo "Then configure your web browser to proxy all HTTP traffic through your VM's IP"
 echo "on port 8888."
 echo
+echo "NOTE: click the 'Use the same proxy server for all protocols' checkbox and delete the text in 'No Proxy for'"
+echo
+echo "NOTE: you might need to remove the /app/kibana part of the url the very first time to get it to work"
+echo
 echo "This Chrome plugin makes this change less invasive and easier to change:"
 echo "    http://bit.ly/1kL9DhD"
 echo
