@@ -27,7 +27,19 @@ export const billing = {
     const config = valueSelector(state, 'config') || {}
     return config.Plans || []
   },
-  planById: (state, id) => billing.plans(state).filter(plan => plan.Id == id)[0]
+  planById: (state, id) => billing.plans(state).filter(plan => plan.Id == id)[0],
+  stripeKey: (state) => {
+    const config = valueSelector(state, 'config') || {}
+    return config.StripePublicKey
+  }
+}
+
+export const auth = {
+  user: value(config.userValueName),
+  email: (state) => {
+    const user = auth.user(state)
+    return user.Email
+  }
 }
 
 export const formValidSelector = (name) => isValid(name)
@@ -43,9 +55,7 @@ export const form = Object.keys(forms).reduce((all, name) => {
   return all
 }, {})
 
-export const auth = {
-  user: value(config.userValueName)
-}
+
 
 const mapVolume = (data) => {
   return {

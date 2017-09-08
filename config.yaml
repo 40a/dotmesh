@@ -12,11 +12,11 @@ Plans:
     TotalSize: 1G
     Transfer: 10G
     VolumeCount: 10
-    PriceUSD: 1000
+    PriceUSD: 2500
   - 
     Id: team
     Name: team
     TotalSize: 10G
     Transfer: 100G
     VolumeCount: 100
-    PriceUSD: 100000
+    PriceUSD: 10000

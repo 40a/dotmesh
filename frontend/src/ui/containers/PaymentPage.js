@@ -8,22 +8,27 @@ import PaymentPage from '../components/PaymentPage'
 
 class PaymentPageContainer extends Component {
   render() {
-    return (
+    return this.props.stripeKey ? (
       <PaymentPage {...this.props} />
-    )
+    ) : null
   }
 }
 
 export default connect(
   (state, ownProps) => {
-    const plan = selectors.billing.planById(state, 'developer')
-
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.dir(plan)
+    const plan = selectors.billing.planById(state, 'developer') || {}
+    const amount = plan.PriceUSD
+    const currency = 'USD'
+    const email = selectors.auth.email(state)
+    const stripeKey = selectors.billing.stripeKey(state)
     return {
       config: selectors.valueSelector(state, 'config'),
-      email: selectors.auth.user(state).email
+      email: selectors.auth.user(state).email,
+      plan,
+      amount,
+      currency,
+      email,
+      stripeKey
     }
   },
   (dispatch) => ({
