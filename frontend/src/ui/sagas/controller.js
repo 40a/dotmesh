@@ -28,11 +28,8 @@ const ControllerLoop = (opts = {}) => {
 
   function* singleLoop() {
     const routerResults = yield select(state => state.router.result)
-
     const hooks = routerResults.controlLoopHooks || []
-
     yield all(hooks.map(hookName => put(actions.router.hook(hookName))))
-
   }
 
   function* runLoop() {
