@@ -11,14 +11,16 @@ type User struct {
 	Name        string
 	Email       string
 	ApiKey      string
-	CustomerID  string
+	CustomerId  string
 	CurrentPlan string
 }
 
 type SafeUser struct {
-	Id    string
-	Name  string
-	Email string // TODO maybe this should be the hash of the email
+	Id          string
+	Name        string
+	Email       string
+	CustomerId  string
+	CurrentPlan string
 }
 
 type CloneWithName struct {
