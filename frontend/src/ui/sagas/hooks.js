@@ -25,6 +25,7 @@ const Hooks = (opts = {}) => {
 
     // auth hooks for register/login
     authLogout: auth.logout,
+    authLoginError: () => {},
     authLoginSubmit: auth.loginSubmit,
     authLoginSuccess: auth.loginSuccess,
     authRegisterSubmit: auth.registerSubmit,

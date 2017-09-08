@@ -3,7 +3,9 @@ import tools from '../tools'
 
 // login means "do these credentials allow us to see the Ping endpoint"
 export const login = (payload) => ({
-  method: 'CurrentUser'
+  method: 'CurrentUser',
+  username: payload.username,
+  password: payload.password
 })
 
 export const register = (payload) => {

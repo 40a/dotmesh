@@ -40,10 +40,15 @@ func (d *DatameshRPC) Config(
 }
 
 func (d *DatameshRPC) CurrentUser(
-	r *http.Request, args *struct{}, result *SafeUser) error {
-	*result = safeUser(
-		GetUserById(r.Context().Value("authenticated-user-id").(string)),
-	)
+	r *http.Request, args *struct{}, result *SafeUser,
+) error {
+
+	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
+	if err != nil {
+		return err
+	}
+
+	*result = safeUser(user)
 	return nil
 }
 

@@ -71,22 +71,22 @@ const AuthSagas = (opts = {}) => {
   }
 
   // given some credentials - login
-  function* login(credentials, headless) {
+  function* login(credentials, credentialsFromDisk) {
     if(!credentials) throw new Error('credentials required for login saga')
 
-    // save the credentials to the store
-    yield call(reduceCredentials, credentials)
-
     // run the login api
-    const result = yield call(apis.login.loader, {
-      credentials
+    const result = yield call(apis.login.loader, credentials)
+      
+    tools.devRun(() => {
+      console.log('calling login with credentials:')
+      console.dir(credentials)
     })
     
     const error = result.error
     const loggedIn = result.answer
 
     if(error || loggedIn !== true) {
-      if(!headless) {
+      if(!credentialsFromDisk) {
         yield put(actions.router.hook('authLoginError', 'incorrect details'))  
       }
       return
@@ -102,10 +102,12 @@ const AuthSagas = (opts = {}) => {
       console.log(JSON.stringify(credentials, null, 4))
       return
       
+      // save the credentials to the store
+      yield call(reduceCredentials, credentials)
       // save credentials to local storage
       saveCachedCredentials(credentials)
 
-      if(!headless) {
+      if(!credentialsFromDisk) {
         // save the credentials to local storage so upon re-opening browser we are authenticated
         yield put(actions.router.hook('authLoginSuccess', credentials))  
       }
