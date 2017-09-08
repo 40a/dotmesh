@@ -146,7 +146,7 @@ type N struct {
 
 func teardownFinishedTestRuns() {
 	cs, err := exec.Command(
-		"bash", "-c", "docker ps --format {{.Names}} |grep cluster-",
+		"bash", "-c", "docker ps --format {{.Names}} |grep cluster- || true",
 	).Output()
 	if err != nil {
 		panic(err)
