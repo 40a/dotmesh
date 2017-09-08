@@ -44,7 +44,7 @@ const AuthSagas = (opts = {}) => {
       tools.logger(`found locally cached credentials`)
       console.dir(localValue)
     }
-    return localValue && localValue.username ?
+    return localValue && localValue.Name ?
       localValue :
       null
   }
@@ -71,41 +71,40 @@ const AuthSagas = (opts = {}) => {
   }
 
   // given some credentials - login
-  function* login(credentials, headless) {
+  function* login(credentials, areCredentialsFromDisk) {
     if(!credentials) throw new Error('credentials required for login saga')
 
-    // save the credentials to the store
-    yield call(reduceCredentials, credentials)
-
     // run the login api
-    const result = yield call(apis.login.loader, {
-      credentials
+    const { answer, error } = yield call(apis.login.loader, credentials)
+      
+    tools.devRun(() => {
+      console.log('calling login with credentials:')
+      console.dir(credentials)
     })
-    
-    const error = result.error
-    const loggedIn = result.answer
 
-    if(error || loggedIn !== true) {
-      if(!headless) {
+    // if we have a user ID back then it means logged in
+    const loggedIn = answer && answer.Id ? true : false
+
+    if(error || !loggedIn) {
+      if(!areCredentialsFromDisk) {
         yield put(actions.router.hook('authLoginError', 'incorrect details'))  
       }
       return
     }
     else {
 
-      console.log('-------------------------------------------');
-      console.log('-------------------------------------------');
-      console.log('-------------------------------------------');
-      console.log('result')
-      console.log(JSON.stringify(result, null, 4))
-      console.log('credentials')
-      console.log(JSON.stringify(credentials, null, 4))
-      return
+      const mergedCredentials = Object.assign({}, answer, {
+        Password: credentials.Password
+      })
       
-      // save credentials to local storage
+      // save the full merged creds to redux
+      yield call(reduceCredentials, mergedCredentials)
+
+      // save the original creds provided to disk to be used again
       saveCachedCredentials(credentials)
 
-      if(!headless) {
+      // we auto-logged in from disk creds - don't trigger redirects on success
+      if(!areCredentialsFromDisk) {
         // save the credentials to local storage so upon re-opening browser we are authenticated
         yield put(actions.router.hook('authLoginSuccess', credentials))  
       }
@@ -130,9 +129,9 @@ const AuthSagas = (opts = {}) => {
     if(!credentials) throw new Error('credentials required for register saga')
 
     const sendCredentials = {
-      email: credentials.email,
-      username: credentials.username,
-      password: credentials.password
+      Email: credentials.Email,
+      Name: credentials.Name,
+      Password: credentials.Password
     }
 
     // run the register api
@@ -160,7 +159,7 @@ const AuthSagas = (opts = {}) => {
   function* registerSubmit() {
     const credentials = yield call(formValuesIfValid, 'authRegister')
     if(credentials) {
-      yield call(register, credentials)  
+      yield call(register, credentials)
     }
   }
 

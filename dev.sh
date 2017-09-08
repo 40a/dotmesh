@@ -64,7 +64,8 @@ function cluster-upgrade() {
   dm cluster upgrade \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
-    --offline
+    --offline \
+    --config-file ${DIR}/config.yaml
 }
 
 function frontend-build() {

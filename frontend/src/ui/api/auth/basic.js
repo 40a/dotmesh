@@ -3,7 +3,9 @@ import tools from '../tools'
 
 // login means "do these credentials allow us to see the Ping endpoint"
 export const login = (payload) => ({
-  method: 'CurrentUser'
+  method: 'CurrentUser',
+  Name: payload.Name,
+  Password: payload.Password
 })
 
 export const register = (payload) => {
@@ -18,7 +20,7 @@ export const encodeCredentials = (username, password) => new Buffer(username + '
 
 export const getHeaders = (credentials) => {
   return {
-    Authorization: `Basic ${encodeCredentials(credentials.username, credentials.password)}`
+    Authorization: `Basic ${encodeCredentials(credentials.Name, credentials.Password)}`
   }
 }
 
