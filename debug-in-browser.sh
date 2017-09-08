@@ -9,7 +9,7 @@ if [ "$IFACE" == "" ]; then
     IFACE="eth0"
 fi
 
-nodes=`docker ps --format "{{.Names}}" |grep cluster_`
+nodes=`docker ps --format "{{.Names}}" |grep cluster-`
 
 # bash 4 only, associative array for passwords
 declare -A passwords
