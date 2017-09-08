@@ -22,6 +22,14 @@ export const formValuesSelector = (name) => {
   return handler
 }
 
+export const billing = {
+  plans: (state) => {
+    const config = valueSelector(state, 'config') || {}
+    return config.Plans || []
+  },
+  planById: (state, id) => billing.plans(state).filter(plan => plan.Id == id)[0]
+}
+
 export const formValidSelector = (name) => isValid(name)
 export const userSelector = (state) => state.values.user
 

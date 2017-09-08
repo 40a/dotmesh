@@ -5,15 +5,18 @@ Plans:
     TotalSize: 100M
     Transfer: 1G
     VolumeCount: 5
+    PriceUSD: 0
   - 
     Id: developer
     Name: "Developer Plan"
     TotalSize: 1G
     Transfer: 10G
     VolumeCount: 10
+    PriceUSD: 1000
   - 
     Id: team
     Name: team
     TotalSize: 10G
     Transfer: 100G
     VolumeCount: 100
+    PriceUSD: 100000

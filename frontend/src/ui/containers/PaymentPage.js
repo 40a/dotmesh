@@ -15,10 +15,17 @@ class PaymentPageContainer extends Component {
 }
 
 export default connect(
-  (state, ownProps) => ({
-    config: selectors.valueSelector(state, 'config'),
-    email: selectors.auth.user(state).email
-  }),
+  (state, ownProps) => {
+    const plan = selectors.billing.planById(state, 'developer')
+
+    console.log('-------------------------------------------');
+    console.log('-------------------------------------------');
+    console.dir(plan)
+    return {
+      config: selectors.valueSelector(state, 'config'),
+      email: selectors.auth.user(state).email
+    }
+  },
   (dispatch) => ({
     onToken: (token) => {
       console.log('HAVE TOKEN')
