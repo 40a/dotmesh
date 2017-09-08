@@ -23,6 +23,9 @@ export DATAMESH_FRONTEND_NAME=${DATAMESH_FRONTEND_NAME:="datamesh-frontend"}
 export DATAMESH_SERVER_PORT=${DATAMESH_SERVER_PORT:="6969"}
 export DATAMESH_FRONTEND_PORT=${DATAMESH_FRONTEND_PORT:="80"}
 
+export DEFAULT_DATAMESH_CONFIG="${DIR}/config.yaml"
+export DATAMESH_CONFIG=${DATAMESH_CONFIG:=$DEFAULT_DATAMESH_CONFIG}
+
 function cli-build() {
   echo "building datamesh CLI binary"
   if [ -n "${GOOS}" ]; then
@@ -46,11 +49,13 @@ function cluster-prodbuild() {
 
 function cluster-start() {
   echo "creating cluster using ${SERVER_IMAGE}"
+  echo $DATAMESH_CONFIG
+  exit
   dm cluster init \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
     --offline \
-    --config-file ${DIR}/config.yaml
+    --config-file ${DATAMESH_CONFIG}
 }
 
 function cluster-stop() {
@@ -65,7 +70,7 @@ function cluster-upgrade() {
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
     --offline \
-    --config-file ${DIR}/config.yaml
+    --config-file ${DATAMESH_CONFIG}
 }
 
 function frontend-build() {
