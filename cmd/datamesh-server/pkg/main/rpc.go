@@ -39,9 +39,11 @@ func (d *DatameshRPC) Config(
 	return nil
 }
 
-func (d *DatameshRPC) Email(
-	r *http.Request, args *struct{}, result *string) error {
-	*result = "email@domain.com"
+func (d *DatameshRPC) CurrentUser(
+	r *http.Request, args *struct{}, result *SafeUser) error {
+	*result = safeUser(
+		GetUserById(r.Context().Value("authenticated-user-id").(string)),
+	)
 	return nil
 }
 

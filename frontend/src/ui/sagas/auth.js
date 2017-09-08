@@ -92,6 +92,15 @@ const AuthSagas = (opts = {}) => {
       return
     }
     else {
+
+      console.log('-------------------------------------------');
+      console.log('-------------------------------------------');
+      console.log('-------------------------------------------');
+      console.log('result')
+      console.log(JSON.stringify(result, null, 4))
+      console.log('credentials')
+      console.log(JSON.stringify(credentials, null, 4))
+      return
       
       // save credentials to local storage
       saveCachedCredentials(credentials)
