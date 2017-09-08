@@ -42,7 +42,7 @@ const config = {
     }
   },
   // milliseconds delay for each iteration of the control loop
-  controlLoopInterval: 1000000,
+  controlLoopInterval: 1000,
   images: {
     appbar: '/images/datamesh-on-dark.png'
   },
