@@ -18,7 +18,13 @@ const disableBasicAuthWindowParams = (payload, state) => ({
 // grab the credentials from the redux storage and use them to make a request
 const reducerCredentialsConnector = JsonRpc({
   // use the auth driver to inject the current credentials
-  getHeaders: (payload, state) => auth.getHeaders(selectors.auth.user(state)),
+  getHeaders: (payload, state) => {
+    const reduxUserState = selectors.auth.user(state)
+    return auth.getHeaders({
+      Name: reduxUserState.Name,
+      Password: reduxUserState.Password
+    })
+  },
   getParams: disableBasicAuthWindowParams
 })
 
@@ -28,8 +34,8 @@ const payloadCredentialsConnector = JsonRpc({
   // use the auth driver to inject the current credentials
   getHeaders: (payload, state) => {
     return auth.getHeaders({
-      username: payload.username,
-      password: payload.password
+      Name: payload.Name,
+      Password: payload.Password
     })
   },
   getParams: disableBasicAuthWindowParams
@@ -55,9 +61,6 @@ const loaders = {
     options: {
       processError: (error) => {
         tools.devRun(() => {
-          console.log('-------------------------------------------');
-          console.log('-------------------------------------------');
-          console.log('-------------------------------------------');
           console.log('login error')
           console.dir(error)
         })
