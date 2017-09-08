@@ -305,4 +305,5 @@ type Plan struct {
 	VolumeCount    int64  `yaml:"VolumeCount"`
 	TotalSizeBytes int64  `yaml:"TotalSizeBytes"`
 	TransferBytes  int64  `yaml:"TransferBytes"`
+	PriceUSD       int64  `yaml:"PriceUSD"`
 }
