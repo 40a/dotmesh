@@ -289,20 +289,20 @@ type transferFn func(
 ) (*Event, stateFn)
 
 type Config struct {
-	Plans            []Plan `yaml:"plans"`
-	StripePrivateKey string `yaml:"stripePrivateKey"`
-	StripePublicKey  string `yaml:"stripePublicKey"`
+	Plans            []Plan `yaml:"Plans"`
+	StripePrivateKey string `yaml:"StripePrivateKey"`
+	StripePublicKey  string `yaml:"StripePublicKey"`
 }
 
 type SafeConfig struct {
-	Plans           []Plan `yaml:"plans"`
-	StripePublicKey string `yaml:"stripePublicKey"`
+	Plans           []Plan `yaml:"Plans"`
+	StripePublicKey string `yaml:"StripePublicKey"`
 }
 
 type Plan struct {
-	Id             string `yaml:"id"`
-	Name           string `yaml:"name"`
-	VolumeCount    int64  `yaml:"volumeCount"`
-	TotalSizeBytes int64  `yaml:"totalSizeBytes"`
-	TransferBytes  int64  `yaml:"transferBytes"`
+	Id             string `yaml:"Id"`
+	Name           string `yaml:"Name"`
+	VolumeCount    int64  `yaml:"VolumeCount"`
+	TotalSizeBytes int64  `yaml:"TotalSizeBytes"`
+	TransferBytes  int64  `yaml:"TransferBytes"`
 }
