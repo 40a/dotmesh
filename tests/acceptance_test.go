@@ -135,6 +135,7 @@ func TestTwoNodesSameCluster(t *testing.T) {
 }
 
 func TestTwoSingleNodeClusters(t *testing.T) {
+	teardownFinishedTestRuns()
 
 	f := Federation{
 		NewCluster(1), // cluster_0_node_0
@@ -370,77 +371,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 	})
 }
 
-func startChromeDriver(t *testing.T, node string) {
-	chromeDriverImage := localChromeDriverImage()
-	d(t, node, fmt.Sprintf(`
-		docker run -d \
-			--name datamesh-chromedriver \
-			--link datamesh-server-inner:server \
-			-e VNC_ENABLED=true \
-			-e EXPOSE_X11=true \
-			%s
-	`, chromeDriverImage))
-}
-
-func stopChromeDriver(t *testing.T, node string) {
-	d(t, node, "docker rm -f datamesh-chromedriver || true")
-}
-
-type UserLogin struct {
-	Email    string
-	Username string
-	Password string
-}
-
-var uniqUserNumber int
-
-func uniqLogin() UserLogin {
-	uniqUserNumber++
-	return UserLogin{
-		Email:    fmt.Sprintf("test%d@test.com", uniqUserNumber),
-		Username: fmt.Sprintf("test%d", uniqUserNumber),
-		Password: "test",
-	}
-}
-
-// run the frontend tests - then copy the media out onto the dind host
-func runFrontendTest(t *testing.T, node string, testName string, login UserLogin) {
-	runnerImage := localFrontendTestRunnerImage()
-	d(t, node, fmt.Sprintf(`
-		docker run --rm \
-	    --name datamesh-frontend-test-runner \
-	    --link "datamesh-server-inner:server" \
-	    --link "datamesh-chromedriver:chromedriver" \
-	    -e "LAUNCH_URL=server:6969/ui" \
-	    -e "SELENIUM_HOST=chromedriver" \
-	    -e "WAIT_FOR_HOSTS=server:6969 chromedriver:4444 chromedriver:6060" \
-	    -e "TEST_USER=%s" \
-	    -e "TEST_EMAIL=%s" \
-	    -e "TEST_PASSWORD=%s" \
-	    -v /test_media/screenshots:/home/node/screenshots \
-	    -v /test_media/videos:/home/node/videos \
-	    %s %s
-	  ls -la /test_media/screenshots
-	  ls -la /test_media/videos
-	`,
-		login.Username,
-		login.Email,
-		login.Password,
-		runnerImage,
-		testName,
-	))
-}
-
-func copyMedia(node string) error {
-	err := system("bash", "-c", fmt.Sprintf(`
-		docker exec %s bash -c "tar -C /test_media -c ." > ../frontend_artifacts.tar
-	`, node))
-
-	return err
-}
-
 func TestFrontend(t *testing.T) {
-	// single node tests
 	teardownFinishedTestRuns()
 
 	f := Federation{NewCluster(1)}
