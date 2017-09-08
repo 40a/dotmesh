@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -xe
 
 if [ `whoami` != 'vagrant' ]; then
@@ -18,7 +18,9 @@ EOF
 
 if [ -z "${GOPATH}" ]; then
   export GOPATH=/home/vagrant/gocode
+  export PATH=$PATH:/usr/lib/go-1.8/bin
   echo "export GOPATH=${GOPATH}" >> $HOME/.bash_profile
+  echo "export PATH=\$PATH:/usr/lib/go-1.8/bin:$GOPATH/bin" >> $HOME/.bash_profile
 fi
 
 mkdir -p $GOPATH

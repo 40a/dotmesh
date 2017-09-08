@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -xe
 
 if [ `whoami` != 'root' ]; then
@@ -7,7 +7,10 @@ if [ `whoami` != 'root' ]; then
 fi
 
 apt-get -y update
-apt-get install -y docker.io zfsutils-linux jq curl golang
+apt-get install -y docker.io zfsutils-linux jq curl software-properties-common
+add-apt-repository -y ppa:gophers/archive
+apt-get -y update
+apt-get install -y golang-1.8
 
 # make elastic search work
 echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
