@@ -297,9 +297,11 @@ func (r *Registry) RegisterClone(name string, topLevelFilesystemId string, clone
 
 func safeUser(u User) SafeUser {
 	return SafeUser{
-		Id:    u.Id,
-		Name:  u.Name,
-		Email: u.Email,
+		Id:          u.Id,
+		Name:        u.Name,
+		Email:       u.Email,
+		CustomerID:  u.CustomerID,
+		CurrentPlan: u.CurrentPlan,
 	}
 }
 
