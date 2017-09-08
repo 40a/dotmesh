@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -20,6 +21,8 @@ import (
 	rpcjson "github.com/gorilla/rpc/v2/json2"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/openzipkin/zipkin-go-opentracing/examples/middleware"
+	stripe "github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/event"
 )
 
 // a crap web server
@@ -231,6 +234,41 @@ func (state *InMemoryState) runServer() {
 	router.HandleFunc("/",
 		func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/register", 301)
+		},
+	)
+
+	router.HandleFunc("/stripe",
+		func(w http.ResponseWriter, r *http.Request) {
+			stripe.Key = d.state.config.StripePrivateKey
+
+			// read body from r, decode into e
+			e := &stripe.Event{}
+
+			requestBody, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Error reading request body", 400)
+				return
+			}
+
+			err = json.Unmarshal(requestBody, e)
+			if err != nil {
+				http.Error(w, "Cannot unmarshal into event", 400)
+				return
+			}
+
+			verified, err := event.Get(e.ID, nil)
+			if err != nil {
+				http.Error(w, "Nice try", 400)
+				return
+			}
+
+			e = verified
+			// Now safe to use e
+
+			// TODO: do some stuff with the event, update user object to
+			// appropriate tier (if we're being told that billing a renewal
+			// just failed, set their tier to free).
+
 		},
 	)
 
