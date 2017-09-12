@@ -49,8 +49,6 @@ function cluster-prodbuild() {
 
 function cluster-start() {
   echo "creating cluster using ${SERVER_IMAGE}"
-  echo $DATAMESH_CONFIG
-  exit
   dm cluster init \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \

@@ -165,9 +165,12 @@ You can run the three build stages seperately:
 
 ```bash
 $ make cluster.build
-$ make cli.build
 $ make frontend.build
+$ make cli.build
 ```
+
+NOTE: you will need to copy the `dm` binary as instructed by the output of the `make cli.build` command - make sure you do this
+
 
 ## run the stack
 

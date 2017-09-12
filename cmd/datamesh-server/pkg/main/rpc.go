@@ -11,8 +11,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/client"
-	stripe "github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/sub"
+	//stripe "github.com/stripe/stripe-go"
+	//"github.com/stripe/stripe-go/sub"
 )
 
 // TODO ensure contexts are threaded through in all RPC calls for correct
@@ -72,7 +72,7 @@ type PaymentDeets struct {
 func (d *DatameshRPC) SubmitPayment(
 	r *http.Request, paymentDeets *PaymentDeets, result *bool,
 ) error {
-	
+	/*
 	stripe.Key = d.state.config.StripePrivateKey
 
 	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
@@ -84,7 +84,7 @@ func (d *DatameshRPC) SubmitPayment(
  		  Desc: fmt.Sprintf("Customer for %s", user.Email),
 		}
 		customerParams.SetSource(paymentDeets.Token)
-		c, err := customer.New(customerParams)
+		c, err := stripe.customer.New(customerParams)
 		if err != nil {
 			return err
 		}
@@ -117,6 +117,7 @@ func (d *DatameshRPC) SubmitPayment(
 	// current user's CustomerId. Later, Stripe will tell us about an updated
 	// CurrentPlan.
 	*result = true
+	*/
 	return nil
 }
 
