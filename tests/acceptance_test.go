@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -332,6 +333,16 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// TODO
 		// after adding another user as a collaborator, it's possible to push
 		// to their volume.
+	})
+	t.Run("TwoUsersSameNamedVolume", func(t *testing.T) {
+		// TODO write a dm user management command
+		// OR, make a POST to /register
+
+		data := url.Values{}
+		data.Set("name", "foo")
+
+		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/register", node1), strings.NewReader(form.Encode()))
+
 	})
 	t.Run("Clone", func(t *testing.T) {
 		fsname := uniqName()
