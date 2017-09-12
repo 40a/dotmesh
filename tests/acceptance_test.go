@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -334,16 +333,6 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		// after adding another user as a collaborator, it's possible to push
 		// to their volume.
 	})
-	t.Run("TwoUsersSameNamedVolume", func(t *testing.T) {
-		// TODO write a dm user management command
-		// OR, make a POST to /register
-
-		data := url.Values{}
-		data.Set("name", "foo")
-
-		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/register", node1), strings.NewReader(form.Encode()))
-
-	})
 	t.Run("Clone", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node2, dockerRun(fsname)+" touch /foo/X")
@@ -423,5 +412,41 @@ func TestFrontend(t *testing.T) {
 		runFrontendTest(t, node1, "specs/rememberme.js", userLogin)
 
 		copyMedia(node1)
+	})
+}
+
+func TestThreeSingleNodeClusters(t *testing.T) {
+	teardownFinishedTestRuns()
+
+	f := Federation{
+		NewCluster(1), // cluster_0_node_0 - common
+		NewCluster(1), // cluster_1_node_0 - alice
+		NewCluster(1), // cluster_2_node_0 - bob
+	}
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		t.Error(err)
+	}
+	commonNode := f[0].Nodes[0]
+	aliceNode := f[1].Nodes[0]
+	bobNode := f[2].Nodes[0]
+
+	t.Run("TwoUsersSameNamedVolume", func(t *testing.T) {
+		err = registerUser(commonNode.IP, "bob", "bob@bob.com", "bob is great")
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = registerUser(commonNode.IP, "alice", "alice@bob.com", "alice is also great")
+		if err != nil {
+			t.Error(err)
+		}
+		// We should have users 'bob' and 'alice' now!
+		d(t, aliceNode.Container, dockerRun("apples")+" touch /foo/X")
+		d(t, bobNode.Container, dockerRun("apples")+" touch /foo/X")
+		d(t, aliceNode.Container, "dm push cluster_0 apples alice/apples")
+		d(t, bobNode.Container, "dm push cluster_0 apples bob/apples")
+
 	})
 }
