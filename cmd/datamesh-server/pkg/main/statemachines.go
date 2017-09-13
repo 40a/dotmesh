@@ -2236,7 +2236,7 @@ func pushPeerState(f *fsMachine) stateFn {
 		)
 		f.innerResponses <- &Event{
 			Name: "error-listing-containers-during-push-receive",
-			Args: &EventArgs{"err": err},
+			Args: &EventArgs{"err": fmt.Sprintf("%v", err)},
 		}
 		return backoffState
 	}
