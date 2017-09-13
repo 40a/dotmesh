@@ -445,8 +445,15 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		// We should have users 'bob' and 'alice' now!
 		d(t, aliceNode.Container, dockerRun("apples")+" touch /foo/X")
 		d(t, bobNode.Container, dockerRun("apples")+" touch /foo/X")
-		d(t, aliceNode.Container, "dm push cluster_0 apples alice/apples")
-		d(t, bobNode.Container, "dm push cluster_0 apples bob/apples")
+		d(t, aliceNode.Container, "dm switch apples")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+		
+		// explicit version
+		d(t, aliceNode.Container, "dm push cluster_0 apples --remote-volume alice/apples")
+		
+		d(t, bobNode.Container, "dm switch apples")
+		d(t, bobNode.Container, "dm commit -m'Bob commits'")
+		d(t, bobNode.Container, "dm push cluster_0 apples --remote-volume bob/apples")
 
 	})
 }

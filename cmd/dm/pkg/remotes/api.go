@@ -506,7 +506,7 @@ type TransferRequest struct {
 // behind NAT from its peer, and so it must initiate the connection.
 func (dm *DatameshAPI) RequestTransfer(
 	direction, peer,
-	filesystemName, branchName,
+	localFilesystemName, localBranchName,
 	remoteFilesystemName, remoteBranchName string,
 ) (string, error) {
 	connectionInitiator := dm.Configuration.CurrentRemote
@@ -514,13 +514,18 @@ func (dm *DatameshAPI) RequestTransfer(
 	var err error
 	var currentVolume string
 
-	if remoteFilesystemName == "" {
+	// Cases:
+	// push without --remote-volume - remoteFilesystemName = ""
+	// push with --remote-volume - remoteFilesystemName = remote volume
+	// clone/pull - remoteFilesystemname = the filesystem we're playing with which also is the local one as we can't rename as part of the pull/clone
+	
+	if localFilesystemName == "" {
 		currentVolume, err = dm.Configuration.CurrentVolume()
 		if err != nil {
 			return "", err
 		}
 	} else {
-		currentVolume = remoteFilesystemName
+		currentVolume = localFilesystemName
 	}
 
 	if remoteBranchName != "" && remoteFilesystemName == "" {
@@ -530,13 +535,13 @@ func (dm *DatameshAPI) RequestTransfer(
 		)
 	}
 	var currentBranch string
-	if remoteBranchName == "" {
+	if localBranchName == "" {
 		currentBranch, err = dm.Configuration.CurrentBranch()
 		if err != nil {
 			return "", err
 		}
 	} else {
-		currentBranch = remoteBranchName
+		currentBranch = localBranchName
 	}
 
 	// connect to connectionInitiator
@@ -559,8 +564,8 @@ func (dm *DatameshAPI) RequestTransfer(
 			Direction:            direction,
 			LocalFilesystemName:  currentVolume,
 			LocalCloneName:       deMasterify(currentBranch),
-			RemoteFilesystemName: filesystemName,
-			RemoteCloneName:      deMasterify(branchName),
+			RemoteFilesystemName: remoteFilesystemName,
+			RemoteCloneName:      deMasterify(remoteBranchName),
 			// TODO add TargetSnapshot here, to support specifying "push to a given
 			// snapshot" rather than just "push all snapshots up to the latest"
 		}, &transferId)
