@@ -89,7 +89,7 @@ func testSetup(f Federation, stamp int64) error {
 		# both from ZFS's perspective and that of the inner container.
 		# (Bind-mounts all the way down.)
 		mkdir -p /datamesh-test-pools
-		# tmpfs makes etcd not completely rinse your IOPS (which it does
+		# tmpfs makes etcd not completely rinse your IOPS (which it can do
 		# otherwise); create if doesn't exist
 		if [ $(mount |grep "/tmpfs " |wc -l) -eq 0 ]; then
 			mkdir -p /tmpfs && mount -t tmpfs -o size=4g tmpfs /tmpfs
@@ -146,16 +146,16 @@ type N struct {
 
 func teardownFinishedTestRuns() {
 	cs, err := exec.Command(
-		"docker", "ps", "--filter", "name=^/cluster_.*$", "--format", "{{.Names}}",
+		"bash", "-c", "docker ps --format {{.Names}} |grep cluster- || true",
 	).Output()
 	if err != nil {
 		panic(err)
 	}
 	stamps := map[int64][]N{}
 	for _, line := range strings.Split(string(cs), "\n") {
-		shrap := strings.Split(line, "_")
+		shrap := strings.Split(line, "-")
 		if len(shrap) > 4 {
-			// cluster_<timestamp>_<clusterNum>_node_<nodeNum>
+			// cluster-<timestamp>-<clusterNum>-node-<nodeNum>
 			stamp := shrap[1]
 			clusterNum := shrap[2]
 			nodeNum := shrap[4]
@@ -423,11 +423,11 @@ func NewCluster(desiredNodeCount int) *Cluster {
 type Federation []*Cluster
 
 func nodeName(now int64, i, j int) string {
-	return fmt.Sprintf("cluster_%d_%d_node_%d", now, i, j)
+	return fmt.Sprintf("cluster-%d-%d-node-%d", now, i, j)
 }
 
 func poolId(now int64, i, j int) string {
-	return fmt.Sprintf("testpool_%d_%d_node_%d", now, i, j)
+	return fmt.Sprintf("testpool-%d-%d-node-%d", now, i, j)
 }
 
 func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Node {
@@ -554,4 +554,73 @@ func (f Federation) Start(t *testing.T) error {
 		}
 	}
 	return nil
+}
+
+func startChromeDriver(t *testing.T, node string) {
+	chromeDriverImage := localChromeDriverImage()
+	d(t, node, fmt.Sprintf(`
+		docker run -d \
+			--name datamesh-chromedriver \
+			--link datamesh-server-inner:server \
+			-e VNC_ENABLED=true \
+			-e EXPOSE_X11=true \
+			%s
+	`, chromeDriverImage))
+}
+
+func stopChromeDriver(t *testing.T, node string) {
+	d(t, node, "docker rm -f datamesh-chromedriver || true")
+}
+
+type UserLogin struct {
+	Email    string
+	Username string
+	Password string
+}
+
+var uniqUserNumber int
+
+func uniqLogin() UserLogin {
+	uniqUserNumber++
+	return UserLogin{
+		Email:    fmt.Sprintf("test%d@test.com", uniqUserNumber),
+		Username: fmt.Sprintf("test%d", uniqUserNumber),
+		Password: "test",
+	}
+}
+
+// run the frontend tests - then copy the media out onto the dind host
+func runFrontendTest(t *testing.T, node string, testName string, login UserLogin) {
+	runnerImage := localFrontendTestRunnerImage()
+	d(t, node, fmt.Sprintf(`
+		docker run --rm \
+	    --name datamesh-frontend-test-runner \
+	    --link "datamesh-server-inner:server" \
+	    --link "datamesh-chromedriver:chromedriver" \
+	    -e "LAUNCH_URL=server:6969/ui" \
+	    -e "SELENIUM_HOST=chromedriver" \
+	    -e "WAIT_FOR_HOSTS=server:6969 chromedriver:4444 chromedriver:6060" \
+	    -e "TEST_USER=%s" \
+	    -e "TEST_EMAIL=%s" \
+	    -e "TEST_PASSWORD=%s" \
+	    -v /test_media/screenshots:/home/node/screenshots \
+	    -v /test_media/videos:/home/node/videos \
+	    %s %s
+	  ls -la /test_media/screenshots
+	  ls -la /test_media/videos
+	`,
+		login.Username,
+		login.Email,
+		login.Password,
+		runnerImage,
+		testName,
+	))
+}
+
+func copyMedia(node string) error {
+	err := system("bash", "-c", fmt.Sprintf(`
+		docker exec %s bash -c "tar -C /test_media -c ." > ../frontend_artifacts.tar
+	`, node))
+
+	return err
 }

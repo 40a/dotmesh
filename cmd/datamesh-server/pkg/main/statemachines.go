@@ -2256,7 +2256,28 @@ func pushPeerState(f *fsMachine) stateFn {
 	// what is the desired snapshot?
 	targetSnapshot := f.lastTransferRequest.TargetSnapshot
 
-	timeoutTimer := time.NewTimer(60 * time.Second)
+	// XXX are we allowed to transitively receive into other filesystems,
+	// without synchronizing with their state machines?
+
+	// first check whether we already have the snapshot. if so, early
+	// exit?
+	ss, err := f.state.snapshotsFor(f.state.myNodeId, f.filesystemId)
+	for _, s := range ss {
+		if s.Id == targetSnapshot {
+			f.innerResponses <- &Event{
+				Name: "receiving-push-complete",
+				Args: &EventArgs{},
+			}
+			log.Printf(
+				"[pushPeerState:%s] snaps-already-exist case, "+
+					"returning activeState on snap %s",
+				f.filesystemId, targetSnapshot,
+			)
+			return activeState
+		}
+	}
+
+	timeoutTimer := time.NewTimer(600 * time.Second)
 	finished := make(chan bool)
 
 	// reset timer when progress is made
@@ -2265,7 +2286,7 @@ func pushPeerState(f *fsMachine) stateFn {
 		if !timeoutTimer.Stop() {
 			<-timeoutTimer.C
 		}
-		timeoutTimer.Reset(60 * time.Second)
+		timeoutTimer.Reset(600 * time.Second)
 	}
 
 	go func() {
@@ -2290,11 +2311,14 @@ func pushPeerState(f *fsMachine) stateFn {
 	}()
 
 	for {
-		log.Printf("[pushPeerState] about to read from externalSnapshotsChanged")
+		log.Printf("[pushPeerState:%s] about to read from externalSnapshotsChanged", f.filesystemId)
 
 		select {
 		case <-timeoutTimer.C:
-			log.Printf("[pushPeerState] Timed out waiting for externalSnapshotsChanged")
+			log.Printf(
+				"[pushPeerState:%s] Timed out waiting for externalSnapshotsChanged",
+				f.filesystemId,
+			)
 			f.innerResponses <- &Event{
 				Name: "timed-out-external-snaps",
 				Args: &EventArgs{},
@@ -2303,7 +2327,10 @@ func pushPeerState(f *fsMachine) stateFn {
 		case <-f.externalSnapshotsChanged:
 			// onwards!
 		}
-		log.Printf("[pushPeerState] read from externalSnapshotsChanged! doing inline load")
+		log.Printf(
+			"[pushPeerState:%s] read from externalSnapshotsChanged! doing inline load",
+			f.filesystemId,
+		)
 
 		// inline load, async because discover() blocks on publishing to
 		// newSnapsOnMaster chan, which we're subscribed to and so have to read
@@ -2350,6 +2377,10 @@ func pushPeerState(f *fsMachine) stateFn {
 						Name: "receiving-push-complete",
 						Args: &EventArgs{},
 					}
+					log.Printf(
+						"[pushPeerState:%s] mounted case, returning activeState on snap %s",
+						f.filesystemId, sn.Id,
+					)
 					return activeState
 				} else {
 					// XXX does mounting alone dirty the filesystem, stopping
@@ -2363,6 +2394,10 @@ func pushPeerState(f *fsMachine) stateFn {
 					} else {
 						f.innerResponses <- responseEvent
 					}
+					log.Printf(
+						"[pushPeerState:%s] unmounted case, returning nextState %s on snap %s",
+						f.filesystemId, nextState, sn.Id,
+					)
 					return nextState
 				}
 			} else {
@@ -2792,3 +2827,11 @@ func (f *fsMachine) applyPath(
 	}
 	return responseEvent, nextState
 }
+
+// TODO: spin up _three_ single node clusters, use one as a hub so that alice
+// and bob can collaborate.
+
+// TODO: run dind/dind-cluster.sh up, and then test the manifests in
+// kubernetes/ against the resulting (3 node by default) cluster. Ensure things
+// run offline. Figure out how to configure each cluster node with its own
+// zpool. Test dynamic provisioning, and so on.

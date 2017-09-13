@@ -554,7 +554,6 @@ func (d *DatameshRPC) registerFilesystemBecomeMaster(
 				return err
 			}
 		}
-
 	}
 
 	log.Printf(
@@ -634,6 +633,7 @@ func (d *DatameshRPC) RegisterTransfer(
 	args *TransferPollResult,
 	result *bool,
 ) error {
+	log.Printf("[RegisterTransfer] called with args: %v", args)
 	serialized, err := json.Marshal(args)
 	if err != nil {
 		return err
@@ -642,12 +642,18 @@ func (d *DatameshRPC) RegisterTransfer(
 	if err != nil {
 		return err
 	}
+
 	_, err = kapi.Set(
 		context.Background(),
-		fmt.Sprintf("%s/filesystems/transfers/%s", ETCD_PREFIX, args.TransferRequestId),
+		fmt.Sprintf(
+			"%s/filesystems/transfers/%s", ETCD_PREFIX, args.TransferRequestId,
+		),
 		string(serialized),
 		nil,
 	)
+	if err != nil {
+		return err
+	}
 	// XXX A transfer should be able to span multiple filesystemIds, really. So
 	// tying a transfer to a filesystem id is probably wrong. except, the thing
 	// being updated is a specific branch (filesystem id), it's ok if it drags
