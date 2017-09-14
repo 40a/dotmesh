@@ -333,6 +333,17 @@ Then we run the `upgrade` script which will replace in place the server containe
 $ make cluster.upgrade
 ```
 
+#### adding go dependencies
+
+If you have included a new godep in your code - follow these steps:
+
+ * symlink the current repo into $GOPATH/src/github.com/lukemarsden/datamesh
+ * cd $GOPATH/src/github.com/lukemarsden/datamesh/cmd/{datamesh-server,dm}
+ * godep restore # only if not run already
+ * go get github.com/stripe/stripe-go/customer
+ * godep save ./...
+ * # now commit the vendor & Godeps folder
+
 #### cli
 
 Once you have edited the [cli code](cmd/dm) - run the build script:
