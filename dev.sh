@@ -26,6 +26,11 @@ export DATAMESH_FRONTEND_PORT=${DATAMESH_FRONTEND_PORT:="80"}
 export DEFAULT_DATAMESH_CONFIG="${DIR}/config.yaml"
 export DATAMESH_CONFIG=${DATAMESH_CONFIG:=$DEFAULT_DATAMESH_CONFIG}
 
+if [ ! -f "$DATAMESH_CONFIG" ]; then
+  echo >&2 "$DATAMESH_CONFIG file needed"
+  exit 1
+fi
+
 function cli-build() {
   echo "building datamesh CLI binary"
   if [ -n "${GOOS}" ]; then
