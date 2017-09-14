@@ -33,9 +33,7 @@ export default connect(
   },
   (dispatch) => ({
     onToken: (token) => {
-      console.log('HAVE TOKEN')
-      console.dir(token)
-      //dispatch(actions.router.hook('paymentToken', token))
+      dispatch(actions.router.hook('billingTokenReceived', token))
     }
   })
 )(PaymentPageContainer)

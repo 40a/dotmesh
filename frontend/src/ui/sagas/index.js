@@ -9,6 +9,7 @@ import config from '../config'
 import Hooks from './hooks'
 import Auth from './auth'
 import Volume from './volume'
+import Billing from './billing'
 import Config from './config'
 import Controller from './controller'
 
@@ -25,6 +26,12 @@ const volume = Volume({
   }
 })
 
+const billing = Billing({
+  apis: {
+    
+  }
+})
+
 const configSaga = Config({
   apis: {
     load: apis.configLoad
@@ -34,6 +41,7 @@ const configSaga = Config({
 const hooks = Hooks({
   auth,
   volume,
+  billing,
   config: configSaga
 })
 

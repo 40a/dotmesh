@@ -20,6 +20,7 @@ const Hooks = (opts = {}) => {
   if(!opts.config) throw new Error('config opt required for hooks')
   const auth = opts.auth
   const volume = opts.volume
+  const billing = opts.billing
   const config = opts.config
   return {
 
@@ -33,6 +34,9 @@ const Hooks = (opts = {}) => {
 
     // volume
     volumeList: volume.list,
+
+    // billing
+    billingTokenReceived: billing.tokenReceived,
 
     // config
     configLoad: config.load,
