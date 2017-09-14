@@ -227,6 +227,45 @@ If this produces errors - you can use this command to reset and try again:
 $ make reset
 ```
 
+#### start cluster with billing
+
+You will need to create a `config.stripe.yaml` in the root of the repo (it's gitignore) like this:
+
+```yaml
+StripePrivateKey: XXX
+StripePublicKey: XXX
+Plans:
+  - 
+    Id: free
+    Name: Free
+    TotalSize: 100M
+    Transfer: 1G
+    VolumeCount: 5
+    PriceUSD: 0
+  - 
+    Id: developer
+    Name: "Developer Plan"
+    TotalSize: 1G
+    Transfer: 10G
+    VolumeCount: 10
+    PriceUSD: 1000
+  - 
+    Id: team
+    Name: team
+    TotalSize: 10G
+    Transfer: 100G
+    VolumeCount: 100
+    PriceUSD: 100000
+```
+
+Then export the `DATAMESH_CONFIG` variable:
+
+```bash
+$ export DATAMESH_CONFIG=$PWD/config.stripe.yaml
+$ make cluster.start
+```
+
+
 #### start frontend
 Then we bring up the frontend container (which proxies back to the cluster for api requests):
 
