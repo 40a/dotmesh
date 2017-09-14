@@ -1,10 +1,8 @@
 const submitPayment = (payload) => ({
   method: 'SubmitPayment',
   params: {
-    PaymentDeets: {
-      Token: payload.token,
-      Plan: payload.plan
-    }
+    Token: payload.token,
+    PlanId: payload.plan
   }
 })
 

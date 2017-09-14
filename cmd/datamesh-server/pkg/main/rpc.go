@@ -101,6 +101,7 @@ func (d *DatameshRPC) SubmitPayment(
   // else)
 	
 	// create new subscription for user
+	log.Printf("[SubmitPayment] Payment Deets = %+v", paymentDeets)
 	s, err := sub.New(&stripe.SubParams{
     Customer: user.CustomerId,
     Items: []*stripe.SubItemsParams{

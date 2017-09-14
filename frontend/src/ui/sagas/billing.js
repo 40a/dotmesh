@@ -9,7 +9,7 @@ import * as selectors from '../selectors'
 import tools from '../tools'
 
 const REQUIRED_APIS = [
-  
+  'billingSubmitPayment'
 ]
 
 const BillingSagas = (opts = {}) => {
@@ -19,11 +19,26 @@ const BillingSagas = (opts = {}) => {
     if(!apis[name]) throw new Error(`${name} api required`)
   })
 
-  function* tokenReceived(token) {
+  // the token is the object we get back from the frontend checkout.js
+  // we extract the 'id' prop which is all the server needs
+  function* tokenReceived(tokenObject) {
+
+    const token = tokenObject.id
+    const plan = config.devmodePlanName
+
+    const payload = {
+      token,
+      plan
+    }
+
+    const { answer, error } = yield call(apis.billingSubmitPayment.loader, payload)
+
     console.log('-------------------------------------------');
     console.log('-------------------------------------------');
-    console.log('token')
-    console.log(token)
+    console.log('answer')
+    console.dir(answer)
+    console.log('error')
+    console.dir(error)
   }
 
   return {

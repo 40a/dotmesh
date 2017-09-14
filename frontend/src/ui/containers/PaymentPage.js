@@ -3,6 +3,7 @@ import { connect } from 'react-redux'
 
 import * as selectors from '../selectors'
 import * as actions from '../actions'
+import config from '../config'
 
 import PaymentPage from '../components/PaymentPage'
 
@@ -16,7 +17,7 @@ class PaymentPageContainer extends Component {
 
 export default connect(
   (state, ownProps) => {
-    const plan = selectors.billing.planById(state, 'developer') || {}
+    const plan = selectors.billing.planById(state, config.devmodePlanName) || {}
     const amount = plan.PriceUSD
     const currency = 'USD'
     const email = selectors.auth.email(state)

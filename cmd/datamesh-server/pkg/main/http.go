@@ -250,11 +250,15 @@ func (state *InMemoryState) runServer() {
 				return
 			}
 
+			log.Printf("[Stripe Handler] request body %+v", requestBody)
+
 			err = json.Unmarshal(requestBody, e)
 			if err != nil {
 				http.Error(w, "Cannot unmarshal into event", 400)
 				return
 			}
+
+			log.Printf("[Stripe Handler] before verify %+v", e)
 
 			verified, err := event.Get(e.ID, nil)
 			if err != nil {
@@ -263,6 +267,7 @@ func (state *InMemoryState) runServer() {
 			}
 
 			e = verified
+			log.Printf("[Stripe Handler] after verify %+v", e)
 			// Now safe to use e
 
 			// TODO: do some stuff with the event, update user object to

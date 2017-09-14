@@ -28,7 +28,7 @@ const volume = Volume({
 
 const billing = Billing({
   apis: {
-    
+    billingSubmitPayment: apis.billingSubmitPayment
   }
 })
 

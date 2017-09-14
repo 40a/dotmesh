@@ -6,6 +6,7 @@ import JsonRpc from './jsonrpc'
 // switch which type of auth driver we are using here
 import auth from './auth/basic'
 import volume from './volume'
+import billing from './billing'
 import config from './config'
 import tools from '../tools'
 
@@ -73,6 +74,9 @@ const loaders = {
 
   // all these methods need to be wrapped - they need auth
   volumeList: wrapper(volume.list),
+
+  billingSubmitPayment: wrapper(billing.submitPayment),
+
   configLoad: wrapper(config.load)
 }
 

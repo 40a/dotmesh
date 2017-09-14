@@ -30,6 +30,7 @@ const config = {
   title:'Datamesh Console',
   basepath:'/ui',
   rpcNamespace: 'DatameshRPC',
+  devmodePlanName: 'developer',
   rpcUrl: '/rpc',
   userValueName: 'user',
   userLocalStorageName: 'user',
