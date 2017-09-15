@@ -782,9 +782,11 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		}
 	}
 	if registryFilesystems != nil {
-		for _, topLevelFilesystem := range registryFilesystems.Nodes {
-			if err = updateFilesystemRegistry(topLevelFilesystem); err != nil {
-				return err
+		for _, namespace := range registryFilesystems.Nodes {
+			for _, topLevelFilesystem := range namespace.Nodes {
+				if err = updateFilesystemRegistry(topLevelFilesystem); err != nil {
+					return err
+				}
 			}
 		}
 	}

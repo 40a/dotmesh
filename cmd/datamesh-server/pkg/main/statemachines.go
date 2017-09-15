@@ -565,7 +565,7 @@ func activeState(f *fsMachine) stateFn {
 			}
 			f.lastTransferRequestId = transferRequestId
 
-			log.Printf("GOT TRANSFER REQUEST %s", f.lastTransferRequest)
+			log.Printf("GOT TRANSFER REQUEST %+v", f.lastTransferRequest)
 			if f.lastTransferRequest.Direction == "push" {
 				return pushInitiatorState
 			} else if f.lastTransferRequest.Direction == "pull" {
@@ -975,8 +975,10 @@ func transferRequestify(in interface{}) (TransferRequest, error) {
 		User:                 typed["User"].(string),
 		ApiKey:               typed["ApiKey"].(string),
 		Direction:            typed["Direction"].(string),
+		LocalNamespace:       typed["LocalNamespace"].(string),
 		LocalFilesystemName:  typed["LocalFilesystemName"].(string),
 		LocalCloneName:       typed["LocalCloneName"].(string),
+		RemoteNamespace:      typed["RemoteNamespace"].(string),
 		RemoteFilesystemName: typed["RemoteFilesystemName"].(string),
 		RemoteCloneName:      typed["RemoteCloneName"].(string),
 		TargetSnapshot:       typed["TargetSnapshot"].(string),
@@ -1002,7 +1004,7 @@ func missingState(f *fsMachine) stateFn {
 		return receivingState
 	case e := <-f.innerRequests:
 		if e.Name == "transfer" {
-			log.Printf("GOT TRANSFER REQUEST (while missing) %s", e.Args)
+			log.Printf("GOT TRANSFER REQUEST (while missing) %+v", e.Args)
 
 			// TODO dedupe
 			transferRequest, err := transferRequestify((*e.Args)["Transfer"])
@@ -1424,6 +1426,11 @@ func pushInitiatorState(f *fsMachine) stateFn {
 	// Set /filesystems/transfers/:transferId = TransferPollResult{...}
 	transferRequest := f.lastTransferRequest
 	transferRequestId := f.lastTransferRequestId
+	log.Printf(
+		"[pushInitiator] request: %v %+v",
+		transferRequestId,
+		transferRequest,
+	)
 	path, err := f.state.registry.deducePathToTopLevelFilesystem(
 		VolumeName{transferRequest.LocalNamespace, transferRequest.LocalFilesystemName},
 		transferRequest.LocalCloneName,

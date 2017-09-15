@@ -23,7 +23,7 @@ type DatameshAPI struct {
 
 type DatameshVolume struct {
 	Id          string
-	Name        string
+	Name        VolumeName
 	Clone       string
 	Master      string
 	SizeBytes   int64
@@ -179,19 +179,25 @@ func (dm *DatameshAPI) Branches(volumeName string) ([]string, error) {
 }
 
 func (dm *DatameshAPI) VolumeExists(volumeName string) (bool, error) {
-	volumes := map[string]DatameshVolume{}
-	err := dm.client.CallRemote(
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return false, err
+	}
+
+	volumes := map[string]map[string]DatameshVolume{}
+	err = dm.client.CallRemote(
 		context.Background(), "DatameshRPC.List", nil, &volumes,
 	)
 	if err != nil {
 		return false, err
 	}
-	for volume, _ := range volumes {
-		if volume == volumeName {
-			return true, nil
-		}
+
+	volumesInNamespace, ok := volumes[namespace]
+	if !ok {
+		return false, nil
 	}
-	return false, nil
+	_, ok = volumesInNamespace[name]
+	return ok, nil
 }
 
 func (dm *DatameshAPI) SwitchVolume(volumeName string) error {
@@ -215,7 +221,7 @@ func (dm *DatameshAPI) AllBranches(volumeName string) ([]string, error) {
 }
 
 func (dm *DatameshAPI) AllVolumes() ([]DatameshVolume, error) {
-	filesystems := map[string]DatameshVolume{}
+	filesystems := map[string]map[string]DatameshVolume{}
 	result := []DatameshVolume{}
 	interim := map[string]DatameshVolume{}
 	err := dm.client.CallRemote(
@@ -225,9 +231,19 @@ func (dm *DatameshAPI) AllVolumes() ([]DatameshVolume, error) {
 		return result, err
 	}
 	names := []string{}
-	for filesystem, v := range filesystems {
-		interim[filesystem] = v
-		names = append(names, filesystem)
+	for namespace, volumesInNamespace := range filesystems {
+		var prefix string
+		if namespace == "admin" {
+			prefix = ""
+		} else {
+			prefix = namespace + "/"
+		}
+
+		for filesystem, v := range volumesInNamespace {
+			name := prefix + filesystem
+			interim[name] = v
+			names = append(names, name)
+		}
 	}
 	sort.Strings(names)
 	for _, name := range names {
@@ -244,14 +260,21 @@ func deMasterify(s string) string {
 	return s
 }
 
-func (dm *DatameshAPI) Commit(activeVolume, activeBranch, commitMessage string) (string, error) {
+func (dm *DatameshAPI) Commit(activeVolumeName, activeBranch, commitMessage string) (string, error) {
 	var result bool
-	err := dm.client.CallRemote(
+
+	activeNamespace, activeVolume, err := ParseNamespacedVolume(activeVolumeName)
+	if err != nil {
+		return "", err
+	}
+
+	err = dm.client.CallRemote(
 		context.Background(),
 		"DatameshRPC.Snapshot",
 		// TODO replace these map[string]string's with typed structs that are
 		// shared between the client and the server for cross-rpc type safety
 		map[string]string{
+			"Namespace":              activeNamespace,
 			"TopLevelFilesystemName": activeVolume,
 			"CloneName":              deMasterify(activeBranch),
 			"Message":                commitMessage,
@@ -272,12 +295,19 @@ type snapshot struct {
 	Metadata *metadata
 }
 
-func (dm *DatameshAPI) ListCommits(activeVolume, activeBranch string) ([]snapshot, error) {
+func (dm *DatameshAPI) ListCommits(activeVolumeName, activeBranch string) ([]snapshot, error) {
 	var result []snapshot
-	err := dm.client.CallRemote(
+
+	activeNamespace, activeVolume, err := ParseNamespacedVolume(activeVolumeName)
+	if err != nil {
+		return []snapshot{}, err
+	}
+
+	err = dm.client.CallRemote(
 		context.Background(),
 		"DatameshRPC.Snapshots",
 		map[string]string{
+			"Namespace":              activeNamespace,
 			"TopLevelFilesystemName": activeVolume,
 			"CloneName":              deMasterify(activeBranch),
 		},
@@ -348,13 +378,14 @@ type Container struct {
 	Name string
 }
 
-func (dm *DatameshAPI) RelatedContainers(volumeName, branch string) ([]Container, error) {
+func (dm *DatameshAPI) RelatedContainers(volumeName VolumeName, branch string) ([]Container, error) {
 	result := []Container{}
 	err := dm.client.CallRemote(
 		context.Background(),
 		"DatameshRPC.Containers",
 		map[string]string{
-			"TopLevelFilesystemName": volumeName,
+			"Namespace":              volumeName.Namespace,
+			"TopLevelFilesystemName": volumeName.Name,
 			"CloneName":              deMasterify(branch),
 		},
 		&result,
@@ -565,12 +596,12 @@ func (dm *DatameshAPI) RequestTransfer(
 		currentBranch = localBranchName
 	}
 
-	currentNamespace, currentVolume, err := parseNamespacedVolume(currentVolume)
+	currentNamespace, currentVolume, err := ParseNamespacedVolume(currentVolume)
 	if err != nil {
 		return "", err
 	}
 
-	remoteNamespace, remoteFilesystemName, err := parseNamespacedVolume(remoteFilesystemName)
+	remoteNamespace, remoteFilesystemName, err := ParseNamespacedVolume(remoteFilesystemName)
 	if err != nil {
 		return "", err
 	}
@@ -609,7 +640,21 @@ func (dm *DatameshAPI) RequestTransfer(
 }
 
 // FIXME: Put this in a shared library, as it duplicates the copy in datamesh-server/pkg/main/utils.go
-func parseNamespacedVolume(name string) (string, string, error) {
+
+type VolumeName struct {
+	Namespace string
+	Name      string
+}
+
+func (v VolumeName) String() string {
+	if v.Namespace == "admin" {
+		return v.Name
+	} else {
+		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
+	}
+}
+
+func ParseNamespacedVolume(name string) (string, string, error) {
 	parts := strings.Split(name, "/")
 	switch len(parts) {
 	case 0: // name was empty

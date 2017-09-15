@@ -57,7 +57,7 @@ func (d *DatameshRPC) Get(
 
 // List all filesystems in the cluster.
 func (d *DatameshRPC) List(
-	r *http.Request, args *struct{}, result *map[VolumeName]DatameshVolume) error {
+	r *http.Request, args *struct{}, result *map[string]map[string]DatameshVolume) error {
 	log.Printf("[List] starting!")
 
 	d.state.mastersCacheLock.Lock()
@@ -67,7 +67,7 @@ func (d *DatameshRPC) List(
 	}
 	d.state.mastersCacheLock.Unlock()
 
-	gather := map[VolumeName]DatameshVolume{}
+	gather := map[string]map[string]DatameshVolume{}
 	for _, fs := range filesystems {
 		one, err := d.state.getOne(r.Context(), fs)
 		// Just skip this in the result list if the context (eg authenticated
@@ -82,7 +82,13 @@ func (d *DatameshRPC) List(
 				continue
 			}
 		}
-		gather[one.Name] = one
+		submap, ok := gather[one.Name.Namespace]
+		if !ok {
+			submap = map[string]DatameshVolume{}
+			gather[one.Name.Namespace] = submap
+		}
+
+		submap[one.Name.Name] = one
 	}
 	log.Printf("[List] gather = %+v", gather)
 	*result = gather
