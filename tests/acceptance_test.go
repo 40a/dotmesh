@@ -26,7 +26,7 @@ func TestSingleNode(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	node1 := f[0].Nodes[0].Container
+	node1 := f[0].GetNode(0).Container
 
 	// Sub-tests, to reuse common setup code.
 	t.Run("Commit", func(t *testing.T) {
@@ -121,8 +121,8 @@ func TestTwoNodesSameCluster(t *testing.T) {
 	}
 	logTiming("setup")
 
-	node1 := f[0].Nodes[0].Container
-	node2 := f[0].Nodes[1].Container
+	node1 := f[0].GetNode(0).Container
+	node2 := f[0].GetNode(1).Container
 
 	t.Run("Move", func(t *testing.T) {
 		fsname := uniqName()
@@ -141,13 +141,14 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		NewCluster(1), // cluster_0_node_0
 		NewCluster(1), // cluster_1_node_0
 	}
+	startTiming()
 	err := f.Start(t)
 	defer testMarkForCleanup(f)
 	if err != nil {
 		t.Error(err)
 	}
-	node1 := f[0].Nodes[0].Container
-	node2 := f[1].Nodes[0].Container
+	node1 := f[0].GetNode(0).Container
+	node2 := f[1].GetNode(0).Container
 
 	t.Run("PushCommitBranchExtantBase", func(t *testing.T) {
 		fsname := uniqName()
@@ -384,7 +385,7 @@ func TestFrontend(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	node1 := f[0].Nodes[0].Container
+	node1 := f[0].GetNode(0).Container
 
 	t.Run("Authenticate", func(t *testing.T) {
 
@@ -418,13 +419,16 @@ func TestFrontend(t *testing.T) {
 func TestKubernetes(t *testing.T) {
 	teardownFinishedTestRuns()
 
-	f := Federation{NewKubernetes(1, 2)}
+	f := Federation{NewKubernetes(3)}
 
+	startTiming()
 	err := f.Start(t)
 	defer testMarkForCleanup(f)
 	if err != nil {
 		t.Error(err)
 	}
+	node1 := f[0].GetNode(0).Container
+
 	t.Run("ListEmpty", func(t *testing.T) {
 		// TODO: maybe need to grab the password created by NewKubernetes and
 		// write it to dm config

@@ -68,7 +68,7 @@ func tryUntilSucceeds(f func() error, desc string) error {
 
 func testMarkForCleanup(f Federation) {
 	for _, c := range f {
-		for _, n := range c.Nodes {
+		for _, n := range c.GetNodes() {
 			node := n.Container
 			err := tryUntilSucceeds(func() error {
 				return system("bash", "-c", fmt.Sprintf(
@@ -100,7 +100,7 @@ func testSetup(f Federation, stamp int64) error {
 	}
 
 	for i, c := range f {
-		for j := 0; j < c.DesiredNodeCount; j++ {
+		for j := 0; j < c.GetDesiredNodeCount(); j++ {
 			node := nodeName(stamp, i, j)
 			// XXX the following only works if overlay is working
 			err := system("bash", "-c", fmt.Sprintf(`
@@ -336,7 +336,7 @@ func localEtcdImage() string {
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("%s.local:80/coreos/etcd:v3.0.15", hostname)
+	return fmt.Sprintf("%s.local:80/lukemarsden/etcd:v3.0.15", hostname)
 }
 
 func localImageArgs() string {
@@ -411,6 +411,16 @@ type Cluster struct {
 	Nodes            []Node
 }
 
+type Kubernetes struct {
+	DesiredNodeCount int
+	Nodes            []Node
+}
+
+type KubernetesCluster struct {
+	DesiredNodeCount int
+	Nodes            []Node
+}
+
 type Pair struct {
 	From Node
 	To   Node
@@ -420,7 +430,11 @@ func NewCluster(desiredNodeCount int) *Cluster {
 	return &Cluster{DesiredNodeCount: desiredNodeCount}
 }
 
-type Federation []*Cluster
+func NewKubernetes(desiredNodeCount int) *Kubernetes {
+	return &Kubernetes{DesiredNodeCount: desiredNodeCount}
+}
+
+type Federation []Startable
 
 func nodeName(now int64, i, j int) string {
 	return fmt.Sprintf("cluster-%d-%d-node-%d", now, i, j)
@@ -455,64 +469,18 @@ func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Nod
 }
 
 func (f Federation) Start(t *testing.T) error {
-	teardownFinishedTestRuns()
-
-	startTiming()
 	now := time.Now().UnixNano()
 	err := testSetup(f, now)
-	defer testMarkForCleanup(f)
 	if err != nil {
 		return err
 	}
 	logTiming("setup")
 
 	for i, c := range f {
-		// init the first node in the cluster, join the rest
-		if c.DesiredNodeCount == 0 {
-			panic("no such thing as a zero-node cluster")
-		}
-		st, err := docker(
-			nodeName(now, i, 0), "dm cluster init "+localImageArgs()+
-				" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
-				" --use-pool-name "+poolId(now, i, 0),
-		)
+		fmt.Printf("==== GOING FOR %d, %+v ====\n", i, c)
+		err = c.Start(t, now, i)
 		if err != nil {
 			return err
-		}
-		clusterName := fmt.Sprintf("cluster_%d", i)
-		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
-
-		lines := strings.Split(st, "\n")
-		joinUrl := func(lines []string) string {
-			for _, line := range lines {
-				shrap := strings.Fields(line)
-				if len(shrap) > 3 {
-					if shrap[0] == "dm" && shrap[1] == "cluster" && shrap[2] == "join" {
-						return shrap[3]
-					}
-				}
-			}
-			return ""
-		}(lines)
-		if joinUrl == "" {
-			return fmt.Errorf("unable to find join url in 'dm cluster init' output")
-		}
-		logTiming("init_" + poolId(now, i, 0))
-		for j := 1; j < c.DesiredNodeCount; j++ {
-			// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
-			// node).
-			_, err = docker(nodeName(now, i, j), fmt.Sprintf(
-				"dm cluster join %s %s %s",
-				localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, j),
-				joinUrl,
-				" --use-pool-name "+poolId(now, i, j),
-			))
-			if err != nil {
-				return err
-			}
-			c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
-
-			logTiming("join_" + poolId(now, i, j))
 		}
 	}
 	// TODO refactor the following so that each node has one other node on the
@@ -522,9 +490,9 @@ func (f Federation) Start(t *testing.T) error {
 	// O(n^3)
 	pairs := []Pair{}
 	for _, c := range f {
-		for _, node := range c.Nodes {
+		for _, node := range c.GetNodes() {
 			for _, otherCluster := range f {
-				first := otherCluster.Nodes[0]
+				first := otherCluster.GetNode(0)
 				pairs = append(pairs, Pair{
 					From: node,
 					To:   first,
@@ -552,6 +520,97 @@ func (f Federation) Start(t *testing.T) error {
 			}
 			d(t, pair.From.Container, "dm remote switch local")
 		}
+	}
+	return nil
+}
+
+type Startable interface {
+	GetNode(int) Node
+	GetNodes() []Node
+	GetDesiredNodeCount() int
+	Start(*testing.T, int64, int) error
+}
+
+///////////// Kubernetes
+
+func (c *Kubernetes) GetNode(i int) Node {
+	return c.Nodes[i]
+}
+
+func (c *Kubernetes) GetNodes() []Node {
+	return c.Nodes
+}
+
+func (c *Kubernetes) GetDesiredNodeCount() int {
+	return c.DesiredNodeCount
+}
+
+func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
+	panic("I don't know how yet")
+}
+
+///////////// Cluster
+
+func (c *Cluster) GetNode(i int) Node {
+	return c.Nodes[i]
+}
+
+func (c *Cluster) GetNodes() []Node {
+	return c.Nodes
+}
+
+func (c *Cluster) GetDesiredNodeCount() int {
+	return c.DesiredNodeCount
+}
+
+func (c *Cluster) Start(t *testing.T, now int64, i int) error {
+	// init the first node in the cluster, join the rest
+	if c.DesiredNodeCount == 0 {
+		panic("no such thing as a zero-node cluster")
+	}
+	st, err := docker(
+		nodeName(now, i, 0), "dm cluster init "+localImageArgs()+
+			" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
+			" --use-pool-name "+poolId(now, i, 0),
+	)
+	if err != nil {
+		return err
+	}
+	clusterName := fmt.Sprintf("cluster_%d", i)
+	c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
+	fmt.Printf("(just added) Here are my nodes: %+v\n", c.Nodes)
+
+	lines := strings.Split(st, "\n")
+	joinUrl := func(lines []string) string {
+		for _, line := range lines {
+			shrap := strings.Fields(line)
+			if len(shrap) > 3 {
+				if shrap[0] == "dm" && shrap[1] == "cluster" && shrap[2] == "join" {
+					return shrap[3]
+				}
+			}
+		}
+		return ""
+	}(lines)
+	if joinUrl == "" {
+		return fmt.Errorf("unable to find join url in 'dm cluster init' output")
+	}
+	logTiming("init_" + poolId(now, i, 0))
+	for j := 1; j < c.DesiredNodeCount; j++ {
+		// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
+		// node).
+		_, err = docker(nodeName(now, i, j), fmt.Sprintf(
+			"dm cluster join %s %s %s",
+			localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, j),
+			joinUrl,
+			" --use-pool-name "+poolId(now, i, j),
+		))
+		if err != nil {
+			return err
+		}
+		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
+
+		logTiming("join_" + poolId(now, i, j))
 	}
 	return nil
 }
