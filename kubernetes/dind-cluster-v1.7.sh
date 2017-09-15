@@ -466,16 +466,16 @@ function dind::kubeadm {
   return ${status}
 }
 
-# function dind::bare {
-#   local container_name="${1:-}"
-#   if [[ ! "${container_name}" ]]; then
-#     echo >&2 "Must specify container name"
-#     exit 1
-#   fi
-#   shift
-#   run_opts=(${@+"$@"})
-#   dind::run "${container_name}"
-# }
+function dind::bare {
+  local container_name="${1:-}"
+  if [[ ! "${container_name}" ]]; then
+    echo >&2 "Must specify container name"
+    exit 1
+  fi
+  shift
+  run_opts=(${@+"$@"})
+  dind::run "${container_name}"
+}
 
 function dind::configure-kubectl {
   dind::step "Setting cluster config"
@@ -964,10 +964,10 @@ case "${1:-}" in
     dind::ensure-kubectl
     dind::join "$(dind::create-node-container)" "$@"
     ;;
-  # bare)
-  #   shift
-  #   dind::bare "$@"
-  #   ;;
+  bare)
+    shift
+    dind::bare "$@"
+    ;;
   snapshot)
     shift
     dind::snapshot
