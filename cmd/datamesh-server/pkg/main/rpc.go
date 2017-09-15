@@ -57,7 +57,7 @@ func (d *DatameshRPC) Get(
 
 // List all filesystems in the cluster.
 func (d *DatameshRPC) List(
-	r *http.Request, args *struct{}, result *map[string]DatameshVolume) error {
+	r *http.Request, args *struct{}, result *map[VolumeName]DatameshVolume) error {
 	log.Printf("[List] starting!")
 
 	d.state.mastersCacheLock.Lock()
@@ -67,7 +67,7 @@ func (d *DatameshRPC) List(
 	}
 	d.state.mastersCacheLock.Unlock()
 
-	gather := map[string]DatameshVolume{}
+	gather := map[VolumeName]DatameshVolume{}
 	for _, fs := range filesystems {
 		one, err := d.state.getOne(r.Context(), fs)
 		// Just skip this in the result list if the context (eg authenticated
@@ -90,7 +90,7 @@ func (d *DatameshRPC) List(
 }
 
 func (d *DatameshRPC) Create(
-	r *http.Request, filesystemName *string, result *bool) error {
+	r *http.Request, filesystemName *VolumeName, result *bool) error {
 	_, ch, err := d.state.CreateFilesystem(r.Context(), filesystemName)
 	if err != nil {
 		return err
@@ -110,11 +110,11 @@ func (d *DatameshRPC) Create(
 // symlink, and starting them again.
 func (d *DatameshRPC) SwitchContainers(
 	r *http.Request,
-	args *struct{ TopLevelFilesystemName, CurrentCloneName, NewCloneName string },
+	args *struct{ Namespace, TopLevelFilesystemName, CurrentCloneName, NewCloneName string },
 	result *bool,
 ) error {
 	toFilesystemId, err := d.state.registry.MaybeCloneFilesystemId(
-		args.TopLevelFilesystemName,
+		VolumeName{args.Namespace, args.TopLevelFilesystemName},
 		args.NewCloneName,
 	)
 	if err != nil {
@@ -144,11 +144,11 @@ func (d *DatameshRPC) SwitchContainers(
 // Containers that were recently known to be running on a given filesystem.
 func (d *DatameshRPC) Containers(
 	r *http.Request,
-	args *struct{ TopLevelFilesystemName, CloneName string },
+	args *struct{ Namespace, TopLevelFilesystemName, CloneName string },
 	result *[]DockerContainer,
 ) error {
 	filesystemId, err := d.state.registry.MaybeCloneFilesystemId(
-		args.TopLevelFilesystemName,
+		VolumeName{args.Namespace, args.TopLevelFilesystemName},
 		args.CloneName,
 	)
 	if err != nil {
@@ -187,20 +187,20 @@ func (d *DatameshRPC) ContainersById(
 
 func (d *DatameshRPC) Exists(
 	r *http.Request,
-	args *struct{ TopLevelFilesystemName, CloneName string },
+	args *struct{ Namespace, TopLevelFilesystemName, CloneName string },
 	result *string,
 ) error {
-	*result = d.state.registry.Exists(args.TopLevelFilesystemName, args.CloneName)
+	*result = d.state.registry.Exists(VolumeName{args.Namespace, args.TopLevelFilesystemName}, args.CloneName)
 	return nil
 }
 
 func (d *DatameshRPC) Lookup(
 	r *http.Request,
-	args *struct{ TopLevelFilesystemName, CloneName string },
+	args *struct{ Namespace, TopLevelFilesystemName, CloneName string },
 	result *string,
 ) error {
 	filesystemId, err := d.state.registry.MaybeCloneFilesystemId(
-		args.TopLevelFilesystemName, args.CloneName,
+		VolumeName{args.Namespace, args.TopLevelFilesystemName}, args.CloneName,
 	)
 	if err != nil {
 		return err
@@ -214,11 +214,11 @@ func (d *DatameshRPC) Lookup(
 // string and metadata is a mapping from strings to strings.
 func (d *DatameshRPC) Snapshots(
 	r *http.Request,
-	args *struct{ TopLevelFilesystemName, CloneName string },
+	args *struct{ Namespace, TopLevelFilesystemName, CloneName string },
 	result *[]snapshot,
 ) error {
 	filesystemId, err := d.state.registry.MaybeCloneFilesystemId(
-		args.TopLevelFilesystemName,
+		VolumeName{args.Namespace, args.TopLevelFilesystemName},
 		args.CloneName,
 	)
 	if err != nil {
@@ -253,14 +253,14 @@ func (d *DatameshRPC) Ping(r *http.Request, args *struct{}, result *bool) error 
 
 // Take a snapshot of a specific filesystem on the master.
 func (d *DatameshRPC) Snapshot(
-	r *http.Request, args *struct{ TopLevelFilesystemName, CloneName, Message string },
+	r *http.Request, args *struct{ Namespace, TopLevelFilesystemName, CloneName, Message string },
 	result *bool,
 ) error {
 	// Insert a command into etcd for the current master to respond to, and
 	// wait for a response to be inserted into etcd as well, before firing with
 	// that.
 	filesystemId, err := d.state.registry.MaybeCloneFilesystemId(
-		args.TopLevelFilesystemName,
+		VolumeName{args.Namespace, args.TopLevelFilesystemName},
 		args.CloneName,
 	)
 	if err != nil {
@@ -295,14 +295,14 @@ func (d *DatameshRPC) Snapshot(
 // Rollback a specific filesystem to the specified snapshot_id on the master.
 func (d *DatameshRPC) Rollback(
 	r *http.Request,
-	args *struct{ TopLevelFilesystemName, CloneName, SnapshotId string },
+	args *struct{ Namespace, TopLevelFilesystemName, CloneName, SnapshotId string },
 	result *bool,
 ) error {
 	// Insert a command into etcd for the current master to respond to, and
 	// wait for a response to be inserted into etcd as well, before firing with
 	// that.
 	filesystemId, err := d.state.registry.MaybeCloneFilesystemId(
-		args.TopLevelFilesystemName,
+		VolumeName{args.Namespace, args.TopLevelFilesystemName},
 		args.CloneName,
 	)
 	if err != nil {
@@ -345,7 +345,7 @@ func maybeError(e *Event) error {
 }
 
 // Return a list of clone names attributed to a given top-level filesystem name
-func (d *DatameshRPC) Clones(r *http.Request, filesystemName *string, result *[]string) error {
+func (d *DatameshRPC) Clones(r *http.Request, filesystemName *VolumeName, result *[]string) error {
 	filesystemId, err := d.state.registry.IdFromName(*filesystemName)
 	if err != nil {
 		return err
@@ -362,7 +362,7 @@ func (d *DatameshRPC) Clones(r *http.Request, filesystemName *string, result *[]
 
 func (d *DatameshRPC) Clone(
 	r *http.Request,
-	args *struct{ Volume, SourceBranch, NewBranchName, SourceSnapshotId string },
+	args *struct{ Namespace, Volume, SourceBranch, NewBranchName, SourceSnapshotId string },
 	result *bool,
 ) error {
 	// TODO pass through to a globalFsRequest
@@ -376,7 +376,7 @@ func (d *DatameshRPC) Clone(
 	// topLevelFilesystemId. You could rename it though, I suppose. That's
 	// probably fine. We could fix this later by allowing promotions.
 
-	tlf, err := d.state.registry.LookupFilesystem(args.Volume)
+	tlf, err := d.state.registry.LookupFilesystem(VolumeName{args.Namespace, args.Volume})
 	if err != nil {
 		return err
 	}
@@ -440,7 +440,7 @@ func (d *DatameshRPC) Version(
 
 func (d *DatameshRPC) registerFilesystemBecomeMaster(
 	ctx context.Context,
-	filesystemName, cloneName, filesystemId string,
+	filesystemNamespace, filesystemName, cloneName, filesystemId string,
 	path PathToTopLevelFilesystem,
 ) error {
 	// ensure there's a filesystem machine for it (and its parents), otherwise
@@ -491,26 +491,33 @@ func (d *DatameshRPC) registerFilesystemBecomeMaster(
 	}
 
 	log.Printf(
-		"[registerFilesystemBecomeMaster] %s,%s,%s path = %s",
-		filesystemName, cloneName, filesystemId, path,
+		"[registerFilesystemBecomeMaster] %s/%s,%s,%s path = %+v",
+		filesystemNamespace, filesystemName, cloneName, filesystemId, path,
 	)
 
 	// do this after, in case filesystemId already existed above
 	// use path to set up requisite clone metadata
 
 	// set up top level filesystem first, if not exists
-	if d.state.registry.Exists(path.TopLevelFilesystemName, "") == "" {
+	if d.state.registry.Exists(VolumeName{filesystemNamespace, filesystemName}, "") == "" {
 		err = d.state.registry.RegisterFilesystem(
-			ctx, path.TopLevelFilesystemName, path.TopLevelFilesystemId,
+			ctx, VolumeName{filesystemNamespace, filesystemName}, filesystemId,
 		)
 		if err != nil {
 			return err
 		}
 	}
 
+	if filesystemId != path.TopLevelFilesystemId {
+		panic(fmt.Sprintf(
+			"This should never happen: filesystemId (%s) != path.TopLevelFilesystemId; path = %+v",
+			filesystemId, path,
+		))
+	}
+
 	// for each clone, set up clone
 	for _, c := range path.Clones {
-		err = d.state.registry.RegisterClone(c.Name, path.TopLevelFilesystemId, c.Clone)
+		err = d.state.registry.RegisterClone(c.Name, filesystemId, c.Clone)
 		if err != nil {
 			return err
 		}
@@ -526,9 +533,9 @@ func (d *DatameshRPC) registerFilesystemBecomeMaster(
 func (d *DatameshRPC) RegisterFilesystem(
 	r *http.Request,
 	args *struct {
-		TopLevelFilesystemName, CloneName, FilesystemId string
-		PathToTopLevelFilesystem                        PathToTopLevelFilesystem
-		BecomeMasterIfNotExists                         bool
+		Namespace, TopLevelFilesystemName, CloneName, FilesystemId string
+		PathToTopLevelFilesystem                                   PathToTopLevelFilesystem
+		BecomeMasterIfNotExists                                    bool
 	},
 	result *bool,
 ) error {
@@ -537,6 +544,7 @@ func (d *DatameshRPC) RegisterFilesystem(
 	}
 	err := d.registerFilesystemBecomeMaster(
 		r.Context(),
+		args.Namespace,
 		args.TopLevelFilesystemName,
 		args.CloneName,
 		args.FilesystemId,
@@ -629,6 +637,7 @@ func (d *DatameshRPC) Transfer(
 	var remoteFilesystemId string
 	err := client.CallRemote(r.Context(),
 		"DatameshRPC.Exists", map[string]string{
+			"Namespace":              args.RemoteNamespace,
 			"TopLevelFilesystemName": args.RemoteFilesystemName,
 			"CloneName":              args.RemoteCloneName,
 		}, &remoteFilesystemId)
@@ -637,7 +646,7 @@ func (d *DatameshRPC) Transfer(
 	}
 
 	localFilesystemId := d.state.registry.Exists(
-		args.LocalFilesystemName, args.LocalCloneName,
+		VolumeName{args.LocalNamespace, args.LocalFilesystemName}, args.LocalCloneName,
 	)
 
 	remoteExists := remoteFilesystemId != ""
@@ -656,17 +665,18 @@ func (d *DatameshRPC) Transfer(
 	var path PathToTopLevelFilesystem
 	if args.Direction == "push" {
 		path, err = d.state.registry.deducePathToTopLevelFilesystem(
-			args.LocalFilesystemName, args.LocalCloneName,
+			VolumeName{args.LocalNamespace, args.LocalFilesystemName}, args.LocalCloneName,
 		)
 		if err != nil {
 			return fmt.Errorf(
-				"Can't deduce path to top level filesystem for %s,%s: %s",
-				args.LocalFilesystemName, args.LocalCloneName, err,
+				"Can't deduce path to top level filesystem for %s/%s,%s: %s",
+				args.LocalNamespace, args.LocalFilesystemName, args.LocalCloneName, err,
 			)
 		}
 	} else if args.Direction == "pull" {
 		err := client.CallRemote(r.Context(),
 			"DatameshRPC.DeducePathToTopLevelFilesystem", map[string]interface{}{
+				"RemoteNamespace":      args.RemoteNamespace,
 				"RemoteFilesystemName": args.RemoteFilesystemName,
 				"RemoteCloneName":      args.RemoteCloneName,
 			},
@@ -674,8 +684,8 @@ func (d *DatameshRPC) Transfer(
 		)
 		if err != nil {
 			return fmt.Errorf(
-				"Can't deduce path to top level filesystem for %s,%s: %s",
-				args.RemoteFilesystemName, args.RemoteCloneName, err,
+				"Can't deduce path to top level filesystem for %s/%s,%s: %s",
+				args.RemoteNamespace, args.RemoteFilesystemName, args.RemoteCloneName, err,
 			)
 		}
 	}
@@ -687,6 +697,7 @@ func (d *DatameshRPC) Transfer(
 		var result bool
 		err := client.CallRemote(r.Context(),
 			"DatameshRPC.RegisterFilesystem", map[string]interface{}{
+				"Namespace":              args.RemoteNamespace,
 				"TopLevelFilesystemName": args.RemoteFilesystemName,
 				"CloneName":              args.RemoteCloneName,
 				"FilesystemId":           localFilesystemId,
@@ -706,6 +717,7 @@ func (d *DatameshRPC) Transfer(
 		// on locally (me!)
 		err = d.registerFilesystemBecomeMaster(
 			r.Context(),
+			args.LocalNamespace,
 			args.LocalFilesystemName,
 			args.LocalCloneName,
 			remoteFilesystemId,
@@ -956,13 +968,14 @@ func (d *DatameshRPC) AddCollaborator(
 func (d *DatameshRPC) DeducePathToTopLevelFilesystem(
 	r *http.Request,
 	args *struct {
+		RemoteNamespace      string
 		RemoteFilesystemName string
 		RemoteCloneName      string
 	},
 	result *PathToTopLevelFilesystem,
 ) error {
 	res, err := d.state.registry.deducePathToTopLevelFilesystem(
-		args.RemoteFilesystemName, args.RemoteCloneName,
+		VolumeName{args.RemoteNamespace, args.RemoteFilesystemName}, args.RemoteCloneName,
 	)
 	if err != nil {
 		return err

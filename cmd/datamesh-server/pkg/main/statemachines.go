@@ -503,7 +503,7 @@ func (f *fsMachine) snapshot(e *Event) (responseEvent *Event, nextState stateFn)
 
 // find the user-facing name of a given filesystem id. if we're a branch
 // (clone), return the name of our parent filesystem.
-func (f *fsMachine) name() (string, error) {
+func (f *fsMachine) name() (VolumeName, error) {
 	tlf, _, err := f.state.registry.LookupFilesystemId(f.filesystemId)
 	return tlf.TopLevelVolume.Name, err
 }
@@ -515,7 +515,7 @@ func (f *fsMachine) containersRunning() ([]DockerContainer, error) {
 	if err != nil {
 		return []DockerContainer{}, err
 	}
-	return f.state.containers.Related(name)
+	return f.state.containers.Related(name.String())
 }
 
 func (f *fsMachine) stopContainers() error {
@@ -525,7 +525,7 @@ func (f *fsMachine) stopContainers() error {
 	if err != nil {
 		return err
 	}
-	return f.state.containers.Stop(name)
+	return f.state.containers.Stop(name.String())
 }
 
 func (f *fsMachine) startContainers() error {
@@ -535,7 +535,7 @@ func (f *fsMachine) startContainers() error {
 	if err != nil {
 		return err
 	}
-	return f.state.containers.Start(name)
+	return f.state.containers.Start(name.String())
 }
 
 func activeState(f *fsMachine) stateFn {
@@ -1425,7 +1425,8 @@ func pushInitiatorState(f *fsMachine) stateFn {
 	transferRequest := f.lastTransferRequest
 	transferRequestId := f.lastTransferRequestId
 	path, err := f.state.registry.deducePathToTopLevelFilesystem(
-		transferRequest.LocalFilesystemName, transferRequest.LocalCloneName,
+		VolumeName{transferRequest.LocalNamespace, transferRequest.LocalFilesystemName},
+		transferRequest.LocalCloneName,
 	)
 	if err != nil {
 		f.innerResponses <- &Event{

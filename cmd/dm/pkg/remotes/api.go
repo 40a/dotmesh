@@ -5,6 +5,7 @@ import (
 	"io"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"golang.org/x/net/context"
@@ -492,8 +493,10 @@ type TransferRequest struct {
 	User                 string
 	ApiKey               string
 	Direction            string
+	LocalNamespace       string
 	LocalFilesystemName  string
 	LocalCloneName       string
+	RemoteNamespace      string
 	RemoteFilesystemName string
 	RemoteCloneName      string
 	TargetSnapshot       string
@@ -512,13 +515,14 @@ func (dm *DatameshAPI) RequestTransfer(
 	connectionInitiator := dm.Configuration.CurrentRemote
 
 	var err error
+
 	var currentVolume string
 
 	// Cases:
 	// push without --remote-volume - remoteFilesystemName = ""
 	// push with --remote-volume - remoteFilesystemName = remote volume
 	// clone/pull - remoteFilesystemname = the filesystem we're playing with which also is the local one as we can't rename as part of the pull/clone
-	
+
 	if localFilesystemName == "" {
 		currentVolume, err = dm.Configuration.CurrentVolume()
 		if err != nil {
@@ -527,6 +531,23 @@ func (dm *DatameshAPI) RequestTransfer(
 	} else {
 		currentVolume = localFilesystemName
 	}
+
+	// FIXME: This is just to fake current "dm push" behaviour
+	// in the absence of proper "remote tracking" support for filesystem/branch names
+	// Reassess these when we add support for dm push without explicit remote names
+	if remoteFilesystemName == "" {
+		remoteFilesystemName, err = dm.Configuration.CurrentVolume()
+		if err != nil {
+			return "", err
+		}
+	}
+	if remoteBranchName == "" {
+		remoteBranchName, err = dm.Configuration.CurrentBranch()
+		if err != nil {
+			return "", err
+		}
+	}
+	// END FIXME
 
 	if remoteBranchName != "" && remoteFilesystemName == "" {
 		return "", fmt.Errorf(
@@ -542,6 +563,16 @@ func (dm *DatameshAPI) RequestTransfer(
 		}
 	} else {
 		currentBranch = localBranchName
+	}
+
+	currentNamespace, currentVolume, err := parseNamespacedVolume(currentVolume)
+	if err != nil {
+		return "", err
+	}
+
+	remoteNamespace, remoteFilesystemName, err := parseNamespacedVolume(remoteFilesystemName)
+	if err != nil {
+		return "", err
 	}
 
 	// connect to connectionInitiator
@@ -562,8 +593,10 @@ func (dm *DatameshAPI) RequestTransfer(
 			User:                 remote.User,
 			ApiKey:               remote.ApiKey,
 			Direction:            direction,
+			LocalNamespace:       currentNamespace,
 			LocalFilesystemName:  currentVolume,
 			LocalCloneName:       deMasterify(currentBranch),
+			RemoteNamespace:      remoteNamespace,
 			RemoteFilesystemName: remoteFilesystemName,
 			RemoteCloneName:      deMasterify(remoteBranchName),
 			// TODO add TargetSnapshot here, to support specifying "push to a given
@@ -573,4 +606,19 @@ func (dm *DatameshAPI) RequestTransfer(
 		return "", err
 	}
 	return transferId, nil
+}
+
+// FIXME: Put this in a shared library, as it duplicates the copy in datamesh-server/pkg/main/utils.go
+func parseNamespacedVolume(name string) (string, string, error) {
+	parts := strings.Split(name, "/")
+	switch len(parts) {
+	case 0: // name was empty
+		return "", "", nil
+	case 1: // name was unqualified, no namespace, so we default to "admin"
+		return "admin", name, nil
+	case 2: // Qualified name
+		return parts[0], parts[1], nil
+	default: // Too many slashes!
+		return "", "", fmt.Errorf("Volume names must be of the form NAMESPACE/VOLUME or just VOLUME: '%s'", name)
+	}
 }

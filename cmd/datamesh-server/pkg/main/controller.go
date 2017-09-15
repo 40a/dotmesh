@@ -464,7 +464,7 @@ func (s *InMemoryState) maybeFilesystem(filesystemId string) (*fsMachine, error)
 }
 
 func (s *InMemoryState) CreateFilesystem(
-	ctx context.Context, filesystemName *string,
+	ctx context.Context, filesystemName *VolumeName,
 ) (*fsMachine, chan *Event, error) {
 	id, err := uuid.NewV4()
 	if err != nil {
