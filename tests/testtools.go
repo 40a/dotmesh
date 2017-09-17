@@ -16,6 +16,8 @@ import (
 var timings map[string]float64
 var lastTiming int64
 
+const HOST_IP_FROM_CONTAINER = "10.192.0.1"
+
 func startTiming() {
 	lastTiming = time.Now().UnixNano()
 	timings = make(map[string]float64)
@@ -118,22 +120,19 @@ func testSetup(f Federation, stamp int64) error {
 				mount --bind $MOUNTPOINT $MOUNTPOINT && \
 				mount --make-shared $MOUNTPOINT;
 			fi
-			(cd ~/kubernetes && \
 			EXTRA_DOCKER_ARGS="-v /datamesh-test-pools:/datamesh-test-pools:rshared" \
-				dind/dind-cluster.sh quick $NODE)
+				../kubernetes/dind-cluster-v1.7.sh bare $NODE
 			sleep 1
 			docker exec -t $NODE bash -c '
-				sed -i "s/docker daemon/docker daemon \
+			    echo "%s '$(hostname)'.local" >> /etc/hosts
+				sed -i "s/rundocker/rundocker \
 					--insecure-registry '$(hostname)'.local:80/" \
-					/etc/systemd/system/docker.service.d/20-overlay.conf
-				# workaround https://github.com/docker/docker/issues/19625
-				sed -i "s/MountFlags=slave//" \
-					/lib/systemd/system/docker.service
+					/etc/systemd/system/docker.service.d/20-fs.conf
 				systemctl daemon-reload
 				systemctl restart docker
 			'
 			docker cp ../binaries/Linux/dm $NODE:/usr/local/bin/dm
-		`, node))
+			`, node, HOST_IP_FROM_CONTAINER))
 			if err != nil {
 				return err
 			}
@@ -347,11 +346,11 @@ func localEtcdImage() string {
 func localImageArgs() string {
 	logSuffix := ""
 	if os.Getenv("DISABLE_LOG_AGGREGATION") == "" {
-		logSuffix = " --log 172.17.0.1"
+		logSuffix = fmt.Sprintf(" --log %s", HOST_IP_FROM_CONTAINER)
 	}
 	traceSuffix := ""
 	if os.Getenv("DISABLE_TRACING") == "" {
-		traceSuffix = " --trace 172.17.0.1"
+		traceSuffix = fmt.Sprintf(" --trace %s", HOST_IP_FROM_CONTAINER)
 	}
 	regSuffix := ""
 	if os.Getenv("ALLOW_PUBLIC_REGISTRATION") != "" {
@@ -359,7 +358,7 @@ func localImageArgs() string {
 		regSuffix = " --allow-public-registration"
 	}
 	return ("--image " + localImage() + " --etcd-image " + localEtcdImage() +
-		" --docker-api-version 1.23 --discovery-url http://172.17.0.1:8087" +
+		" --docker-api-version 1.23 --discovery-url http://" + HOST_IP_FROM_CONTAINER + ":8087" +
 		logSuffix + traceSuffix + regSuffix +
 		" --assets-url-prefix http://localhost:4000/datamesh-website/" +
 		" --allow-public-registration")

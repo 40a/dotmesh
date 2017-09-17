@@ -447,6 +447,7 @@ function dind::run {
          --hostname "${container_name}" \
          -l mirantis.kubeadm_dind_cluster \
          -v ${volume_name}:/dind \
+         ${EXTRA_DOCKER_ARGS:-} \
          ${opts[@]+"${opts[@]}"} \
          "${DIND_IMAGE}" \
          ${args[@]+"${args[@]}"}
