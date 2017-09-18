@@ -199,7 +199,11 @@ function reset() {
 }
 
 function etcdctl() {
-  docker exec -ti datamesh-etcd etcdctl --cert-file=/pki/apiserver.pem --key-file=/pki/apiserver-key.pem --ca-file=/pki/ca.pem --endpoints https://127.0.0.1:42379 "$@"
+  docker exec -ti datamesh-etcd etcdctl \
+    --cert-file=/pki/apiserver.pem \
+    --key-file=/pki/apiserver-key.pem \
+    --ca-file=/pki/ca.pem \
+    --endpoints https://127.0.0.1:42379 "$@"
 }
 
 function usage() {
