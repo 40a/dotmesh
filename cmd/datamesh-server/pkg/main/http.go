@@ -250,7 +250,7 @@ func (state *InMemoryState) runServer() {
 				return
 			}
 
-			log.Printf("[Stripe Handler] request body %+v", requestBody)
+			log.Printf("[Stripe Handler] request body %+v", string(requestBody))
 
 			err = json.Unmarshal(requestBody, e)
 			if err != nil {
