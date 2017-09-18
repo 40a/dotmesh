@@ -277,6 +277,26 @@ Stripe issues webhooks for each event that happens with a customer.  To get thes
  * click - `send test webhook`
  * `docker logs datamesh-server-inner | grep [Stripe Handler]`
 
+#### interacting with etcd
+
+You can use the `etcdctl` dev command to view the contents of the database.
+
+```bash
+$ bash dev.sh etcdctl ls /datamesh.io
+```
+
+**list users**
+
+```bash
+$ bash dev.sh etcdctl ls /datamesh.io/users
+```
+
+**show user**
+
+```bash
+$ bash dev.sh etcdctl get /datamesh.io/users/00000000-0000-0000-0000-000000000000
+```
+
 #### start frontend
 Then we bring up the frontend container (which proxies back to the cluster for api requests):
 
