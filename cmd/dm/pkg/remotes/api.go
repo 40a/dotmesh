@@ -88,19 +88,27 @@ func (dm *DatameshAPI) setCurrentBranch(volumeName, branchName string) error {
 
 func (dm *DatameshAPI) CreateBranch(volumeName, sourceBranch, newBranch string) error {
 	var result bool
+
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return err
+	}
+
 	commitId, err := dm.findCommit("HEAD", volumeName, sourceBranch)
 	if err != nil {
 		return err
 	}
+
 	return dm.client.CallRemote(
 		context.Background(),
 		"DatameshRPC.Clone",
 		struct {
 			// Create a named clone from a given volume+branch pair at a given
 			// commit (that branch's latest commit)
-			Volume, SourceBranch, NewBranchName, SourceSnapshotId string
+			Namespace, Volume, SourceBranch, NewBranchName, SourceSnapshotId string
 		}{
-			Volume:           volumeName,
+			Namespace:        namespace,
+			Volume:           name,
 			SourceBranch:     sourceBranch,
 			SourceSnapshotId: commitId,
 			NewBranchName:    newBranch,
@@ -114,8 +122,13 @@ func (dm *DatameshAPI) CreateBranch(volumeName, sourceBranch, newBranch string) 
 	*/
 }
 
-func (dm *DatameshAPI) CheckoutBranch(volume, from, to string, create bool) error {
-	exists, err := dm.BranchExists(volume, to)
+func (dm *DatameshAPI) CheckoutBranch(volumeName, from, to string, create bool) error {
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return err
+	}
+
+	exists, err := dm.BranchExists(volumeName, to)
 	if err != nil {
 		return err
 	}
@@ -125,7 +138,7 @@ func (dm *DatameshAPI) CheckoutBranch(volume, from, to string, create bool) erro
 		if exists {
 			return fmt.Errorf("Branch already exists: %s", to)
 		}
-		if err := dm.CreateBranch(volume, from, to); err != nil {
+		if err := dm.CreateBranch(volumeName, from, to); err != nil {
 			return err
 		}
 	}
@@ -134,13 +147,14 @@ func (dm *DatameshAPI) CheckoutBranch(volume, from, to string, create bool) erro
 			return fmt.Errorf("Branch does not exist: %s", to)
 		}
 	}
-	if err := dm.setCurrentBranch(volume, to); err != nil {
+	if err := dm.setCurrentBranch(volumeName, to); err != nil {
 		return err
 	}
 	var result bool
 	err = dm.client.CallRemote(context.Background(),
 		"DatameshRPC.SwitchContainers", map[string]string{
-			"TopLevelFilesystemName": volume,
+			"Namespace":              namespace,
+			"TopLevelFilesystemName": name,
 			"CurrentCloneName":       deMasterify(from),
 			"NewCloneName":           deMasterify(to),
 		}, &result)
@@ -168,9 +182,14 @@ func (dm *DatameshAPI) BranchExists(volumeName, branchName string) (bool, error)
 }
 
 func (dm *DatameshAPI) Branches(volumeName string) ([]string, error) {
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return []string{}, err
+	}
+
 	branches := []string{}
-	err := dm.client.CallRemote(
-		context.Background(), "DatameshRPC.Clones", volumeName, &branches,
+	err = dm.client.CallRemote(
+		context.Background(), "DatameshRPC.Clones", VolumeName{namespace, name}, &branches,
 	)
 	if err != nil {
 		return []string{}, err
@@ -209,9 +228,14 @@ func (dm *DatameshAPI) CurrentBranch(volumeName string) (string, error) {
 }
 
 func (dm *DatameshAPI) AllBranches(volumeName string) ([]string, error) {
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return []string{}, err
+	}
+
 	var branches []string
-	err := dm.client.CallRemote(
-		context.Background(), "DatameshRPC.Clones", volumeName, &branches,
+	err = dm.client.CallRemote(
+		context.Background(), "DatameshRPC.Clones", VolumeName{namespace, name}, &branches,
 	)
 	// the "main" filesystem (topLevelFilesystemId) is the master branch
 	// (DEFAULT_BRANCH)
@@ -348,6 +372,11 @@ func (dm *DatameshAPI) ResetCurrentVolume(commit string) error {
 	if err != nil {
 		return err
 	}
+	namespace, name, err := ParseNamespacedVolume(activeVolume)
+	if err != nil {
+		return err
+	}
+
 	activeBranch, err := dm.CurrentBranch(activeVolume)
 	if err != nil {
 		return err
@@ -361,7 +390,8 @@ func (dm *DatameshAPI) ResetCurrentVolume(commit string) error {
 		context.Background(),
 		"DatameshRPC.Rollback",
 		map[string]string{
-			"TopLevelFilesystemName": activeVolume,
+			"Namespace":              namespace,
+			"TopLevelFilesystemName": name,
 			"CloneName":              deMasterify(activeBranch),
 			"SnapshotId":             commitId,
 		},

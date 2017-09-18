@@ -2462,6 +2462,7 @@ func pullInitiatorState(f *fsMachine) stateFn {
 	// for inter-cluster opentracing.
 	err = client.CallRemote(context.Background(),
 		"DatameshRPC.DeducePathToTopLevelFilesystem", map[string]interface{}{
+			"RemoteNamespace":      transferRequest.RemoteNamespace,
 			"RemoteFilesystemName": transferRequest.RemoteFilesystemName,
 			"RemoteCloneName":      transferRequest.RemoteCloneName,
 		},

@@ -449,6 +449,8 @@ func (d *DatameshRPC) registerFilesystemBecomeMaster(
 	filesystemNamespace, filesystemName, cloneName, filesystemId string,
 	path PathToTopLevelFilesystem,
 ) error {
+	log.Printf("[registerFilesystemBecomeMaster] called: filesystemNamespace=%s, filesystemName=%s, cloneName=%s, filesystemId=%s path=%+v",
+		filesystemNamespace, filesystemName, cloneName, filesystemId, path)
 	// ensure there's a filesystem machine for it (and its parents), otherwise
 	// it won't process any events. in the case where it already exists, this
 	// is a noop.
@@ -496,34 +498,22 @@ func (d *DatameshRPC) registerFilesystemBecomeMaster(
 		}
 	}
 
-	log.Printf(
-		"[registerFilesystemBecomeMaster] %s/%s,%s,%s path = %+v",
-		filesystemNamespace, filesystemName, cloneName, filesystemId, path,
-	)
-
 	// do this after, in case filesystemId already existed above
 	// use path to set up requisite clone metadata
 
 	// set up top level filesystem first, if not exists
-	if d.state.registry.Exists(VolumeName{filesystemNamespace, filesystemName}, "") == "" {
+	if d.state.registry.Exists(path.TopLevelFilesystemName, "") == "" {
 		err = d.state.registry.RegisterFilesystem(
-			ctx, VolumeName{filesystemNamespace, filesystemName}, filesystemId,
+			ctx, path.TopLevelFilesystemName, filesystemId,
 		)
 		if err != nil {
 			return err
 		}
 	}
 
-	if filesystemId != path.TopLevelFilesystemId {
-		panic(fmt.Sprintf(
-			"This should never happen: filesystemId (%s) != path.TopLevelFilesystemId; path = %+v",
-			filesystemId, path,
-		))
-	}
-
 	// for each clone, set up clone
 	for _, c := range path.Clones {
-		err = d.state.registry.RegisterClone(c.Name, filesystemId, c.Clone)
+		err = d.state.registry.RegisterClone(c.Name, path.TopLevelFilesystemId, c.Clone)
 		if err != nil {
 			return err
 		}
