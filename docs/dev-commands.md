@@ -265,6 +265,17 @@ $ export DATAMESH_CONFIG=$PWD/config.stripe.yaml
 $ make cluster.start
 ```
 
+#### adding stripe webhooks
+
+Stripe issues webhooks for each event that happens with a customer.  To get these events sent to your local stack:
+
+ * port forward :8080 from your router to your local machine
+ * get your public IP from [whatismyip.com](http://whatismyip.com)
+ * login to the Stripe control panel -> api -> webhooks -> add endpoint
+ * enter `http://<your-public-ip>:8080/stripe` as a new webhook (NOTE: **in test mode!**)
+ * make sure the stack is up `make cluster.start && make frontend.start`
+ * click - `send test webhook`
+ * `docker logs datamesh-server-inner | grep [Stripe Handler]`
 
 #### start frontend
 Then we bring up the frontend container (which proxies back to the cluster for api requests):
