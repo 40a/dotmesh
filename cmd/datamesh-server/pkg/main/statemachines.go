@@ -1398,8 +1398,10 @@ func TransferPollResultFromTransferRequest(
 		ApiKey:            transferRequest.ApiKey,
 		Direction:         transferRequest.Direction,
 
+		LocalNamespace:       transferRequest.LocalNamespace,
 		LocalFilesystemName:  transferRequest.LocalFilesystemName,
 		LocalCloneName:       transferRequest.LocalCloneName,
+		RemoteNamespace:      transferRequest.RemoteNamespace,
 		RemoteFilesystemName: transferRequest.RemoteFilesystemName,
 		RemoteCloneName:      transferRequest.RemoteCloneName,
 
@@ -1613,6 +1615,7 @@ func (f *fsMachine) retryPush(
 
 			// tell the remote what snapshot to expect
 			var result bool
+			log.Printf("[retryPush] calling RegisterTransfer with args: %+v", pollResult)
 			err = client.CallRemote(
 				context.Background(), "DatameshRPC.RegisterTransfer", pollResult, &result,
 			)

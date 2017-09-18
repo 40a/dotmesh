@@ -108,8 +108,10 @@ type TransferPollResult struct {
 
 	// Hold onto this information, it might become useful for e.g. recursive
 	// receives of clone filesystems.
+	LocalNamespace       string
 	LocalFilesystemName  string
 	LocalCloneName       string
+	RemoteNamespace      string
 	RemoteFilesystemName string
 	RemoteCloneName      string
 

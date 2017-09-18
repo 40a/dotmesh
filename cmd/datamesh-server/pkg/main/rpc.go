@@ -581,7 +581,7 @@ func (d *DatameshRPC) RegisterTransfer(
 	args *TransferPollResult,
 	result *bool,
 ) error {
-	log.Printf("[RegisterTransfer] called with args: %v", args)
+	log.Printf("[RegisterTransfer] called with args: %+v", args)
 	serialized, err := json.Marshal(args)
 	if err != nil {
 		return err
