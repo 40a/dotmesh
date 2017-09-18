@@ -198,6 +198,10 @@ function reset() {
   docker rm -f ${CHROME_DRIVER_NAME} || true
 }
 
+function etcdctl() {
+  docker exec -ti datamesh-etcd etcdctl --cert-file=/pki/apiserver.pem --key-file=/pki/apiserver-key.pem --ca-file=/pki/ca.pem --endpoints https://127.0.0.1:42379 "$@"
+}
+
 function usage() {
 cat <<EOF
 Usage:
@@ -219,6 +223,7 @@ Usage:
   frontend-test        run the frontend tests
   build                rebuild all images
   reset                reset the cluster
+  etcdctl              interact with etcd
   help                 display this message
 EOF
   exit 1
@@ -244,6 +249,7 @@ function main() {
   frontend-dist)       shift; frontend-dist $@;;
   build)               shift; build $@;;
   reset)               shift; reset $@;;
+  etcdctl)             shift; etcdctl $@;;
   help)                shift; usage $@;;
   *)                   usage $@;;
   esac
