@@ -19,6 +19,7 @@ type SafeUser struct {
 	Id          string
 	Name        string
 	Email       string
+	EmailHash   string
 	CustomerId  string
 	CurrentPlan string
 }

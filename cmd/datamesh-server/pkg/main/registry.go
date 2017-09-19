@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
+	"io"
 	"fmt"
 	"log"
 	"sort"
@@ -296,10 +298,14 @@ func (r *Registry) RegisterClone(name string, topLevelFilesystemId string, clone
 }
 
 func safeUser(u User) SafeUser {
+	h := md5.New()
+	io.WriteString(h, u.Email)
+	emailHash := fmt.Sprintf("%x", h.Sum(nil))
 	return SafeUser{
 		Id:          u.Id,
 		Name:        u.Name,
 		Email:       u.Email,
+		EmailHash:   emailHash,
 		CustomerId:  u.CustomerId,
 		CurrentPlan: u.CurrentPlan,
 	}
