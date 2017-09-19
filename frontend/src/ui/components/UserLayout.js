@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from 'react'
 import { Grid, Row, Col } from 'react-flexbox-grid'
 import { Card, CardMedia, CardTitle, CardText, CardActions } from 'react-toolbox/lib/card'
 
-import UserImage from './UserImage'
+import UserImage from './widgets/UserImage'
 
 import theme from './theme/userlayout.css'
 

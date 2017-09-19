@@ -5,7 +5,7 @@ import AppBar from 'react-toolbox/lib/app_bar'
 import ListMenu from 'template-ui/lib/components/ListMenu'
 import IconMenu from 'template-ui/lib/components/IconMenu'
 
-import UserChip from './UserChip'
+import UserChip from './widgets/UserChip'
 
 import config from '../config'
 
