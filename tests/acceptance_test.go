@@ -415,25 +415,3 @@ func TestFrontend(t *testing.T) {
 		copyMedia(node1)
 	})
 }
-
-func TestKubernetes(t *testing.T) {
-	teardownFinishedTestRuns()
-
-	f := Federation{NewKubernetes(3)}
-
-	startTiming()
-	err := f.Start(t)
-	defer testMarkForCleanup(f)
-	if err != nil {
-		t.Error(err)
-	}
-	node1 := f[0].GetNode(0).Container
-
-	t.Run("ListEmpty", func(t *testing.T) {
-		// TODO: maybe need to grab the password created by NewKubernetes and
-		// write it to dm config
-		//
-		// dm list should succeed in connecting to the datamesh cluster
-		d(t, node1, "dm list")
-	})
-}
