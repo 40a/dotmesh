@@ -42,7 +42,7 @@ export const routeConfig = processRoutes({
     authRedirect: '/login',
     controlLoopSaga: 'repoList'
   },
-  '/repos/:page': {
+  '/repos/page/:page': {
     user: true,
     authRedirect: '/login',
     controlLoopSaga: 'repoList'
@@ -113,7 +113,7 @@ export const routes = (
         </Section>
       </Route>
 
-      <Route path='/repos/:page'>
+      <Route path='/repos/page/:page'>
         <Section>
           <UserLayout>
             <SectionTabs

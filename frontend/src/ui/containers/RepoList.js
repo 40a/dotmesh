@@ -30,6 +30,6 @@ export default connect(
   },
   (dispatch) => ({
     updateSearch: (search) => dispatch(actions.router.hook('repoUpdateSearch', search)),
-    updatePage: (page) => dispatch(actions.router.redirect(`/repos/${page}`))
+    updatePage: (page) => dispatch(actions.router.hook('repoUpdatePage', page))
   })
 )(RepoListContainer)

@@ -1,4 +1,4 @@
-import { take, put, call, fork, select, all, takeLatest, takeEvery, cancel } from 'redux-saga/effects'
+import { take, put, call, fork, select, all, takeLatest, takeEvery, cancel, cancelled } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
 
 import config from '../config'
@@ -30,7 +30,7 @@ const ControllerLoop = (opts = {}) => {
 
   // block whilst we are doing the saga itself
   function* singleLoop() {
-    const routerResults = yield select(state => state.router.result)
+    const routerResults = yield select(state => state.router.result || {})
     const sagaName = routerResults.controlLoopSaga
     const saga = sagaName && hooks[sagaName] ? hooks[sagaName] : null
     let result = null

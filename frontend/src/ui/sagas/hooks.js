@@ -35,6 +35,7 @@ const Hooks = (opts = {}) => {
     // repo
     repoList: repo.list,
     repoUpdateSearch: repo.updateSearch,
+    repoUpdatePage: repo.updatePage,
 
     // billing
     billingTokenReceived: billing.tokenReceived,

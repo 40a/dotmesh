@@ -46,14 +46,19 @@ const RepoSagas = (opts = {}) => {
   function* updateSearch(search) {
     const currentPage = yield select(selectors.repos.pageCurrent)
     if(currentPage>1) {
-      yield put(actions.router.redirect('/repos/1'))
+      yield put(actions.router.redirect('/repos/page/1'))
     }
     yield put(actions.repos.updateSearch(search))
   }
 
+  function* updatePage(page) {
+    yield put(actions.router.redirect(`/repos/page/${page}`))
+  }
+
   return {
     list,
-    updateSearch
+    updateSearch,
+    updatePage
   }
 }
 
