@@ -14,8 +14,10 @@ class UserImage extends Component {
             size={ this.props.size }
             className={ this.props.imageClassName }
           />
+          <div className={ theme.username }>
+            <h2>{ user.Name }</h2>
+          </div>
         </div>
-        <h2>{ user.Name }</h2>
       </div>
     )
   }

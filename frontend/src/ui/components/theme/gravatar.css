@@ -3,12 +3,15 @@
 }
 
 .avatar {
+  display: inline-block;
   text-align: center;
 }
 
+.username {
+  text-align: left;
+}
+
 .avatar img {
-  width: 250px;
-  height: 250px;
   border: 1px solid gray;
   background-color: #eee;
 }
