@@ -21,3 +21,8 @@ export const router = RouterActions
 export const auth = {
   setUser: (credentials) => value.set(config.userValueName, credentials)
 }
+
+
+export const repos = {
+  updateSearch: search => value.set('repoListSearch', search)
+}

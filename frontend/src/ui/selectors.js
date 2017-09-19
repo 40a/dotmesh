@@ -66,7 +66,14 @@ export const form = Object.keys(forms).reduce((all, name) => {
 
 export const repos = {
   all: (state) => valueSelector(state, 'repos') || [],
-  search: (state) => valueSelector(state, 'repoListSearch') || ''
+  search: (state) => valueSelector(state, 'repoListSearch') || '',
+  currentPage: (state) => {
+
+  },
+  searchResults: (state) => {
+    const search = repos.search(state)
+    if(!search) return repos.all(state)
+  }
 }
 
 // functions that mean if we change the data structure on the backend we just change these

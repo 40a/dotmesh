@@ -21,11 +21,11 @@ export default connect(
     return {
       error: selectors.api.error(state, API_NAME),
       loading: selectors.api.loading(state, API_NAME),
-      data: selectors.repos.all(state),
+      data: selectors.repos.searchResults(state),
       search: selectors.repos.search(state)
     }
   },
   (dispatch) => ({
-    updateSearch: (search) => dispatch(actions.value.set('repoListSearch', search))
+    updateSearch: (search) => dispatch(actions.repos.updateSearch(search))
   })
 )(RepoListContainer)
