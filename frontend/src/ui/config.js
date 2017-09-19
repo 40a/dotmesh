@@ -69,4 +69,14 @@ const config = {
   icons
 }
 
+if(process.env.NODE_ENV == 'development') {
+  console.log('-------------------------------------------');
+  console.log('-------------------------------------------');
+  console.log('-------------------------------------------');
+  console.log('-------------------------------------------');
+  console.log('-------------------------------------------');
+  console.log('DEV MODE')
+  console.log('data loop is 10 seconds not 1')
+}
+
 export default config
