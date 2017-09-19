@@ -246,10 +246,10 @@ func teardownFinishedTestRuns() {
 				shr := strings.Fields(string(s))
 				if len(shr) > 0 {
 					// Manually umount them and disregard failures
-					if strings.HasPrefix(shr[0], fmt.Sprintf("testpool_%d", stamp)) {
+					if strings.HasPrefix(shr[0], fmt.Sprintf("testpool-%d", stamp)) {
 						o, _ := exec.Command("bash", "-c",
 							fmt.Sprintf(
-								"for X in `cat /proc/self/mounts|grep testpool_%d"+
+								"for X in `cat /proc/self/mounts|grep testpool-%d"+
 									"|grep -v '/mnt '|cut -d ' ' -f 2`; do "+
 									"umount -f $X || true;"+
 									"done", stamp),
