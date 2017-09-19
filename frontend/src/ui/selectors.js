@@ -71,5 +71,6 @@ export const repos = {
 export const repo = {
   top: (data) => data.TopLevelVolume,
   id: (data) => repo.top(data).Id,
-  name: (data) => repo.top(data).Name
+  name: (data) => repo.top(data).Name,
+  isPrivate: (data) => true
 }
