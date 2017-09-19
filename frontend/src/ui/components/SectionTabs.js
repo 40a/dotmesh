@@ -10,7 +10,7 @@ class SectionTabs extends Component {
     return (
       <section>
         <Tabs index={active}>
-          <Tab label='Repositories' onClick={ () => this.props.link('/repos') }>
+          <Tab label={ `Repositories (${this.props.searchCount})` } onClick={ () => this.props.link('/repos') }>
             <RepoList />
           </Tab>
           <Tab label='Servers' onClick={ () => this.props.link('/servers') }>

@@ -23,12 +23,13 @@ export default connect(
       loading: selectors.api.loading(state, API_NAME),
       data: selectors.repos.pageResults(state),
       search: selectors.repos.search(state),
+      repoCount: selectors.repos.count(state),
       pageCount: selectors.repos.pageCount(state),
       pageCurrent: selectors.repos.pageCurrent(state)
     }
   },
   (dispatch) => ({
-    updateSearch: (search) => dispatch(actions.repos.updateSearch(search)),
+    updateSearch: (search) => dispatch(actions.router.hook('repoUpdateSearch', search)),
     updatePage: (page) => dispatch(actions.router.redirect(`/repos/${page}`))
   })
 )(RepoListContainer)

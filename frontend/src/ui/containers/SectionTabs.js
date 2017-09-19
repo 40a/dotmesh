@@ -16,7 +16,8 @@ class SectionTabsContainer extends Component {
 
 export default connect(
   (state, ownProps) => ({
-    
+    repoCount: selectors.repos.count(state),
+    searchCount: selectors.repos.searchCount(state)
   }),
   (dispatch) => ({
     link: (path) => dispatch(actions.router.redirect(path))

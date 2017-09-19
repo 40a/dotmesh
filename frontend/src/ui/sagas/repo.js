@@ -42,8 +42,18 @@ const RepoSagas = (opts = {}) => {
     }
   }
 
+  // make sure we are on page one as soon as they change the search
+  function* updateSearch(search) {
+    const currentPage = yield select(selectors.repos.pageCurrent)
+    if(currentPage>1) {
+      yield put(actions.router.redirect('/repos/1'))
+    }
+    yield put(actions.repos.updateSearch(search))
+  }
+
   return {
-    list
+    list,
+    updateSearch
   }
 }
 

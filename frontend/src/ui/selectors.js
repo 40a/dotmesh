@@ -83,6 +83,11 @@ export const repos = {
     return isNaN(nm) ? 1 : nm
   },
   pageSize: (state) => config.repolist.pageSize,
+  count: (state) => repos.all(state).length,
+  searchCount: (state) => {
+    const results = repos.searchResults(state)
+    return results.length
+  },
   pageCount: (state) => {
     const results = repos.searchResults(state)
     return Math.ceil(results.length/repos.pageSize())

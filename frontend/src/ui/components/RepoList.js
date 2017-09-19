@@ -88,8 +88,7 @@ class RepoList extends Component {
   }
 
   render() {
-    const data = this.props.data || []
-    return data.length > 0 ? this.page() : this.noData()
+    return this.props.repoCount > 0 ? this.page() : this.noData()
   }
 }
 
