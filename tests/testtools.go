@@ -104,6 +104,7 @@ func testSetup(f Federation, stamp int64) error {
 	for i, c := range f {
 		for j := 0; j < c.GetDesiredNodeCount(); j++ {
 			node := nodeName(stamp, i, j)
+			fmt.Printf(">>> Using RunArgs %s\n", c.RunArgs(j))
 			// XXX the following only works if overlay is working
 			err := system("bash", "-c", fmt.Sprintf(`
 			mkdir -p /datamesh-test-pools
@@ -529,8 +530,13 @@ type Startable interface {
 ///////////// Kubernetes
 
 func (c *Kubernetes) RunArgs(i int) string {
-	// No special args required for dind with plain Datamesh.
-	return ""
+	// special args for starting Kube clusters, copying observed behaviour of
+	// dind::up
+	if i == 0 {
+		return fmt.Sprintf("10.192.0.%d %d 127.0.0.1:8080:8080", i+2, i+1)
+	} else {
+		return fmt.Sprintf("10.192.0.%d %d ''", i+2, i+1)
+	}
 }
 
 func (c *Kubernetes) GetNode(i int) Node {
@@ -546,19 +552,47 @@ func (c *Kubernetes) GetDesiredNodeCount() int {
 }
 
 func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
-	panic("I don't know how yet")
+	if c.DesiredNodeCount == 0 {
+		panic("no such thing as a zero-node cluster")
+	}
+	st, err := docker(
+		nodeName(now, i, 0),
+		"systemctl start kubelet && "+
+			"kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks",
+	)
+
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(st, "\n")
+
+	joinArgs := func(lines []string) string {
+		for _, line := range lines {
+			shrap := strings.Fields(line)
+			if len(shrap) > 3 {
+				// line will look like:
+				//     kubeadm join --token c06d9b.57ef131db5c0e0e5 10.192.0.2:6443
+				if shrap[0] == "kubeadm" && shrap[1] == "join" {
+					return strings.Join(shrap[2:], " ")
+				}
+			}
+		}
+		return ""
+	}(lines)
+
+	fmt.Printf("JOIN URL: %s\n", joinArgs)
+
+	clusterName := fmt.Sprintf("cluster_%d", i)
+	c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
+
+	return nil
 }
 
 ///////////// Cluster (plain Datamesh cluster, no orchestrator)
 
 func (c *Cluster) RunArgs(i int) string {
-	// special args for starting Kube clusters, copying observed behaviour of
-	// dind::up
-	if i == 0 {
-		return fmt.Sprintf("10.192.0.%d %d 127.0.0.1:8080:8080", i+2, i+1)
-	} else {
-		return fmt.Sprintf("10.192.0.%d %d ''", i+2, i+1)
-	}
+	// No special args required for dind with plain Datamesh.
+	return ""
 }
 
 func (c *Cluster) GetNode(i int) Node {
