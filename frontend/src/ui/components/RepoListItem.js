@@ -9,7 +9,7 @@ import StatusChip from './widgets/StatusChip'
 class RepoListItem extends Component {
   render() {
     const repo = this.props.repo || []
-    const branchCount = selectors.repo.branchCount(repo)
+    const serverStatuses = selectors.repo.serverStatuses(repo)
     return (
       <div className={ theme.listItem }>
         <div className={ theme.repoInfo }>
@@ -29,11 +29,17 @@ class RepoListItem extends Component {
           </div>
           <div>
             <StatusChip>{ selectors.repo.sizeTitle(repo) } used</StatusChip>
-            <StatusChip>{ branchCount } branch{ branchCount == 1 ? '' : 'es' }</StatusChip>
+            <StatusChip>{ selectors.repo.branchCountTitle(repo) }</StatusChip>
           </div>
         </div>
         <div className={ theme.repoStats }>
-          stats
+          {
+            Object.keys(serverStatuses).map((key, i) => {
+              return (
+                <div key={ i }>{ key } { serverStatuses[key] }</div>
+              )
+            })
+          }
         </div>
       </div>
     )

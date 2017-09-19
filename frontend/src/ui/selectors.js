@@ -74,8 +74,13 @@ export const repo = {
   id: (data) => repo.top(data).Id,
   name: (data) => repo.top(data).Name,
   size: (data) => repo.top(data).SizeBytes,
+  serverStatuses: (data) => repo.top(data).ServerStatuses || {},
   sizeTitle: (data) => labels.size(repo.size(data)),
   isPrivate: (data) => true,
   branches: (data) => data.CloneVolumes || [],
-  branchCount: (data) => (repo.branches(data).length + 1)
+  branchCount: (data) => (repo.branches(data).length + 1),
+  branchCountTitle: (data) => {
+    const count = repo.branchCount(data)
+    return `${ count } branch${ count==1 ? '' : 'es' }`
+  }
 }
