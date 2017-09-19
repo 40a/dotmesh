@@ -18,6 +18,8 @@ import (
 var timings map[string]float64
 var lastTiming int64
 
+const HOST_IP_FROM_CONTAINER = "10.192.0.1"
+
 func startTiming() {
 	lastTiming = time.Now().UnixNano()
 	timings = make(map[string]float64)
@@ -70,7 +72,7 @@ func tryUntilSucceeds(f func() error, desc string) error {
 
 func testMarkForCleanup(f Federation) {
 	for _, c := range f {
-		for _, n := range c.Nodes {
+		for _, n := range c.GetNodes() {
 			node := n.Container
 			err := tryUntilSucceeds(func() error {
 				return system("bash", "-c", fmt.Sprintf(
@@ -102,8 +104,9 @@ func testSetup(f Federation, stamp int64) error {
 	}
 
 	for i, c := range f {
-		for j := 0; j < c.DesiredNodeCount; j++ {
+		for j := 0; j < c.GetDesiredNodeCount(); j++ {
 			node := nodeName(stamp, i, j)
+			fmt.Printf(">>> Using RunArgs %s\n", c.RunArgs(j))
 			// XXX the following only works if overlay is working
 			err := system("bash", "-c", fmt.Sprintf(`
 			mkdir -p /datamesh-test-pools
@@ -115,22 +118,19 @@ func testSetup(f Federation, stamp int64) error {
 				mount --bind $MOUNTPOINT $MOUNTPOINT && \
 				mount --make-shared $MOUNTPOINT;
 			fi
-			(cd ~/kubernetes && \
 			EXTRA_DOCKER_ARGS="-v /datamesh-test-pools:/datamesh-test-pools:rshared" \
-				dind/dind-cluster.sh quick $NODE)
+				../kubernetes/dind-cluster-v1.7.sh bare $NODE %s
 			sleep 1
 			docker exec -t $NODE bash -c '
-				sed -i "s/docker daemon/docker daemon \
+			    echo "%s '$(hostname)'.local" >> /etc/hosts
+				sed -i "s/rundocker/rundocker \
 					--insecure-registry '$(hostname)'.local:80/" \
-					/etc/systemd/system/docker.service.d/20-overlay.conf
-				# workaround https://github.com/docker/docker/issues/19625
-				sed -i "s/MountFlags=slave//" \
-					/lib/systemd/system/docker.service
+					/etc/systemd/system/docker.service.d/20-fs.conf
 				systemctl daemon-reload
 				systemctl restart docker
 			'
 			docker cp ../binaries/Linux/dm $NODE:/usr/local/bin/dm
-		`, node))
+			`, node, c.RunArgs(j), HOST_IP_FROM_CONTAINER))
 			if err != nil {
 				return err
 			}
@@ -248,10 +248,10 @@ func teardownFinishedTestRuns() {
 				shr := strings.Fields(string(s))
 				if len(shr) > 0 {
 					// Manually umount them and disregard failures
-					if strings.HasPrefix(shr[0], fmt.Sprintf("testpool_%d", stamp)) {
+					if strings.HasPrefix(shr[0], fmt.Sprintf("testpool-%d", stamp)) {
 						o, _ := exec.Command("bash", "-c",
 							fmt.Sprintf(
-								"for X in `cat /proc/self/mounts|grep testpool_%d"+
+								"for X in `cat /proc/self/mounts|grep testpool-%d"+
 									"|grep -v '/mnt '|cut -d ' ' -f 2`; do "+
 									"umount -f $X || true;"+
 									"done", stamp),
@@ -338,17 +338,17 @@ func localEtcdImage() string {
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("%s.local:80/coreos/etcd:v3.0.15", hostname)
+	return fmt.Sprintf("%s.local:80/lukemarsden/etcd:v3.0.15", hostname)
 }
 
 func localImageArgs() string {
 	logSuffix := ""
 	if os.Getenv("DISABLE_LOG_AGGREGATION") == "" {
-		logSuffix = " --log 172.17.0.1"
+		logSuffix = fmt.Sprintf(" --log %s", HOST_IP_FROM_CONTAINER)
 	}
 	traceSuffix := ""
 	if os.Getenv("DISABLE_TRACING") == "" {
-		traceSuffix = " --trace 172.17.0.1"
+		traceSuffix = fmt.Sprintf(" --trace %s", HOST_IP_FROM_CONTAINER)
 	}
 	regSuffix := ""
 	if os.Getenv("ALLOW_PUBLIC_REGISTRATION") != "" {
@@ -356,7 +356,7 @@ func localImageArgs() string {
 		regSuffix = " --allow-public-registration"
 	}
 	return ("--image " + localImage() + " --etcd-image " + localEtcdImage() +
-		" --docker-api-version 1.23 --discovery-url http://172.17.0.1:8087" +
+		" --docker-api-version 1.23 --discovery-url http://" + HOST_IP_FROM_CONTAINER + ":8087" +
 		logSuffix + traceSuffix + regSuffix +
 		" --assets-url-prefix http://localhost:4000/datamesh-website/" +
 		" --allow-public-registration")
@@ -413,6 +413,11 @@ type Cluster struct {
 	Nodes            []Node
 }
 
+type Kubernetes struct {
+	DesiredNodeCount int
+	Nodes            []Node
+}
+
 type Pair struct {
 	From Node
 	To   Node
@@ -422,7 +427,11 @@ func NewCluster(desiredNodeCount int) *Cluster {
 	return &Cluster{DesiredNodeCount: desiredNodeCount}
 }
 
-type Federation []*Cluster
+func NewKubernetes(desiredNodeCount int) *Kubernetes {
+	return &Kubernetes{DesiredNodeCount: desiredNodeCount}
+}
+
+type Federation []Startable
 
 func nodeName(now int64, i, j int) string {
 	return fmt.Sprintf("cluster-%d-%d-node-%d", now, i, j)
@@ -457,64 +466,18 @@ func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Nod
 }
 
 func (f Federation) Start(t *testing.T) error {
-	teardownFinishedTestRuns()
-
-	startTiming()
 	now := time.Now().UnixNano()
 	err := testSetup(f, now)
-	defer testMarkForCleanup(f)
 	if err != nil {
 		return err
 	}
 	logTiming("setup")
 
 	for i, c := range f {
-		// init the first node in the cluster, join the rest
-		if c.DesiredNodeCount == 0 {
-			panic("no such thing as a zero-node cluster")
-		}
-		st, err := docker(
-			nodeName(now, i, 0), "dm cluster init "+localImageArgs()+
-				" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
-				" --use-pool-name "+poolId(now, i, 0),
-		)
+		fmt.Printf("==== GOING FOR %d, %+v ====\n", i, c)
+		err = c.Start(t, now, i)
 		if err != nil {
 			return err
-		}
-		clusterName := fmt.Sprintf("cluster_%d", i)
-		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
-
-		lines := strings.Split(st, "\n")
-		joinUrl := func(lines []string) string {
-			for _, line := range lines {
-				shrap := strings.Fields(line)
-				if len(shrap) > 3 {
-					if shrap[0] == "dm" && shrap[1] == "cluster" && shrap[2] == "join" {
-						return shrap[3]
-					}
-				}
-			}
-			return ""
-		}(lines)
-		if joinUrl == "" {
-			return fmt.Errorf("unable to find join url in 'dm cluster init' output")
-		}
-		logTiming("init_" + poolId(now, i, 0))
-		for j := 1; j < c.DesiredNodeCount; j++ {
-			// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
-			// node).
-			_, err = docker(nodeName(now, i, j), fmt.Sprintf(
-				"dm cluster join %s %s %s",
-				localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, j),
-				joinUrl,
-				" --use-pool-name "+poolId(now, i, j),
-			))
-			if err != nil {
-				return err
-			}
-			c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
-
-			logTiming("join_" + poolId(now, i, j))
 		}
 	}
 	// TODO refactor the following so that each node has one other node on the
@@ -524,9 +487,9 @@ func (f Federation) Start(t *testing.T) error {
 	// O(n^3)
 	pairs := []Pair{}
 	for _, c := range f {
-		for _, node := range c.Nodes {
+		for _, node := range c.GetNodes() {
 			for _, otherCluster := range f {
-				first := otherCluster.Nodes[0]
+				first := otherCluster.GetNode(0)
 				pairs = append(pairs, Pair{
 					From: node,
 					To:   first,
@@ -554,6 +517,146 @@ func (f Federation) Start(t *testing.T) error {
 			}
 			d(t, pair.From.Container, "dm remote switch local")
 		}
+	}
+	return nil
+}
+
+type Startable interface {
+	GetNode(int) Node
+	GetNodes() []Node
+	GetDesiredNodeCount() int
+	Start(*testing.T, int64, int) error
+	RunArgs(int) string
+}
+
+///////////// Kubernetes
+
+func (c *Kubernetes) RunArgs(i int) string {
+	// special args for starting Kube clusters, copying observed behaviour of
+	// dind::up
+	if i == 0 {
+		return fmt.Sprintf("10.192.0.%d %d 127.0.0.1:8080:8080", i+2, i+1)
+	} else {
+		return fmt.Sprintf("10.192.0.%d %d ''", i+2, i+1)
+	}
+}
+
+func (c *Kubernetes) GetNode(i int) Node {
+	return c.Nodes[i]
+}
+
+func (c *Kubernetes) GetNodes() []Node {
+	return c.Nodes
+}
+
+func (c *Kubernetes) GetDesiredNodeCount() int {
+	return c.DesiredNodeCount
+}
+
+func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
+	if c.DesiredNodeCount == 0 {
+		panic("no such thing as a zero-node cluster")
+	}
+	st, err := docker(
+		nodeName(now, i, 0),
+		"systemctl start kubelet && "+
+			"kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks",
+	)
+
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(st, "\n")
+
+	joinArgs := func(lines []string) string {
+		for _, line := range lines {
+			shrap := strings.Fields(line)
+			if len(shrap) > 3 {
+				// line will look like:
+				//     kubeadm join --token c06d9b.57ef131db5c0e0e5 10.192.0.2:6443
+				if shrap[0] == "kubeadm" && shrap[1] == "join" {
+					return strings.Join(shrap[2:], " ")
+				}
+			}
+		}
+		return ""
+	}(lines)
+
+	fmt.Printf("JOIN URL: %s\n", joinArgs)
+
+	clusterName := fmt.Sprintf("cluster_%d", i)
+	c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
+
+	return nil
+}
+
+///////////// Cluster (plain Datamesh cluster, no orchestrator)
+
+func (c *Cluster) RunArgs(i int) string {
+	// No special args required for dind with plain Datamesh.
+	return ""
+}
+
+func (c *Cluster) GetNode(i int) Node {
+	return c.Nodes[i]
+}
+
+func (c *Cluster) GetNodes() []Node {
+	return c.Nodes
+}
+
+func (c *Cluster) GetDesiredNodeCount() int {
+	return c.DesiredNodeCount
+}
+
+func (c *Cluster) Start(t *testing.T, now int64, i int) error {
+	// init the first node in the cluster, join the rest
+	if c.DesiredNodeCount == 0 {
+		panic("no such thing as a zero-node cluster")
+	}
+	st, err := docker(
+		nodeName(now, i, 0), "dm cluster init "+localImageArgs()+
+			" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
+			" --use-pool-name "+poolId(now, i, 0),
+	)
+	if err != nil {
+		return err
+	}
+	clusterName := fmt.Sprintf("cluster_%d", i)
+	c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
+	fmt.Printf("(just added) Here are my nodes: %+v\n", c.Nodes)
+
+	lines := strings.Split(st, "\n")
+	joinUrl := func(lines []string) string {
+		for _, line := range lines {
+			shrap := strings.Fields(line)
+			if len(shrap) > 3 {
+				if shrap[0] == "dm" && shrap[1] == "cluster" && shrap[2] == "join" {
+					return shrap[3]
+				}
+			}
+		}
+		return ""
+	}(lines)
+	if joinUrl == "" {
+		return fmt.Errorf("unable to find join url in 'dm cluster init' output")
+	}
+	logTiming("init_" + poolId(now, i, 0))
+	for j := 1; j < c.DesiredNodeCount; j++ {
+		// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
+		// node).
+		_, err = docker(nodeName(now, i, j), fmt.Sprintf(
+			"dm cluster join %s %s %s",
+			localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, j),
+			joinUrl,
+			" --use-pool-name "+poolId(now, i, j),
+		))
+		if err != nil {
+			return err
+		}
+		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
+
+		logTiming("join_" + poolId(now, i, j))
 	}
 	return nil
 }
