@@ -3,7 +3,7 @@ import { Grid, Row, Col } from 'react-flexbox-grid'
 import { Card, CardMedia, CardTitle, CardText, CardActions } from 'react-toolbox/lib/card'
 
 import VolumeTable from '../containers/VolumeTable'
-import Gravatar from '../containers/Gravatar'
+import UserImage from './UserImage'
 
 class Dashboard extends Component {
   render() {
@@ -11,7 +11,7 @@ class Dashboard extends Component {
       <Grid fluid>
         <Row>
           <Col xs={12} sm={4}>
-            <Gravatar />
+            <UserImage user={ this.props.user } />
           </Col>
           <Col xs={12} sm={8}>
             <VolumeTable />

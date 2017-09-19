@@ -16,7 +16,7 @@ import ServerTable from './containers/ServerTable'
 import PaymentPage from './containers/PaymentPage'
 
 import Home from './components/Home'
-import Dashboard from './components/Dashboard'
+import Dashboard from './containers/Dashboard'
 
 const Route = RouteFactory(config.basepath)
 

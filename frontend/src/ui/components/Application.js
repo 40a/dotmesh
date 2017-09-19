@@ -5,6 +5,8 @@ import AppBar from 'react-toolbox/lib/app_bar'
 import ListMenu from 'template-ui/lib/components/ListMenu'
 import IconMenu from 'template-ui/lib/components/IconMenu'
 
+import UserChip from './UserChip'
+
 import config from '../config'
 
 import appBarTheme from './theme/appBar.css'
@@ -57,8 +59,13 @@ class ApplicationComponent extends Component {
           onLeftIconClick={ this.props.toggleMenu }
           title={ title }
         >
-          <div id="appBarMenu">
-            { appbarMenu }
+          <div>
+            <div className={ appBarTheme.rightContent } id="appBarMenu">
+              { appbarMenu }
+            </div>
+            <div className={ appBarTheme.rightContent }>
+              <UserChip user={ this.props.user } />
+            </div>
           </div>
         </AppBar>
         <Panel bodyScroll={ bodyScroll }>
