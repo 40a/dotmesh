@@ -7,6 +7,7 @@ export { default as router } from 'template-ui/lib/plugins/router/selectors'
 
 import forms from './forms'
 import config from './config'
+import labels from './utils/labels'
 
 export const valuesSelector = (state) => state.value || {}
 export const valueSelector = (state, name) => valuesSelector(state)[name]
@@ -72,5 +73,9 @@ export const repo = {
   top: (data) => data.TopLevelVolume,
   id: (data) => repo.top(data).Id,
   name: (data) => repo.top(data).Name,
-  isPrivate: (data) => true
+  size: (data) => repo.top(data).SizeBytes,
+  sizeTitle: (data) => labels.size(repo.size(data)),
+  isPrivate: (data) => true,
+  branches: (data) => data.CloneVolumes || [],
+  branchCount: (data) => (repo.branches(data).length + 1)
 }

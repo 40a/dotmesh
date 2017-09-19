@@ -9,10 +9,12 @@
 }
 
 .repoInfo {
+  float: left;
   display: inline-block;  
 }
 
 .repoName {
+  display: inline-block;
   font-size: 1.3em;
   font-weight: bold;
   cursor: pointer;
