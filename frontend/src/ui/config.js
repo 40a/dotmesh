@@ -44,6 +44,9 @@ const config = {
   },
   // milliseconds delay for each iteration of the control loop
   controlLoopInterval: process.env.NODE_ENV == 'development' ? 10000 : 1000,
+  repolist: {
+    pageSize: 3
+  },
   images: {
     appbar: '/images/datamesh-on-dark.png'
   },

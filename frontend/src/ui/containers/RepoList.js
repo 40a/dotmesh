@@ -21,7 +21,7 @@ export default connect(
     return {
       error: selectors.api.error(state, API_NAME),
       loading: selectors.api.loading(state, API_NAME),
-      data: selectors.repos.searchResults(state),
+      data: selectors.repos.pageResults(state),
       search: selectors.repos.search(state)
     }
   },

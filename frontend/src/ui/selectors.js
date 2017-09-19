@@ -67,16 +67,36 @@ export const form = Object.keys(forms).reduce((all, name) => {
 export const repos = {
   all: (state) => valueSelector(state, 'repos') || [],
   search: (state) => valueSelector(state, 'repoListSearch') || '',
-  currentPage: (state) => {
-
-  },
   searchResults: (state) => {
     const search = repos.search(state)
-    if(!search) return repos.all(state)
+    const useSearch = search.toLowerCase().replace(/\W/g, '')
+    const allResults = repos.all(state)
+    if(!search) return allResults
+    return allResults.filter(data => {
+      const useName = (repo.name(data) || '').toLowerCase().replace(/\W/g, '')
+      return useName.indexOf(useSearch) >= 0
+    })
+  },
+  currentPage: (state) => {
+    const st = state.router.query.page || '1'
+    const nm = parseInt(st)
+    return isNaN(nm) ? 1 : nm
+  },
+  pageSize: (state) => config.repolist.pageSize,
+  pageCount: (state) => {
+    const results = repos.searchResults(state)
+    return Math.ceil(results/repos.pageSize())
+  },
+  // filter the search results (which could be all) through the page grouper
+  pageResults: (state) => {
+    const searchResults = repos.searchResults(state)
+    const pageSize = repos.pageSize(state)
+    const currentPage = repos.currentPage(state)
+    const startIndex = (currentPage - 1) * pageSize
+    return searchResults.slice(startIndex, startIndex + pageSize)
   }
 }
 
-// functions that mean if we change the data structure on the backend we just change these
 export const repo = {
   top: (data) => data.TopLevelVolume,
   id: (data) => repo.top(data).Id,
