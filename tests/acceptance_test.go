@@ -433,6 +433,7 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 	bobNode := f[2].Nodes[0]
 
 	t.Run("TwoUsersSameNamedVolume", func(t *testing.T) {
+		// Create users bob and alice
 		err = registerUser(commonNode.IP, "bob", "bob@bob.com", "bob is great")
 		if err != nil {
 			t.Error(err)
@@ -443,16 +444,47 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 			t.Error(err)
 		}
 
-		// We should have users 'bob' and 'alice' now!
-		d(t, aliceNode.Container, dockerRun("apples")+" touch /foo/X")
+		// bob and alice both push to the common node
+		d(t, aliceNode.Container, dockerRun("apples")+" touch /foo/alice")
 		d(t, aliceNode.Container, "dm switch apples")
 		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
 		d(t, aliceNode.Container, "dm push cluster_0 apples --remote-volume alice/apples")
 
-		d(t, bobNode.Container, dockerRun("apples")+" touch /foo/X")
+		d(t, bobNode.Container, dockerRun("apples")+" touch /foo/bob")
 		d(t, bobNode.Container, "dm switch apples")
 		d(t, bobNode.Container, "dm commit -m'Bob commits'")
 		d(t, bobNode.Container, "dm push cluster_0 apples --remote-volume bob/apples")
+
+		// bob and alice both pull from the common node
+		d(t, aliceNode.Container, "dm clone cluster_0 bob/apples --local-volume bob-apples")
+		d(t, bobNode.Container, "dm clone cluster_0 alice/apples --local-volume alice-apples")
+
+		// Check they get the right volumes
+		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | sort")
+		if resp != "alice/apples\nbob/apples\n" {
+			t.Error("Didn't find alice/apples and bob/apples on common node")
+		}
+
+		resp = s(t, aliceNode.Container, "dm list -H | cut -f 1 | sort")
+		if resp != "apples\nbob-apples\n" {
+			t.Error("Didn't find apples and bob-apples on alice's node")
+		}
+
+		resp = s(t, bobNode.Container, "dm list -H | cut -f 1 | sort")
+		if resp != "alice-apples\napples\n" {
+			t.Error("Didn't find apples and alice-apples on bob's node")
+		}
+
+		// Check the volumes actually have the contents they should
+		resp = s(t, aliceNode.Container, dockerRun("bob-apples")+" ls /foo/")
+		if !strings.Contains(resp, "bob") {
+			t.Error("Filesystem bob-apples had the wrong content")
+		}
+
+		resp = s(t, bobNode.Container, dockerRun("alice-apples")+" ls /foo/")
+		if !strings.Contains(resp, "alice") {
+			t.Error("Filesystem alice-apples had the wrong content")
+		}
 
 	})
 }
