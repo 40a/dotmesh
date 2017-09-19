@@ -4,12 +4,12 @@ import { connect } from 'react-redux'
 import * as selectors from '../selectors'
 import * as actions from '../actions'
 
-import Dashboard from '../components/Dashboard'
+import UserLayout from '../components/UserLayout'
 
-class DashboardContainer extends Component {
+class UserLayoutContainer extends Component {
   render() {
     return (
-      <Dashboard {...this.props} />
+      <UserLayout {...this.props} />
     )
   }
 }
@@ -23,4 +23,4 @@ export default connect(
   (dispatch) => ({
     
   })
-)(DashboardContainer)
+)(UserLayoutContainer)

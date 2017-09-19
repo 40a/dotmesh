@@ -8,7 +8,7 @@ class VolumeTable extends Component {
     const data = this.props.data || []
     return (
       <div id="volumePage">
-        <h1 id="title">Volumes</h1>
+        <h1 style={{fontSize:'2em'}} id="title">Volumes</h1>
         <Table selectable={ false } style={{ marginTop: 10 }}>
           <TableHead>
             <TableCell>Name</TableCell>

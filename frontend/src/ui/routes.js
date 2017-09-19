@@ -16,7 +16,7 @@ import ServerTable from './containers/ServerTable'
 import PaymentPage from './containers/PaymentPage'
 
 import Home from './components/Home'
-import Dashboard from './containers/Dashboard'
+import UserLayout from './containers/UserLayout'
 
 const Route = RouteFactory(config.basepath)
 
@@ -77,7 +77,9 @@ export const routes = (
           </UserWrapper>
           <UserWrapper loggedIn={ true }>
             <Section>
-              <Dashboard />
+              <UserLayout>
+                <VolumeTable />
+              </UserLayout>
             </Section>
           </UserWrapper>
         </Section>
@@ -91,7 +93,9 @@ export const routes = (
 
       <Route path='/dashboard'>
         <Section>
-          <Dashboard />
+          <UserLayout>
+            <VolumeTable />
+          </UserLayout>
         </Section>
       </Route>
 
@@ -103,13 +107,17 @@ export const routes = (
 
       <Route path='/volumes'>
         <Section>
-          <Dashboard />
+          <UserLayout>
+            <VolumeTable />
+          </UserLayout>
         </Section>
       </Route>
 
       <Route path='/servers'>
         <Section>
-          <ServerTable />
+          <UserLayout>
+            <ServerTable />
+          </UserLayout>
         </Section>
       </Route>
 

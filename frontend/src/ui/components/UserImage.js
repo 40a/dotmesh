@@ -9,7 +9,11 @@ class UserImage extends Component {
     return (
       <div className={ theme.container }>
         <div className={ theme.avatar }>
-          <GravatarImage emailHash={ user.EmailHash } />
+          <GravatarImage
+            emailHash={ user.EmailHash }
+            size={ this.props.size }
+            className={ this.props.imageClassName }
+          />
         </div>
         <h2>{ user.Name }</h2>
       </div>
