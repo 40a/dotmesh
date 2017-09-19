@@ -577,38 +577,58 @@ func (dm *DatameshAPI) RequestTransfer(
 
 	var err error
 
-	var currentVolume string
-
-	// Cases:
-	// push without --remote-volume - remoteFilesystemName = ""
-	// push with --remote-volume - remoteFilesystemName = remote volume
-	// clone/pull - remoteFilesystemname = the filesystem we're playing with which also is the local one as we can't rename as part of the pull/clone
-
-	if localFilesystemName == "" {
-		currentVolume, err = dm.Configuration.CurrentVolume()
-		if err != nil {
-			return "", err
-		}
-	} else {
-		currentVolume = localFilesystemName
+	remote, err := dm.Configuration.GetRemote(peer)
+	if err != nil {
+		return "", err
 	}
 
-	// FIXME: This is just to fake current "dm push" behaviour
-	// in the absence of proper "remote tracking" support for filesystem/branch names
-	// Reassess these when we add support for dm push without explicit remote names
+	// Let's replace any missing things with defaults.
+	// The defaults depend on whether we're pushing or pulling.
+
+	if direction == "push" {
+		// We are pushing, so if no local filesystem/branch is
+		// specified, take the current one.
+		if localFilesystemName == "" {
+			localFilesystemName, err = dm.Configuration.CurrentVolume()
+			if err != nil {
+				return "", err
+			}
+		}
+
+		if localBranchName == "" {
+			localBranchName, err = dm.Configuration.CurrentBranch()
+			if err != nil {
+				return "", err
+			}
+		}
+	} else if direction == "pull" {
+		// We are pulling, so if no local filesystem/branch is
+		// specified, we take the remote name but strip it of its
+		// namespace. So if we pull "bob/apples", we pull into "apples",
+		// which is really "admin/apples".
+		if localFilesystemName == "" && remoteFilesystemName != "" {
+			_, localFilesystemName, err = ParseNamespacedVolume(remoteFilesystemName)
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+
+	// On the other hand, if a local is specified but no remote, we
+	// need to guess the remote.
+
+	// TODO: When we have "remote tracking" support, we'll have
+	// recorded the remote we cloned from so can just use that.
 	if remoteFilesystemName == "" {
-		remoteFilesystemName, err = dm.Configuration.CurrentVolume()
+		_, bareName, err := ParseNamespacedVolume(localFilesystemName)
 		if err != nil {
 			return "", err
 		}
+		remoteFilesystemName = remote.User + "/" + bareName
 	}
 	if remoteBranchName == "" {
-		remoteBranchName, err = dm.Configuration.CurrentBranch()
-		if err != nil {
-			return "", err
-		}
+		remoteBranchName = localBranchName
 	}
-	// END FIXME
 
 	if remoteBranchName != "" && remoteFilesystemName == "" {
 		return "", fmt.Errorf(
@@ -616,17 +636,8 @@ func (dm *DatameshAPI) RequestTransfer(
 				"without specifying a remote filesystem name.",
 		)
 	}
-	var currentBranch string
-	if localBranchName == "" {
-		currentBranch, err = dm.Configuration.CurrentBranch()
-		if err != nil {
-			return "", err
-		}
-	} else {
-		currentBranch = localBranchName
-	}
 
-	currentNamespace, currentVolume, err := ParseNamespacedVolume(currentVolume)
+	localNamespace, localVolume, err := ParseNamespacedVolume(localFilesystemName)
 	if err != nil {
 		return "", err
 	}
@@ -641,10 +652,6 @@ func (dm *DatameshAPI) RequestTransfer(
 	if err != nil {
 		return "", err
 	}
-	remote, err := dm.Configuration.GetRemote(peer)
-	if err != nil {
-		return "", err
-	}
 	var transferId string
 	// TODO make ApiKey time- and domain- (filesystem?) limited
 	// cryptographically somehow
@@ -654,9 +661,9 @@ func (dm *DatameshAPI) RequestTransfer(
 			User:                 remote.User,
 			ApiKey:               remote.ApiKey,
 			Direction:            direction,
-			LocalNamespace:       currentNamespace,
-			LocalFilesystemName:  currentVolume,
-			LocalCloneName:       deMasterify(currentBranch),
+			LocalNamespace:       localNamespace,
+			LocalFilesystemName:  localVolume,
+			LocalCloneName:       deMasterify(localBranchName),
 			RemoteNamespace:      remoteNamespace,
 			RemoteFilesystemName: remoteFilesystemName,
 			RemoteCloneName:      deMasterify(remoteBranchName),

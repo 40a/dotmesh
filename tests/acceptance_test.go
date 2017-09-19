@@ -455,7 +455,7 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		d(t, bobNode.Container, "dm commit -m'Bob commits'")
 		d(t, bobNode.Container, "dm push cluster_0 apples --remote-volume bob/apples")
 
-		// bob and alice both pull from the common node
+		// bob and alice both clone from the common node
 		d(t, aliceNode.Container, "dm clone cluster_0 bob/apples --local-volume bob-apples")
 		d(t, bobNode.Container, "dm clone cluster_0 alice/apples --local-volume alice-apples")
 
@@ -486,5 +486,19 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 			t.Error("Filesystem alice-apples had the wrong content")
 		}
 
+		// bob commits again
+		d(t, bobNode.Container, dockerRun("apples")+" touch /foo/bob2")
+		d(t, bobNode.Container, "dm switch apples")
+		d(t, bobNode.Container, "dm commit -m'Bob commits again'")
+		d(t, bobNode.Container, "dm push cluster_0 apples --remote-volume bob/apples")
+
+		// alice pulls it
+		d(t, aliceNode.Container, "dm pull cluster_0 bob/apples --local-volume bob-apples")
+
+		// Check we got the change
+		resp = s(t, aliceNode.Container, dockerRun("bob-apples")+" ls /foo/")
+		if !strings.Contains(resp, "bob2") {
+			t.Error("Filesystem bob-apples had the wrong content")
+		}
 	})
 }
