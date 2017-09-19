@@ -4,6 +4,7 @@ import Navigation from 'react-toolbox/lib/navigation'
 
 import config from '../config'
 import RepoListItem from './RepoListItem'
+import Pager from './widgets/Pager'
 import SearchBox from './widgets/SearchBox'
 import theme from './theme/repolist.css'
 
@@ -32,6 +33,16 @@ class RepoList extends Component {
           })
         }
       </div>
+    )
+  }
+
+  pager() {
+    return (
+      <Pager
+        count={ this.props.pageCount }
+        current={ this.props.pageCurrent }
+        onClick={ this.props.updatePage }
+      />
     )
   }
 
@@ -71,6 +82,7 @@ class RepoList extends Component {
       <div className={ theme.container }>
         { this.optionsBar() }
         { this.dataList() }
+        { this.pager() }
       </div>
     )
   }

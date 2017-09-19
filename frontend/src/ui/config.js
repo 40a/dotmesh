@@ -23,7 +23,9 @@ const icons = {
   search: 'search',
   disk: 'storage',
   server: 'computer',
-  payment: 'credit_card'
+  payment: 'credit_card',
+  back: 'arrow_back',
+  forward: 'arrow_forward'
 }
 
 const config = {

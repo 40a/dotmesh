@@ -77,22 +77,22 @@ export const repos = {
       return useName.indexOf(useSearch) >= 0
     })
   },
-  currentPage: (state) => {
-    const st = state.router.query.page || '1'
+  pageCurrent: (state) => {
+    const st = state.router.params.page || '1'
     const nm = parseInt(st)
     return isNaN(nm) ? 1 : nm
   },
   pageSize: (state) => config.repolist.pageSize,
   pageCount: (state) => {
     const results = repos.searchResults(state)
-    return Math.ceil(results/repos.pageSize())
+    return Math.ceil(results.length/repos.pageSize())
   },
   // filter the search results (which could be all) through the page grouper
   pageResults: (state) => {
     const searchResults = repos.searchResults(state)
     const pageSize = repos.pageSize(state)
-    const currentPage = repos.currentPage(state)
-    const startIndex = (currentPage - 1) * pageSize
+    const pageCurrent = repos.pageCurrent(state)
+    const startIndex = (pageCurrent - 1) * pageSize
     return searchResults.slice(startIndex, startIndex + pageSize)
   }
 }
