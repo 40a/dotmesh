@@ -104,11 +104,6 @@ func testSetup(f Federation, stamp int64) error {
 	for i, c := range f {
 		for j := 0; j < c.GetDesiredNodeCount(); j++ {
 			node := nodeName(stamp, i, j)
-			// TODO make the following use the bundled
-			// kubernetes/dind-cluster-v1.7.sh so that we have a chance of
-			// starting kubernetes in the resulting containers by calling more
-			// functions there... or copying its behaviour at least
-
 			// XXX the following only works if overlay is working
 			err := system("bash", "-c", fmt.Sprintf(`
 			mkdir -p /datamesh-test-pools
@@ -121,7 +116,7 @@ func testSetup(f Federation, stamp int64) error {
 				mount --make-shared $MOUNTPOINT;
 			fi
 			EXTRA_DOCKER_ARGS="-v /datamesh-test-pools:/datamesh-test-pools:rshared" \
-				../kubernetes/dind-cluster-v1.7.sh bare $NODE
+				../kubernetes/dind-cluster-v1.7.sh bare %s $NODE
 			sleep 1
 			docker exec -t $NODE bash -c '
 			    echo "%s '$(hostname)'.local" >> /etc/hosts
@@ -132,7 +127,7 @@ func testSetup(f Federation, stamp int64) error {
 				systemctl restart docker
 			'
 			docker cp ../binaries/Linux/dm $NODE:/usr/local/bin/dm
-			`, node, HOST_IP_FROM_CONTAINER))
+			`, node, c.RunArgs(j), HOST_IP_FROM_CONTAINER))
 			if err != nil {
 				return err
 			}
