@@ -37,8 +37,16 @@ export const billing = {
 export const auth = {
   user: value(config.userValueName),
   email: (state) => {
-    const user = auth.user(state)
+    const user = auth.user(state) || {}
     return user.Email
+  },
+  emailHash: (state) => {
+    const user = auth.user(state) || {}
+    return user.EmailHash
+  },
+  name: (state) => {
+    const user = auth.user(state) || {}
+    return user.Name
   }
 }
 

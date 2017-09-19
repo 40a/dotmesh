@@ -1,0 +1,14 @@
+.container {
+  text-align: center;
+}
+
+.avatar {
+  text-align: center;
+}
+
+.avatar img {
+  width: 250px;
+  height: 250px;
+  border: 1px solid gray;
+  background-color: #eee;
+}
