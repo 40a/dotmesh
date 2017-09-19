@@ -4,30 +4,27 @@ import { connect } from 'react-redux'
 import * as selectors from '../selectors'
 import * as actions from '../actions'
 
-import VolumeTable from '../components/VolumeTable'
+import RepoList from '../components/RepoList'
 
 const API_NAME = 'volumeList'
 
-class VolumeTableContainer extends Component {
+class RepoListContainer extends Component {
   render() {
     return (
-      <VolumeTable {...this.props} />
+      <RepoList {...this.props} />
     )
   }
 }
 
 export default connect(
   (state, ownProps) => {
-    const repoList = selectors.valueSelector(state, 'volumes') || []
-    const repos = repoList.map(selectors.repo)
-
     return {
       error: selectors.api.error(state, API_NAME),
       loading: selectors.api.loading(state, API_NAME),
-      data: repos
+      data: selectors.repos.all(state)
     }
   },
   (dispatch) => ({
     
   })
-)(VolumeTableContainer)
+)(RepoListContainer)

@@ -2,8 +2,8 @@ const list = (payload) => ({
   method: 'AllVolumesAndClones'
 })
 
-const VolumeApi = {
+const RepoApi = {
   list
 }
 
-export default VolumeApi
+export default RepoApi

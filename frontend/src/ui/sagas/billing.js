@@ -9,7 +9,7 @@ import * as selectors from '../selectors'
 import tools from '../tools'
 
 const REQUIRED_APIS = [
-  'billingSubmitPayment'
+  'submit'
 ]
 
 const BillingSagas = (opts = {}) => {
@@ -31,7 +31,7 @@ const BillingSagas = (opts = {}) => {
       plan
     }
 
-    const { answer, error } = yield call(apis.billingSubmitPayment.loader, payload)
+    const { answer, error } = yield call(apis.submit.loader, payload)
 
     console.log('-------------------------------------------');
     console.log('-------------------------------------------');

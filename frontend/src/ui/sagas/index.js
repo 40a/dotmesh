@@ -8,7 +8,7 @@ import config from '../config'
 
 import Hooks from './hooks'
 import Auth from './auth'
-import Volume from './volume'
+import Repo from './repo'
 import Billing from './billing'
 import Config from './config'
 import Controller from './controller'
@@ -20,15 +20,15 @@ const auth = Auth({
   }
 })
 
-const volume = Volume({
+const repo = Repo({
   apis: {
-    list: apis.volumeList
+    list: apis.repoList
   }
 })
 
 const billing = Billing({
   apis: {
-    billingSubmitPayment: apis.billingSubmitPayment
+    submit: apis.billingSubmitPayment
   }
 })
 
@@ -40,7 +40,7 @@ const configSaga = Config({
 
 const hooks = Hooks({
   auth,
-  volume,
+  repo,
   billing,
   config: configSaga
 })
@@ -58,7 +58,7 @@ const router = RouterSaga({
 })
 
 const controllerLoop = Controller({
-  
+  hooks
 })
 
 function* initialize() {

@@ -11,7 +11,7 @@ import config from './config'
 import Application from './containers/Application'
 import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
-import VolumeTable from './containers/VolumeTable'
+import RepoList from './containers/RepoList'
 import ServerTable from './containers/ServerTable'
 import PaymentPage from './containers/PaymentPage'
 
@@ -22,36 +22,26 @@ const Route = RouteFactory(config.basepath)
 
 export const routeConfig = processRoutes({
   '/': {
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
   '': {
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
   '/help': {},
   '/dashboard': {
     user: true,
     authRedirect: '/login',
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
   '/servers': {
     user: true,
     authRedirect: '/login',
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
-  '/volumes': {
+  '/repos': {
     user: true,
     authRedirect: '/login',
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
   '/payment': {
     user: true,
@@ -78,7 +68,7 @@ export const routes = (
           <UserWrapper loggedIn={ true }>
             <Section>
               <UserLayout>
-                <VolumeTable />
+                <RepoList />
               </UserLayout>
             </Section>
           </UserWrapper>
@@ -94,7 +84,7 @@ export const routes = (
       <Route path='/dashboard'>
         <Section>
           <UserLayout>
-            <VolumeTable />
+            <RepoList />
           </UserLayout>
         </Section>
       </Route>
@@ -105,10 +95,10 @@ export const routes = (
         </Section>
       </Route>
 
-      <Route path='/volumes'>
+      <Route path='/repos'>
         <Section>
           <UserLayout>
-            <VolumeTable />
+            <RepoList />
           </UserLayout>
         </Section>
       </Route>

@@ -12,21 +12,21 @@ const REQUIRED_APIS = [
   'list'
 ]
 
-const VolumeSagas = (opts = {}) => {
-  if(!opts.apis) throw new Error('auth saga requires a api option')
+const RepoSagas = (opts = {}) => {
+  if(!opts.apis) throw new Error('repo saga requires a api option')
   const apis = opts.apis
   REQUIRED_APIS.forEach(name => {
     if(!apis[name]) throw new Error(`${name} api required`)
   })
 
   function* setData(payload) {
-    yield put(actions.value.set('volumes', payload.Volumes || []))
+    yield put(actions.value.set('repos', payload.Volumes || []))
     yield put(actions.value.set('servers', payload.Servers || []))
   }
 
   // called if there is an error so the user is not looking at stale data
   function* resetData() {
-    yield put(actions.value.set('volumes', []))
+    yield put(actions.value.set('repos', []))
     yield put(actions.value.set('servers', []))
   }
 
@@ -47,4 +47,4 @@ const VolumeSagas = (opts = {}) => {
   }
 }
 
-export default VolumeSagas
+export default RepoSagas

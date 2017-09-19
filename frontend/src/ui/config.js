@@ -57,7 +57,7 @@ const config = {
     ],
     user: [
       ['/dashboard', 'Dashboard', icons.dashboard],
-      ['/volumes', 'Volumes', icons.disk],
+      ['/repos', 'Repos', icons.disk],
       ['/servers', 'Servers', icons.server],
       ['/payment', 'Payment', icons.payment],
       ['-'],

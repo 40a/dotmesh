@@ -63,30 +63,6 @@ export const form = Object.keys(forms).reduce((all, name) => {
   return all
 }, {})
 
-const mapFilesystem = (data) => {
-  return {
-    Id: data.Id,
-    Name: data.Name,
-    Clone: data.Clone,
-    Master: data.Master,
-    SizeBytes: data.SizeBytes,
-    DirtyBytes: data.DirtyBytes,
-    CommitCount: data.CommitCount,
-    ServerStatuses: data.ServerStatuses
-  }   
-}
-
-// sub-selector - it operates on a single volume
-export const repo = (data) => {
-  const CloneVolumes = (data.CloneVolumes || []).map(mapFilesystem)
-
-  // there is always a master branch so +1
-  const CloneVolumeCount = (CloneVolumes || []).length + 1
-  return {
-    TopLevelVolume: mapFilesystem(data.TopLevelVolume),
-    CloneVolumes,
-    CloneVolumeCount,
-    Owner: data.Owner,
-    Collaborators: data.Collaborators
-  }
+export const repos = {
+  all: (state) => valueSelector(state, 'repos')
 }

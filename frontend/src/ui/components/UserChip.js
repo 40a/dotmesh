@@ -10,7 +10,7 @@ class UserChip extends Component {
     const user = this.props.user || {}
     return (
       <Chip theme={ theme }>
-        <span className={ theme.text }>{ user.Name } sdf sdf sdfsdf</span>
+        <span className={ theme.text }>{ user.Name }</span>
         <UserAvatar user={ user } />
       </Chip>
     )
