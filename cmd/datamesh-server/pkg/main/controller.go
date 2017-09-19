@@ -471,6 +471,7 @@ func (s *InMemoryState) CreateFilesystem(
 		return nil, nil, err
 	}
 	filesystemId := id.String()
+	log.Printf("[CreateFilesystem} called with name=%+v, assigned id=%s", filesystemName, filesystemId)
 	err = s.registry.RegisterFilesystem(ctx, *filesystemName, filesystemId)
 	if err != nil {
 		log.Printf(

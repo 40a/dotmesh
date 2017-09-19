@@ -504,7 +504,7 @@ func (d *DatameshRPC) registerFilesystemBecomeMaster(
 	// set up top level filesystem first, if not exists
 	if d.state.registry.Exists(path.TopLevelFilesystemName, "") == "" {
 		err = d.state.registry.RegisterFilesystem(
-			ctx, path.TopLevelFilesystemName, filesystemId,
+			ctx, path.TopLevelFilesystemName, path.TopLevelFilesystemId,
 		)
 		if err != nil {
 			return err
@@ -535,6 +535,7 @@ func (d *DatameshRPC) RegisterFilesystem(
 	},
 	result *bool,
 ) error {
+	log.Printf("[RegisterFilesystem] called with args: %+v", args)
 	if !args.BecomeMasterIfNotExists {
 		panic("can't not become master in RegisterFilesystem inter-cluster rpc")
 	}
@@ -658,9 +659,9 @@ func (d *DatameshRPC) Transfer(
 		return fmt.Errorf("Can't pull when remote doesn't exist")
 	}
 
-	var path PathToTopLevelFilesystem
+	var localPath, remotePath PathToTopLevelFilesystem
 	if args.Direction == "push" {
-		path, err = d.state.registry.deducePathToTopLevelFilesystem(
+		localPath, err = d.state.registry.deducePathToTopLevelFilesystem(
 			VolumeName{args.LocalNamespace, args.LocalFilesystemName}, args.LocalCloneName,
 		)
 		if err != nil {
@@ -669,6 +670,10 @@ func (d *DatameshRPC) Transfer(
 				args.LocalNamespace, args.LocalFilesystemName, args.LocalCloneName, err,
 			)
 		}
+
+		// Path is the same on the remote, except with a potentially different name
+		remotePath = localPath
+		remotePath.TopLevelFilesystemName = VolumeName{args.RemoteNamespace, args.RemoteFilesystemName}
 	} else if args.Direction == "pull" {
 		err := client.CallRemote(r.Context(),
 			"DatameshRPC.DeducePathToTopLevelFilesystem", map[string]interface{}{
@@ -676,7 +681,7 @@ func (d *DatameshRPC) Transfer(
 				"RemoteFilesystemName": args.RemoteFilesystemName,
 				"RemoteCloneName":      args.RemoteCloneName,
 			},
-			&path,
+			&remotePath,
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -684,13 +689,19 @@ func (d *DatameshRPC) Transfer(
 				args.RemoteNamespace, args.RemoteFilesystemName, args.RemoteCloneName, err,
 			)
 		}
+		// Path is the same locally, except with a potentially different name
+		localPath = remotePath
+		localPath.TopLevelFilesystemName = VolumeName{args.LocalNamespace, args.LocalFilesystemName}
 	}
+
+	log.Printf("[Transfer] got paths: local=%+v remote=%+v", localPath, remotePath)
 
 	var filesystemId string
 	if args.Direction == "push" && !remoteExists {
 		// pre-create the remote registry entry and pick a master for it to
 		// land on on the remote
 		var result bool
+
 		err := client.CallRemote(r.Context(),
 			"DatameshRPC.RegisterFilesystem", map[string]interface{}{
 				"Namespace":              args.RemoteNamespace,
@@ -702,7 +713,7 @@ func (d *DatameshRPC) Transfer(
 				// get spawned on this node, listening out for globalFsRequests for
 				// this filesystemId on that cluster.
 				"BecomeMasterIfNotExists":  true,
-				"PathToTopLevelFilesystem": path,
+				"PathToTopLevelFilesystem": remotePath,
 			}, &result)
 		if err != nil {
 			return err
@@ -717,7 +728,7 @@ func (d *DatameshRPC) Transfer(
 			args.LocalFilesystemName,
 			args.LocalCloneName,
 			remoteFilesystemId,
-			path,
+			localPath,
 		)
 		if err != nil {
 			return err
@@ -819,7 +830,7 @@ func (d *DatameshRPC) Transfer(
 		// asynchronously throw away the response, transfers can be polled via
 		// their own entries in etcd
 		e := <-responseChan
-		log.Printf("finished transfer of %s, %s", args, e)
+		log.Printf("finished transfer of %+v, %+v", args, e)
 	}()
 
 	*result = requestId
@@ -970,6 +981,7 @@ func (d *DatameshRPC) DeducePathToTopLevelFilesystem(
 	},
 	result *PathToTopLevelFilesystem,
 ) error {
+	log.Printf("[DeducePathToTopLevelFilesystem] called with args: %+v", args)
 	res, err := d.state.registry.deducePathToTopLevelFilesystem(
 		VolumeName{args.RemoteNamespace, args.RemoteFilesystemName}, args.RemoteCloneName,
 	)
@@ -977,6 +989,7 @@ func (d *DatameshRPC) DeducePathToTopLevelFilesystem(
 		return err
 	}
 	*result = res
+	log.Printf("[DeducePathToTopLevelFilesystem] succeeded: args %+v -> result %+v", args, res)
 	return nil
 }
 

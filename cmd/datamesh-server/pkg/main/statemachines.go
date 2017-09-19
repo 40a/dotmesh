@@ -593,7 +593,7 @@ func activeState(f *fsMachine) stateFn {
 			}
 			f.lastTransferRequestId = transferRequestId
 
-			log.Printf("GOT PEER TRANSFER REQUEST %s", f.lastTransferRequest)
+			log.Printf("GOT PEER TRANSFER REQUEST %+v", f.lastTransferRequest)
 			if f.lastTransferRequest.Direction == "push" {
 				return pushPeerState
 			} else if f.lastTransferRequest.Direction == "pull" {
@@ -1068,7 +1068,7 @@ func missingState(f *fsMachine) stateFn {
 				}
 				return backoffState
 			} else if f.lastTransferRequest.Direction == "push" {
-				log.Printf("GOT PEER TRANSFER REQUEST FROM MISSING %s", f.lastTransferRequest)
+				log.Printf("GOT PEER TRANSFER REQUEST FROM MISSING %+v", f.lastTransferRequest)
 				return pushPeerState
 			}
 		} else if e.Name == "create" {
@@ -1354,7 +1354,7 @@ func receivingState(f *fsMachine) stateFn {
 
 func updatePollResult(transferRequestId string, pollResult TransferPollResult) error {
 	log.Printf(
-		"[updatePollResult] attempting to update poll result for %s: %s",
+		"[updatePollResult] attempting to update poll result for %s: %+v",
 		transferRequestId, pollResult,
 	)
 	kapi, err := getEtcdKeysApi()

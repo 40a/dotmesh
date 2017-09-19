@@ -398,9 +398,7 @@ func parseNamespacedVolume(name string) (string, string, error) {
 }
 
 func (v VolumeName) String() string {
-	if v.Namespace == "admin" {
-		return v.Name
-	} else {
-		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
-	}
+	// This isn't quite a duplicate of the frontend version; on
+	// the server, it's clearer to always show full namespaces and not elide admin/.
+	return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
 }
