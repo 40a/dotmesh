@@ -11,9 +11,8 @@ import config from './config'
 import Application from './containers/Application'
 import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
-import RepoList from './containers/RepoList'
-import ServerTable from './containers/ServerTable'
 import PaymentPage from './containers/PaymentPage'
+import SectionTabs from './containers/SectionTabs'
 
 import Home from './components/Home'
 import UserLayout from './containers/UserLayout'
@@ -68,7 +67,9 @@ export const routes = (
           <UserWrapper loggedIn={ true }>
             <Section>
               <UserLayout>
-                <RepoList />
+                <SectionTabs
+                  active={0}
+                />
               </UserLayout>
             </Section>
           </UserWrapper>
@@ -84,7 +85,9 @@ export const routes = (
       <Route path='/dashboard'>
         <Section>
           <UserLayout>
-            <RepoList />
+            <SectionTabs
+              active={0}
+            />
           </UserLayout>
         </Section>
       </Route>
@@ -98,7 +101,9 @@ export const routes = (
       <Route path='/repos'>
         <Section>
           <UserLayout>
-            <RepoList />
+            <SectionTabs
+              active={0}
+            />
           </UserLayout>
         </Section>
       </Route>
@@ -106,7 +111,9 @@ export const routes = (
       <Route path='/servers'>
         <Section>
           <UserLayout>
-            <ServerTable />
+            <SectionTabs
+              active={1}
+            />
           </UserLayout>
         </Section>
       </Route>

@@ -18,13 +18,7 @@ class Dashboard extends Component {
             />
           </Col>
           <Col xs={12} sm={9}>
-            <Card>
-              <CardText>
-                <div style={{padding:'20px'}}>
-                  { this.props.children }
-                </div>
-              </CardText>
-            </Card>
+            { this.props.children }
           </Col>
         </Row>
       </Grid>

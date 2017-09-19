@@ -1,38 +1,39 @@
 import React, { Component, PropTypes } from 'react'
-import { Table, TableHead, TableRow, TableCell } from 'react-toolbox/lib/table'
+import RepoListItem from './RepoListItem'
+import theme from './theme/repolist.css'
 
-import labelUtils from '../utils/labels'
+class RepoList extends Component {
 
-class VolumeTable extends Component {
-  render() {
-    const data = this.props.data || []
+  noData() {
     return (
-      <div id="volumePage">
-        <h1 style={{fontSize:'2em'}} id="title">Volumes</h1>
-        <Table selectable={ false } style={{ marginTop: 10 }}>
-          <TableHead>
-            <TableCell>Name</TableCell>
-            <TableCell>Size</TableCell>
-            <TableCell>Branches</TableCell>
-          </TableHead>
-          {data.map((item, idx) => {
-            const volume = item.TopLevelVolume || {}
-            const clones = item.CloneVolumes || []
-            const CloneVolumeCount = item.CloneVolumeCount
-            const branchCountTitle = 'branch' + (CloneVolumeCount == 1 ? '' : 'es')
-
-            return (
-              <TableRow key={idx}>
-                <TableCell>{volume.Name || ''}</TableCell>
-                <TableCell>{labelUtils.size(volume.SizeBytes || 0)}</TableCell>
-                <TableCell>{CloneVolumeCount} {branchCountTitle}</TableCell>
-              </TableRow>
-            )
-          })}
-        </Table>
+      <div className={ theme.container }>
+        No repos - display help page
       </div>
     )
   }
+
+  dataList() {
+    const data = this.props.data || []
+    return (
+      <div className={ theme.container }>
+        {
+          data.map((repo, i) => {
+            return (
+              <RepoListItem
+                key={ i }
+                repo={ repo }
+              />
+            )
+          })
+        }
+      </div>
+    )
+  }
+
+  render() {
+    const data = this.props.data || []
+    return data.length > 0 ? this.dataList() : this.noData()
+  }
 }
 
-export default VolumeTable
+export default RepoList
