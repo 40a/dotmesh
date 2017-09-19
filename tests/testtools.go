@@ -116,7 +116,7 @@ func testSetup(f Federation, stamp int64) error {
 				mount --make-shared $MOUNTPOINT;
 			fi
 			EXTRA_DOCKER_ARGS="-v /datamesh-test-pools:/datamesh-test-pools:rshared" \
-				../kubernetes/dind-cluster-v1.7.sh bare %s $NODE
+				../kubernetes/dind-cluster-v1.7.sh bare $NODE %s
 			sleep 1
 			docker exec -t $NODE bash -c '
 			    echo "%s '$(hostname)'.local" >> /etc/hosts
@@ -523,9 +523,15 @@ type Startable interface {
 	GetNodes() []Node
 	GetDesiredNodeCount() int
 	Start(*testing.T, int64, int) error
+	RunArgs(int) string
 }
 
 ///////////// Kubernetes
+
+func (c *Kubernetes) RunArgs(i int) string {
+	// No special args required for dind with plain Datamesh.
+	return ""
+}
 
 func (c *Kubernetes) GetNode(i int) Node {
 	return c.Nodes[i]
@@ -543,7 +549,17 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	panic("I don't know how yet")
 }
 
-///////////// Cluster
+///////////// Cluster (plain Datamesh cluster, no orchestrator)
+
+func (c *Cluster) RunArgs(i int) string {
+	// special args for starting Kube clusters, copying observed behaviour of
+	// dind::up
+	if i == 0 {
+		return fmt.Sprintf("10.192.0.%d %d 127.0.0.1:8080:8080", i+2, i+1)
+	} else {
+		return fmt.Sprintf("10.192.0.%d %d ''", i+2, i+1)
+	}
+}
 
 func (c *Cluster) GetNode(i int) Node {
 	return c.Nodes[i]
