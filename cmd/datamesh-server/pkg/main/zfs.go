@@ -164,27 +164,29 @@ func discoverSystem(fs string) (*filesystem, error) {
 			fsSnapshot := shrapnel[0]
 			// strip off meta prefix
 			keyEncoded := shrapnel[1]
-			keyEncoded = keyEncoded[len(META_KEY_PREFIX):]
-			// base64 decode or die
-			valueEncoded := shrapnel[2]
+			if strings.HasPrefix(keyEncoded, META_KEY_PREFIX) {
+				keyEncoded = keyEncoded[len(META_KEY_PREFIX):]
+				// base64 decode or die
+				valueEncoded := shrapnel[2]
 
-			decoded, err := base64.StdEncoding.DecodeString(valueEncoded)
-			if err != nil {
-				log.Printf(
-					"Unable to base64 decode metadata value '%s' for %s",
-					valueEncoded,
-					fsSnapshot,
-				)
-			} else {
-				if strings.Contains(fsSnapshot, "@") {
-					id := strings.Split(fsSnapshot, "@")[1]
-					_, ok := snapshotMeta[id]
-					if !ok {
-						snapshotMeta[id] = metadata{}
-					}
-					snapshotMeta[id][keyEncoded] = string(decoded)
+				decoded, err := base64.StdEncoding.DecodeString(valueEncoded)
+				if err != nil {
+					log.Printf(
+						"Unable to base64 decode metadata value '%s' for %s",
+						valueEncoded,
+						fsSnapshot,
+					)
 				} else {
-					// TODO populate filesystemMeta
+					if strings.Contains(fsSnapshot, "@") {
+						id := strings.Split(fsSnapshot, "@")[1]
+						_, ok := snapshotMeta[id]
+						if !ok {
+							snapshotMeta[id] = metadata{}
+						}
+						snapshotMeta[id][keyEncoded] = string(decoded)
+					} else {
+						// TODO populate filesystemMeta
+					}
 				}
 			}
 		}

@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
-	"io/ioutil"
 	"encoding/json"
-	"net/http"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"mime"
+	"net/http"
 	"os"
 	"strings"
 	"text/template"
@@ -50,7 +50,6 @@ func IsRequestJSON(r *http.Request) bool {
 	return HasContentType(r, "application/json")
 }
 
-
 func WriteError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte(fmt.Sprintf("Internal server error. Please check logs.")))
@@ -63,9 +62,9 @@ type RegistrationPayload struct {
 	EmailError string
 	NameError string
 	PasswordError string
-	Created bool
-	Submit bool
-	Json bool
+	Created       bool
+	Submit        bool
+	Json          bool
 }
 
 type JSONPayload struct {
@@ -97,35 +96,34 @@ func NewRegistrationPayload(r *http.Request) (RegistrationPayload, error) {
 		EmailError: "",
 		NameError: "",
 		PasswordError: "",
-		Created: false,
-		Submit: false,
-		Json: false,
+		Created:       false,
+		Submit:        false,
+		Json:          false,
 	}
 
 	if IsRequestJSON(r) {
 		body, err := ioutil.ReadAll(r.Body)
 
 		if err != nil {
-      log.Printf("[RegistrationServer] Error reading HTTP body: %v", err)
+			log.Printf("[RegistrationServer] Error reading HTTP body: %v", err)
 			return payload, err
-    }
+		}
 
-    log.Println(string(body))
-    var jsonPacket JSONPayload
-    err = json.Unmarshal(body, &jsonPacket)
+		log.Println(string(body))
+		var jsonPacket JSONPayload
+		err = json.Unmarshal(body, &jsonPacket)
 
-    if err != nil {
-      log.Printf("[RegistrationServer] Error decoding JSON payload: %v - %s", err, body)
+		if err != nil {
+			log.Printf("[RegistrationServer] Error decoding JSON payload: %v - %s", err, body)
 			return payload, err
-    }
+		}
 
     payload.Name = jsonPacket.Name
 		payload.Email = jsonPacket.Email
 		payload.Password = jsonPacket.Password
-    payload.Json = true
+		payload.Json = true
 		payload.Submit = true
 
-		
 	} else {
 		r.ParseForm()
 		payload.Name = r.FormValue("username")
@@ -183,9 +181,8 @@ func (web *RegistrationServer) registerUser(payload *RegistrationPayload) error 
 	return nil
 }
 
-
 func (web RegistrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	
+
 	payload, err := NewRegistrationPayload(r)
 
 	if err != nil {
@@ -198,7 +195,7 @@ func (web RegistrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			WriteError(w)
 			return
-		}	
+		}
 	}
 
 	if payload.Json {

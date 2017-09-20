@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var pullLocalVolume string
+
 func NewCmdPull(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull <remote> <volume> <branch>",
@@ -38,11 +40,8 @@ cluster 'backups':
 					return err
 				}
 				transferId, err := dm.RequestTransfer(
-					"pull", peer, filesystemName, branchName,
-					// (XXX copied from clone.go)
-					// 'dm pull' semantics are (for now) always that we pull into the
-					// same named filesystem as on the remote, rather than the current
-					// filesystem whatever that is.
+					"pull", peer,
+					pullLocalVolume, branchName,
 					filesystemName, branchName,
 				)
 				if err != nil {
@@ -60,5 +59,9 @@ cluster 'backups':
 			}
 		},
 	}
+
+	cmd.PersistentFlags().StringVarP(&pullLocalVolume, "local-volume", "", "",
+		"Local volume name to pull into")
+
 	return cmd
 }
