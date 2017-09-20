@@ -70,6 +70,8 @@ func newContainerMountSymlink(name VolumeName, filesystemId string) (string, err
 			if err := os.MkdirAll(CONTAINER_MOUNT_PREFIX, 0700); err != nil {
 				return "", err
 			}
+		} else {
+			return "", err
 		}
 	}
 	if _, err := os.Stat(containerMntParent(name)); err != nil {
@@ -77,6 +79,8 @@ func newContainerMountSymlink(name VolumeName, filesystemId string) (string, err
 			if err := os.MkdirAll(containerMntParent(name), 0700); err != nil {
 				return "", err
 			}
+		} else {
+			return "", err
 		}
 	}
 	result := containerMnt(name)
