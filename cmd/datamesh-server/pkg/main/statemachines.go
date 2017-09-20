@@ -843,7 +843,7 @@ func (f *fsMachine) mount() (responseEvent *Event, nextState stateFn) {
 			Args: &EventArgs{"err": err, "combined-output": string(out)},
 		}, backoffState
 	}
-	out, err = exec.Command("mount.zfs",
+	out, err = exec.Command("mount.zfs", "-o", "noatime",
 		fq(f.filesystemId), mnt(f.filesystemId)).CombinedOutput()
 	if err != nil {
 		log.Printf("%v while trying to mount %s", err, fq(f.filesystemId))
