@@ -136,6 +136,14 @@ linux_two_nodes_same_cluster:
     script:
         - ./test.sh -run TestTwoNodesSameCluster
 
+linux_kubernetes:
+    stage: test
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestKubernetes
+
 linux_two_single_node_clusters:
     stage: test
     tags:
