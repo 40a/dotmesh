@@ -555,19 +555,24 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	if c.DesiredNodeCount == 0 {
 		panic("no such thing as a zero-node cluster")
 	}
-	// TODO
-	// systemd.setenv=CNI_PLUGIN=bridge systemd.setenv=CNI_BRIDGE_NETWORK_OFFSET=0.0.1.0
-	// where '1' is 1+nodeNum
+	// TODO regex the following yamels to refer to the newly pushed
+	// datamesh container image, rather than the latest stable
+	err := system("bash", "-c",
+		fmt.Sprintf("docker cp ../kubernetes/*.yaml %s:/YAMELS/", nodeName(now, i, 0)),
+	)
+	if err != nil {
+		return err
+	}
 	st, err := docker(
 		nodeName(now, i, 0),
 		"systemctl start kubelet && "+
 			"kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks && "+
 			"mkdir /root/.kube && cp /etc/kubernetes/admin.conf /root/.kube/config",
 	)
-	// TODO: now install datamesh yaml (probably will need to set initial admin pw)
 	if err != nil {
 		return err
 	}
+
 	lines := strings.Split(st, "\n")
 
 	joinArgs := func(lines []string) string {
@@ -603,6 +608,21 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
 
 		logTiming("join_" + poolId(now, i, j))
+	}
+	// now install datamesh yaml (setting initial admin pw)
+	st, err = docker(
+		nodeName(now, i, 0),
+		"kubectl create namespace datamesh && "+
+			"echo 'secret123' > datamesh-admin-password.txt && "+
+			"kubectl create secret generic datamesh "+
+			"    --from-file=datamesh-admin-password.txt -n datamesh && "+
+			"rm datamesh-admin-password.txt && "+
+			"kubectl apply -f /YAMELS && "+
+			"while ! (echo secret123 | dm remote add local admin@127.0.0.1); "+
+			"    do echo 'retrying...' && sleep 1; done",
+	)
+	if err != nil {
+		return err
 	}
 	return nil
 }
