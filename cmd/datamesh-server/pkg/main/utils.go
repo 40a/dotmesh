@@ -78,7 +78,7 @@ func applyPrelude(prelude Prelude, fqfs string) error {
 					log.Printf(
 						"[applyPrelude] Error applying prelude: %s, %s, %s", args, err, out,
 					)
-					return err
+					return fmt.Errorf("Error applying prelude: %s -> %v: %s", args, err, out)
 				}
 				log.Printf("[applyPrelude] Applied snapshot props for: %s", j.Id)
 			}
