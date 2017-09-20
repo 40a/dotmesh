@@ -24,7 +24,7 @@ func prettyPrintSize(size int64) string {
 	return s
 }
 
-func resolveTransferArgs(args []string) (string, string, string, error) {
+func resolveTransferArgs(args []string) (returnPeer string, returnFilesystemName string, returnBranchName string, returnError error) {
 
 	// Use:   "{push,pull,clone} <remote>",
 	/*

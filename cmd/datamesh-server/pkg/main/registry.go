@@ -24,7 +24,7 @@ type Registry struct {
 	// filesystems ~= repos, top-level filesystems
 	// map user facing filesystem name => filesystemId, with implicit null
 	// origin
-	TopLevelFilesystems     map[string]TopLevelFilesystem
+	TopLevelFilesystems     map[VolumeName]TopLevelFilesystem
 	TopLevelFilesystemsLock sync.Mutex
 	// clones ~= branches
 	// map filesystem.id (of topLevelFilesystem the clone is attributed to - ie
@@ -34,7 +34,7 @@ type Registry struct {
 	state      *InMemoryState
 }
 
-func (r *Registry) deducePathToTopLevelFilesystem(topLevelFilesystemName, cloneName string) (
+func (r *Registry) deducePathToTopLevelFilesystem(name VolumeName, cloneName string) (
 	PathToTopLevelFilesystem, error,
 ) {
 	/*
@@ -54,24 +54,24 @@ func (r *Registry) deducePathToTopLevelFilesystem(topLevelFilesystemName, cloneN
 		peer's registry.
 
 	*/
-	log.Printf("[deducePathToTopLevelFilesystem] looking up %s", topLevelFilesystemName)
-	tlf, err := r.LookupFilesystem(topLevelFilesystemName)
+	log.Printf("[deducePathToTopLevelFilesystem] looking up %s", name)
+	tlf, err := r.LookupFilesystem(name)
 	if err != nil {
 		log.Printf(
 			"[deducePathToTopLevelFilesystem] error looking up %s: %s",
-			topLevelFilesystemName, err,
+			name, err,
 		)
 		return PathToTopLevelFilesystem{}, err
 	}
 	log.Printf(
 		"[deducePathToTopLevelFilesystem] looking up maybe-clone pair %s,%s",
-		topLevelFilesystemName, cloneName,
+		name, cloneName,
 	)
-	filesystemId, err := r.MaybeCloneFilesystemId(topLevelFilesystemName, cloneName)
+	filesystemId, err := r.MaybeCloneFilesystemId(name, cloneName)
 	if err != nil {
 		log.Printf(
 			"[deducePathToTopLevelFilesystem] error looking up maybe-clone %s,%s: %s",
-			topLevelFilesystemName, cloneName, err,
+			name, cloneName, err,
 		)
 		return PathToTopLevelFilesystem{}, err
 	}
@@ -88,7 +88,7 @@ func (r *Registry) deducePathToTopLevelFilesystem(topLevelFilesystemName, cloneN
 		if nextFilesystemId == tlf.TopLevelVolume.Id {
 			return PathToTopLevelFilesystem{
 				TopLevelFilesystemId:   nextFilesystemId,
-				TopLevelFilesystemName: topLevelFilesystemName,
+				TopLevelFilesystemName: name,
 				Clones:                 clist, // empty on first iteration
 			}, nil
 		}
@@ -110,24 +110,33 @@ func (r *Registry) deducePathToTopLevelFilesystem(topLevelFilesystemName, cloneN
 func NewRegistry(s *InMemoryState) *Registry {
 	return &Registry{
 		state:               s,
-		TopLevelFilesystems: map[string]TopLevelFilesystem{},
+		TopLevelFilesystems: map[VolumeName]TopLevelFilesystem{},
 		Clones:              map[string]map[string]Clone{},
 	}
 }
 
+type ByNames []VolumeName
+
+func (bn ByNames) Len() int      { return len(bn) }
+func (bn ByNames) Swap(i, j int) { bn[i], bn[j] = bn[j], bn[i] }
+func (bn ByNames) Less(i, j int) bool {
+	return bn[i].Namespace < bn[j].Namespace ||
+		bn[i].Name < bn[j].Name
+}
+
 // sorted list of top-level filesystem names
-func (r *Registry) Filesystems() []string {
+func (r *Registry) Filesystems() []VolumeName {
 	r.TopLevelFilesystemsLock.Lock()
 	defer r.TopLevelFilesystemsLock.Unlock()
-	filesystemNames := []string{}
+	filesystemNames := []VolumeName{}
 	for name, _ := range r.TopLevelFilesystems {
 		filesystemNames = append(filesystemNames, name)
 	}
-	sort.Strings(filesystemNames)
+	sort.Sort(ByNames(filesystemNames))
 	return filesystemNames
 }
 
-func (r *Registry) IdFromName(name string) (string, error) {
+func (r *Registry) IdFromName(name VolumeName) (string, error) {
 	tlf, err := r.GetByName(name)
 	if err != nil {
 		return "", err
@@ -135,7 +144,7 @@ func (r *Registry) IdFromName(name string) (string, error) {
 	return tlf.TopLevelVolume.Id, nil
 }
 
-func (r *Registry) GetByName(name string) (TopLevelFilesystem, error) {
+func (r *Registry) GetByName(name VolumeName) (TopLevelFilesystem, error) {
 	r.TopLevelFilesystemsLock.Lock()
 	defer r.TopLevelFilesystemsLock.Unlock()
 	tlf, ok := r.TopLevelFilesystems[name]
@@ -198,7 +207,7 @@ type registryFilesystem struct {
 }
 
 // update a filesystem, including updating etcd and our local state
-func (r *Registry) RegisterFilesystem(ctx context.Context, name string, filesystemId string) error {
+func (r *Registry) RegisterFilesystem(ctx context.Context, name VolumeName, filesystemId string) error {
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		return err
@@ -219,9 +228,9 @@ func (r *Registry) RegisterFilesystem(ctx context.Context, name string, filesyst
 	}
 	_, err = kapi.Set(
 		context.Background(),
-		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<name> =>
+		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<namespace>/(5)<name> =>
 		//     {"Uuid": "<fs-uuid>"}
-		fmt.Sprintf("%s/registry/filesystems/%s", ETCD_PREFIX, name),
+		fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, name.Namespace, name.Name),
 		string(serialized),
 		// we support updates in UpdateCollaborators, below.
 		&client.SetOptions{PrevExist: client.PrevNoExist},
@@ -258,9 +267,9 @@ func (r *Registry) UpdateCollaborators(
 	}
 	_, err = kapi.Set(
 		context.Background(),
-		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<name> =>
+		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<namespace>/(5)<name> =>
 		//     {"Uuid": "<fs-uuid>"}
-		fmt.Sprintf("%s/registry/filesystems/%s", ETCD_PREFIX, tlf.TopLevelVolume.Name),
+		fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, tlf.TopLevelVolume.Name.Namespace, tlf.TopLevelVolume.Name.Name),
 		string(serialized),
 		// allow (and require) update over existing.
 		&client.SetOptions{PrevExist: client.PrevExist},
@@ -304,7 +313,7 @@ func safeUser(u User) SafeUser {
 }
 
 func (r *Registry) UpdateFilesystemFromEtcd(
-	name string, rf registryFilesystem,
+	name VolumeName, rf registryFilesystem,
 ) error {
 	r.TopLevelFilesystemsLock.Lock()
 	defer r.TopLevelFilesystemsLock.Unlock()
@@ -355,7 +364,7 @@ func (r *Registry) UpdateCloneFromEtcd(name string, topLevelFilesystemId string,
 	r.Clones[topLevelFilesystemId][name] = clone
 }
 
-func (r *Registry) LookupFilesystem(name string) (TopLevelFilesystem, error) {
+func (r *Registry) LookupFilesystem(name VolumeName) (TopLevelFilesystem, error) {
 	r.TopLevelFilesystemsLock.Lock()
 	defer r.TopLevelFilesystemsLock.Unlock()
 	if _, ok := r.TopLevelFilesystems[name]; !ok {
@@ -365,7 +374,7 @@ func (r *Registry) LookupFilesystem(name string) (TopLevelFilesystem, error) {
 }
 
 // XXX naming here is a mess, wrt LookupFilesystem{Id,Name} :/
-func (r *Registry) LookupFilesystemName(filesystemId string) (name string, err error) {
+func (r *Registry) LookupFilesystemName(filesystemId string) (name VolumeName, err error) {
 	r.TopLevelFilesystemsLock.Lock()
 	defer r.TopLevelFilesystemsLock.Unlock()
 	// TODO make a more efficient data structure
@@ -374,7 +383,7 @@ func (r *Registry) LookupFilesystemName(filesystemId string) (name string, err e
 			return name, nil
 		}
 	}
-	return "", fmt.Errorf("No such filesystem with id '%s'", filesystemId)
+	return VolumeName{"", ""}, fmt.Errorf("No such filesystem with id '%s'", filesystemId)
 }
 
 // Look up a clone. If you want to look up based on filesystem name and clone name, do:
@@ -450,10 +459,10 @@ func (r *Registry) LookupFilesystemId(filesystemId string) (TopLevelFilesystem, 
 }
 
 // filesystem id if exists, else ""
-func (r *Registry) Exists(topLevelFilesystemName, cloneName string) string {
+func (r *Registry) Exists(name VolumeName, cloneName string) string {
 	r.TopLevelFilesystemsLock.Lock()
 	defer r.TopLevelFilesystemsLock.Unlock()
-	tlf, ok := r.TopLevelFilesystems[topLevelFilesystemName]
+	tlf, ok := r.TopLevelFilesystems[name]
 	if !ok {
 		return ""
 	}
@@ -474,9 +483,9 @@ func (r *Registry) Exists(topLevelFilesystemName, cloneName string) string {
 }
 
 // given a top level fs name and a clone name, find the appropriate fs id
-func (r *Registry) MaybeCloneFilesystemId(topLevelFilesystemName, cloneName string) (string, error) {
+func (r *Registry) MaybeCloneFilesystemId(name VolumeName, cloneName string) (string, error) {
 	tlf, err := r.LookupFilesystem(
-		topLevelFilesystemName,
+		name,
 	)
 	if err != nil {
 		return "", err

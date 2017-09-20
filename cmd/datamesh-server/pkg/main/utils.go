@@ -78,7 +78,7 @@ func applyPrelude(prelude Prelude, fqfs string) error {
 					log.Printf(
 						"[applyPrelude] Error applying prelude: %s, %s, %s", args, err, out,
 					)
-					return err
+					return fmt.Errorf("Error applying prelude: %s -> %v: %s", args, err, out)
 				}
 				log.Printf("[applyPrelude] Applied snapshot props for: %s", j.Id)
 			}
@@ -134,8 +134,13 @@ func mnt(fs string) string {
 		return fmt.Sprintf("%s/%s/%s", mountPrefix, ROOT_FS, fs)
 	}
 }
-func containerMnt(id string) string {
-	return CONTAINER_MOUNT_PREFIX + "/" + id
+
+func containerMntParent(id VolumeName) string {
+	return CONTAINER_MOUNT_PREFIX + "/" + id.Namespace
+}
+
+func containerMnt(id VolumeName) string {
+	return containerMntParent(id) + "/" + id.Name
 }
 
 func returnCode(name string, arg ...string) (int, error) {
@@ -375,4 +380,25 @@ func restrictSnapshots(localSnaps []*snapshot, toSnapshotId string) ([]*snapshot
 		return newLocalSnaps, fmt.Errorf("Unable to find %s in %s", toSnapshotId, localSnaps)
 	}
 	return localSnaps, nil
+}
+
+// FIXME: Put this in a shared library, as it duplicates the copy in dm/pkg/remotes/api.go
+func parseNamespacedVolume(name string) (string, string, error) {
+	parts := strings.Split(name, "/")
+	switch len(parts) {
+	case 0: // name was empty
+		return "", "", nil
+	case 1: // name was unqualified, no namespace, so we default to "admin"
+		return "admin", name, nil
+	case 2: // Qualified name
+		return parts[0], parts[1], nil
+	default: // Too many slashes!
+		return "", "", fmt.Errorf("Volume names must be of the form NAMESPACE/VOLUME or just VOLUME: '%s'", name)
+	}
+}
+
+func (v VolumeName) String() string {
+	// This isn't quite a duplicate of the frontend version; on
+	// the server, it's clearer to always show full namespaces and not elide admin/.
+	return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
 }

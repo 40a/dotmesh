@@ -29,7 +29,7 @@ type ClonesList []CloneWithName
 
 type PathToTopLevelFilesystem struct {
 	TopLevelFilesystemId   string
-	TopLevelFilesystemName string
+	TopLevelFilesystemName VolumeName
 	Clones                 ClonesList
 }
 
@@ -90,7 +90,7 @@ type ByAddress []Server
 
 type DatameshVolume struct {
 	Id             string
-	Name           string
+	Name           VolumeName
 	Clone          string
 	Master         string
 	SizeBytes      int64
@@ -108,8 +108,10 @@ type TransferPollResult struct {
 
 	// Hold onto this information, it might become useful for e.g. recursive
 	// receives of clone filesystems.
+	LocalNamespace       string
 	LocalFilesystemName  string
 	LocalCloneName       string
+	RemoteNamespace      string
 	RemoteFilesystemName string
 	RemoteCloneName      string
 
@@ -217,8 +219,10 @@ type TransferRequest struct {
 	User                 string
 	ApiKey               string
 	Direction            string // "push" or "pull"
+	LocalNamespace       string
 	LocalFilesystemName  string
 	LocalCloneName       string
+	RemoteNamespace      string
 	RemoteFilesystemName string
 	RemoteCloneName      string
 	// TODO could also include SourceSnapshot here
@@ -303,4 +307,9 @@ type Plan struct {
 	VolumeCount    int64  `yaml:"volumeCount"`
 	TotalSizeBytes int64  `yaml:"totalSizeBytes"`
 	TransferBytes  int64  `yaml:"transferBytes"`
+}
+
+type VolumeName struct {
+	Namespace string
+	Name      string
 }
