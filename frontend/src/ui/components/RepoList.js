@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from 'react'
 
 import Navigation from 'react-toolbox/lib/navigation'
+import ProgressBar from 'react-toolbox/lib/progress_bar'
 
 import config from '../config'
 import RepoListItem from './RepoListItem'
@@ -78,17 +79,34 @@ class RepoList extends Component {
   }
 
   page() {
-    return (
-      <div id="repoListPage" className={ theme.container }>
-        { this.optionsBar() }
+    return this.props.searchCount > 0 ? (
+      <div>
         { this.dataList() }
         { this.pager() }
+      </div>
+    ) : (
+      <div className={ theme.container }>
+        No search results...
       </div>
     )
   }
 
   render() {
-    return this.props.repoCount > 0 ? this.page() : this.noData()
+    if(!this.props.loaded) {
+      return (
+        <div>
+          <ProgressBar type='circular' mode='indeterminate' multicolor />
+        </div>
+      )
+    }
+    return (
+      <div id="repoListPage" className={ theme.container }>
+        { this.optionsBar() }
+        {
+          this.props.repoCount > 0 ? this.page() : this.noData()
+        }
+      </div>
+    )
   }
 }
 
