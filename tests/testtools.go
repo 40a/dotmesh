@@ -555,12 +555,16 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	if c.DesiredNodeCount == 0 {
 		panic("no such thing as a zero-node cluster")
 	}
+	// TODO
+	// systemd.setenv=CNI_PLUGIN=bridge systemd.setenv=CNI_BRIDGE_NETWORK_OFFSET=0.0.1.0
+	// where '1' is 1+nodeNum
 	st, err := docker(
 		nodeName(now, i, 0),
 		"systemctl start kubelet && "+
-			"kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks",
+			"kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks && "+
+			"mkdir /root/.kube && cp /etc/kubernetes/admin.conf /root/.kube/config",
 	)
-
+	// TODO: now install datamesh yaml (probably will need to set initial admin pw)
 	if err != nil {
 		return err
 	}
@@ -585,6 +589,21 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	clusterName := fmt.Sprintf("cluster_%d", i)
 	c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
 
+	for j := 1; j < c.DesiredNodeCount; j++ {
+		// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
+		// node).
+		_, err = docker(nodeName(now, i, j), fmt.Sprintf(
+			"systemctl start kubelet && "+
+				"kubeadm join --skip-preflight-checks %s",
+			joinArgs,
+		))
+		if err != nil {
+			return err
+		}
+		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
+
+		logTiming("join_" + poolId(now, i, j))
+	}
 	return nil
 }
 

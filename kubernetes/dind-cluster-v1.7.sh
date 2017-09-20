@@ -475,7 +475,8 @@ function dind::bare {
   fi
   shift
   run_opts=(${@+"$@"})
-  dind::run "${container_name}"
+  echo "RUN YOU WITH $@"
+  dind::run "${container_name}" $@
 }
 
 function dind::configure-kubectl {
