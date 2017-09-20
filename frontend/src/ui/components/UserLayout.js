@@ -9,19 +9,21 @@ import theme from './theme/userlayout.css'
 class Dashboard extends Component {
   render() {
     return (
-      <Grid fluid>
-        <Row>
-          <Col xs={12} sm={3}>
-            <UserImage
-              user={ this.props.user }
-              imageClassName={ theme.avatar }
-            />
-          </Col>
-          <Col xs={12} sm={9}>
-            { this.props.children }
-          </Col>
-        </Row>
-      </Grid>
+      <div id="userLayout">
+        <Grid fluid>
+          <Row>
+            <Col xs={12} sm={3}>
+              <UserImage
+                user={ this.props.user }
+                imageClassName={ theme.avatar }
+              />
+            </Col>
+            <Col xs={12} sm={9}>
+              { this.props.children }
+            </Col>
+          </Row>
+        </Grid>
+      </div>
     )
   }
 }

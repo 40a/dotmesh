@@ -12,12 +12,12 @@ module.exports = {
   },
   login: (browser) => {
     const login = browser.page.login()
-    const volumes = browser.page.volumes()
+    const repos = browser.page.repos()
     login.setValue('@username', process.env.TEST_USER)
     login.setValue('@password', process.env.TEST_PASSWORD)
     browser.pause(300)
     login.click('@submitButton')
-    volumes.waitForElementVisible('@title', 2000)
+    repos.waitForElementVisible('@page', 2000)
     utils.checkUrl(browser, '/dashboard', 'the page is now on dashboard and logged in')    
   },
   refresh: (browser) => {

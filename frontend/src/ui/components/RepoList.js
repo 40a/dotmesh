@@ -79,7 +79,7 @@ class RepoList extends Component {
 
   page() {
     return (
-      <div className={ theme.container }>
+      <div id="repoListPage" className={ theme.container }>
         { this.optionsBar() }
         { this.dataList() }
         { this.pager() }

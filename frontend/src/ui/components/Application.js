@@ -63,9 +63,13 @@ class ApplicationComponent extends Component {
             <div className={ appBarTheme.rightContent } id="appBarMenu">
               { appbarMenu }
             </div>
-            <div className={ appBarTheme.rightContent }>
-              <UserChip user={ this.props.user } />
-            </div>
+            {
+              this.props.user ? (
+                <div className={ appBarTheme.rightContent }>
+                  <UserChip user={ this.props.user } />
+                </div>
+              ) : null
+            }
           </div>
         </AppBar>
         <Panel bodyScroll={ bodyScroll }>
