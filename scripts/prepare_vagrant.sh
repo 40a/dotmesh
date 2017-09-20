@@ -56,6 +56,12 @@ cd $HOME/discovery.datamesh.io
 ./start-local.sh
 
 cd $GOPATH/src/github.com/lukemarsden/datamesh
-./prime.sh
+
+if [ -z "$SKIP_K8S" ]; then
+  ./prime.sh
+else
+  ./prime-docker.sh
+fi
+
 
 go get github.com/tools/godep
