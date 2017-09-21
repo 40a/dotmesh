@@ -117,3 +117,10 @@ export const repo = {
     return `${ count } branch${ count==1 ? '' : 'es' }`
   }
 }
+
+export const help = {
+  currentPage: (state) => {
+    const params = state.router.params || {}
+    return params._
+  }
+}

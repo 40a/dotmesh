@@ -1,4 +1,4 @@
-## installing datamesh
+# Install Datamesh
 
 some text about getting datamesh installed
 
@@ -11,7 +11,3 @@ $ dm init apples
 $ dm branch
 $ dm list
 ```
-
-#### and another thing
-
-hello

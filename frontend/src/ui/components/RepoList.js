@@ -8,7 +8,7 @@ import RepoListItem from './RepoListItem'
 import Pager from './widgets/Pager'
 import SearchBox from './widgets/SearchBox'
 import FadedText from './widgets/FadedText'
-import Markdown from './widgets/Markdown'
+import HelpPage from './widgets/HelpPage'
 import theme from './theme/repolist.css'
 
 class RepoList extends Component {
@@ -16,8 +16,11 @@ class RepoList extends Component {
   noData() {
     return (
       <div className={ theme.container }>
-        <Markdown
-          page='snippets/norepos.md'
+        <HelpPage
+          page='install.md'
+        />
+        <HelpPage
+          page='createrepo.md'
         />
       </div>
     )

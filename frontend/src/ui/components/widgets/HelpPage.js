@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react'
 import SyntaxHighlight from './SyntaxHighlight'
-import theme from './theme/markdown.css'
+import theme from './theme/helppage.css'
 import pages from '../../help.json'
 
 class Markdown extends Component {

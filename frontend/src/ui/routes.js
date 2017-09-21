@@ -13,6 +13,7 @@ import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
 import PaymentPage from './containers/PaymentPage'
 import SectionTabs from './containers/SectionTabs'
+import Help from './containers/Help'
 
 import Home from './components/Home'
 import UserLayout from './containers/UserLayout'
@@ -26,7 +27,12 @@ export const routeConfig = processRoutes({
   '': {
     controlLoopSaga: 'repoList'
   },
-  '/help': {},
+  '/help': {
+    autoScroll: false
+  },
+  '/help/*': {
+    autoScroll: false
+  },
   '/dashboard': {
     user: true,
     authRedirect: '/login',
@@ -82,9 +88,7 @@ export const routes = (
       </Route>
 
       <Route path='/help'>
-        <div>
-          Help
-        </div>
+        <Help />
       </Route>
 
       <Route path='/dashboard'>

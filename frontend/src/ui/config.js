@@ -69,6 +69,11 @@ const config = {
       ['/help', 'Help', icons.help],
       ['-'],
       ['authLogout', 'Logout', icons.logout]
+    ],
+    help: [
+      ['quickstart', 'Quickstart'],
+      ['install', 'Install Datamesh'],
+      ['createrepo', 'Create a Repository']
     ]
   },
   icons
