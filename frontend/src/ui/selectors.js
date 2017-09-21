@@ -101,46 +101,29 @@ export const repos = {
     const startIndex = (pageCurrent - 1) * pageSize
     return searchResults.slice(startIndex, startIndex + pageSize)
   },
-  // grab the Namespace and Name from the url
-  extractUrlName: (state) => {
-    const routerState = state.router
-    const urlChunk = routerState.params._ || ''
-    const parts = urlChunk.split('/')
-    const Namespace = parts.shift()
-    const Name = parts.shift()
-    const Section = parts.join('/')
-    const Parts = parts
-    return {
-      Namespace,
-      Name,
-      Section,
-      Parts
-    }
-  },
-  extractBranchName: (state) => {
-    const urlName = repos.extractUrlName(state)
-    let branch = null
-    if(urlName.Parts[0] == 'tree') branch = urlName.Parts[1]
-    branch = branch || 'master'
-    return branch
-  },
-  // Name is {Name,Namespace}
-  get: (state, Name) => {
+  // info is {Name,Namespace}
+  getRepo: (state, info) => {
     return repos.all(state).filter(data => {
-      return repo.name(data) == Name.Name && repo.namespace(data) == Name.Namespace
+      return repo.name(data) == info.Name && repo.namespace(data) == info.Namespace
     })[0]
-  },
-  getFromUrl: (state) => {
-    const urlName = repos.extractUrlName(state)
-    return repos.get(state, urlName)
-  },
-  getBranchFromUrl: (state) => {
-    const branchName = repos.extractBranchName(state)
-    const repoData = repos.getFromUrl(state)
-    return repo.getBranch(repoData, branchName)
   },
   // Name is {Name,Namespace}
   exists: (state, Name) => repos.get(state, Name) ? true : false
+}
+
+export const repoPage = {
+  urlInfo: (state) => {
+    const params = state.router.params || {}
+    return {
+      Namespace: params.namespace,
+      Name: params.name,
+      Branch: params.branch || 'master'
+    }
+  },
+  url: (state) => {
+    const info = repoPage.urlInfo(state)
+    return `/${info.Namespace}/${info.Name}`
+  }
 }
 
 export const repo = {
@@ -186,6 +169,10 @@ export const repo = {
 export const branch = {
   id: (data) => data.Id,
   name: (data) => data.Clone
+}
+
+export const commits = {
+  all: (state) => valueSelector(state, 'commits') || [],
 }
 
 export const help = {

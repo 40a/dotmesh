@@ -11,7 +11,8 @@ import tools from '../tools'
 
 const REQUIRED_APIS = [
   'list',
-  'create'
+  'create',
+  'loadCommits'
 ]
 
 const RepoSagas = (opts = {}) => {
@@ -36,15 +37,36 @@ const RepoSagas = (opts = {}) => {
     yield put(actions.value.set('servers', []))
   }
 
+  function* setCommitData(payload) {
+    yield put(actions.value.set('commits', payload || []))
+  }
+
+  function* resetCommitData() {
+    yield put(actions.value.set('commits', []))
+  }
+
   // load the current volume list
   function* list() {    
     const { answer, error } = yield call(apis.list.loader)
 
     if(error) {
+      yield put(actions.application.setMessage(error.toString()))
       yield call(resetData)
     }
     else {
       yield call(setData, answer)
+    }
+  }
+
+  function* loadCommits(id) {
+    const { answer, error } = yield call(apis.loadCommits.loader, id)
+
+    if(error) {
+      yield put(actions.application.setMessage(error.toString()))
+      yield call(resetData)
+    }
+    else {
+      yield call(setCommitData, answer)
     }
   }
 
@@ -113,9 +135,17 @@ const RepoSagas = (opts = {}) => {
   }
 
   function* openBranch(branchname) {
-    const urlName = yield select(selectors.repos.extractUrlName)
-    const branchUrl = `/${urlName.Namespace}/${urlName.Name}/tree/${branchname}`
+    const info = yield select(selectors.repoPage.urlInfo)
+    const branchUrl = `/${info.Namespace}/${info.Name}/tree/${branchname}`
     yield put(actions.router.redirect(branchUrl))
+  }
+
+  function* loadPageData() {
+    yield call(list)
+    const info = yield select(selectors.repoPage.urlInfo)
+    const repo = yield select(state => selectors.repos.getRepo(state, info))
+    const branch = yield select(state => selectors.repo.getBranch(repo, info.Branch))
+    yield call(loadCommits, branch.Id)
   }
 
   return {
@@ -125,7 +155,8 @@ const RepoSagas = (opts = {}) => {
     formInitialize,
     formSubmit,
     open,
-    openBranch
+    openBranch,
+    loadPageData
   }
 }
 

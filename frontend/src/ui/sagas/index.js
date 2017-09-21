@@ -23,7 +23,8 @@ const auth = Auth({
 const repo = Repo({
   apis: {
     list: apis.repoList,
-    create: apis.repoCreate
+    create: apis.repoCreate,
+    loadCommits: apis.repoLoadCommits
   }
 })
 

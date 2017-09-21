@@ -72,8 +72,16 @@ export const routeConfig = processRoutes({
     user: false,
     authRedirect: '/dashboard'
   },
-  '/*': {
-    hooks: ['repoList']
+  '/:namespace/:name': {
+    repoPageSection: 'data',
+    hooks: ['repoLoadPageData'],
+    '/settings': {
+      repoPageSection: 'settings'
+    },
+    '/tree/:branch': {
+      repoPageSection: 'data',
+      hooks: ['repoLoadPageData']
+    }
   }
 }, config.basepath)
 
@@ -148,7 +156,7 @@ export const routes = (
         </Section>
       </Route>
 
-      <Route route='/*' exact>
+      <Route route='/:namespace/:name'>
         <Section>
           <RepoPage />
         </Section>

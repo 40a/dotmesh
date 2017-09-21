@@ -9,7 +9,7 @@ const create = (payload) => ({
 })
 
 // payload is branch id
-const commits = (payload) => ({
+const loadCommits = (payload) => ({
   method: 'SnapshotsById',
   params: [payload]
 })
@@ -17,7 +17,7 @@ const commits = (payload) => ({
 const RepoApi = {
   list,
   create,
-  commits
+  loadCommits
 }
 
 export default RepoApi

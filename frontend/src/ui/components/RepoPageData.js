@@ -10,7 +10,7 @@ import colors from './theme/colors.css'
 class RepoPageData extends Component {
 
   branchDropDown() {
-    const data = (this.props.branchList || []).map(branch => ({
+    const data = (this.props.branches || []).map(branch => ({
       value: branch.name,
       label: branch.name
     }))
@@ -18,7 +18,7 @@ class RepoPageData extends Component {
       <Dropdown
         auto
         source={ data }
-        value={ this.props.branchName }
+        value={ this.props.info.Branch }
         onChange={ this.props.changeBranch }
       />
     )

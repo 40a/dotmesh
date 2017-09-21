@@ -16,22 +16,24 @@ class RepoPageContainer extends Component {
 
 export default connect(
   (state, ownProps) => {
-    const repo = selectors.repos.getFromUrl(state)
-    const branch = selectors.repos.getBranchFromUrl(state)
-    const branchName = selectors.repos.extractBranchName(state)
-    const urlName = selectors.repos.extractUrlName(state)
-    const branchList = selectors.repo.branchList(repo)
 
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.dir(branchName)
-    console.dir(branch)
+    const info = selectors.repoPage.urlInfo(state)
+    const repo = selectors.repos.getRepo(state, info)
+    
+    const branches = repo ? selectors.repo.branchList(repo) : []
+    const branch = selectors.repo.getBranch(repo, info.Branch)
+
+    const commits = selectors.commits.all(state)
+
+    const section = selectors.router.firstValue(state, 'repoPageSection')
+
     return {
-      urlName,
       repo,
+      branches,
       branch,
-      branchName,
-      branchList
+      info,
+      commits,
+      section
     }
   },
   (dispatch) => ({
