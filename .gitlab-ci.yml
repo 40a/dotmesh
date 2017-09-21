@@ -104,10 +104,27 @@ merge_frontend:
         - ./mergebuild.sh
 
 # run sanity check that things still work on macOS
-macos:
+macos_docker_stable:
     stage: test
     tags:
         - macos
+        - docker-stable
+    script:
+        - cd cmd/datamesh-server
+        # Possible to build just the "prod" image because binaries got passed
+        # as artifact in cmd/datamesh-server/target
+        - docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
+        - cd ../..
+        - ./smoke.sh $(pwd)/binaries/Darwin/dm datamesh-server
+        - docker rmi $(docker images | grep "^<none>" | awk '{print $3}') || true
+        # XXX need a better answer than this
+        #- docker run --rm -i --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n reboot || true
+
+macos_docker_edge:
+    stage: test
+    tags:
+        - macos
+        - docker-edge
     script:
         - cd cmd/datamesh-server
         # Possible to build just the "prod" image because binaries got passed
