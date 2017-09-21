@@ -116,9 +116,7 @@ macos_docker_stable:
         - docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
         - cd ../..
         - ./smoke.sh $(pwd)/binaries/Darwin/dm datamesh-server
-        - docker rmi $(docker images | grep "^<none>" | awk '{print $3}') || true
-        # XXX need a better answer than this
-        #- docker run --rm -i --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n reboot || true
+        - docker system prune -fa
 
 macos_docker_edge:
     stage: test
@@ -132,9 +130,7 @@ macos_docker_edge:
         - docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
         - cd ../..
         - ./smoke.sh $(pwd)/binaries/Darwin/dm datamesh-server
-        - docker rmi $(docker images | grep "^<none>" | awk '{print $3}') || true
-        # XXX need a better answer than this
-        #- docker run --rm -i --privileged --pid=host walkerlee/nsenter -t 1 -m -u -i -n reboot || true
+        - docker system prune -fa
 
 # run full dind tests on linux
 linux_single_node:
