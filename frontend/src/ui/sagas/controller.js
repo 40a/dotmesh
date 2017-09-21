@@ -37,13 +37,6 @@ const ControllerLoop = (opts = {}) => {
     const saga = sagaName && hooks[sagaName] ? hooks[sagaName] : null
     let result = null
     if(saga) {
-      console.log('-------------------------------------------');
-      console.log('-------------------------------------------');
-      console.log('-------------------------------------------');
-      console.log('-------------------------------------------');
-      console.log('-------------------------------------------');
-      console.log('-------------------------------------------');
-      console.log('running loop: ' + sagaName)
       result = yield call(saga)
     }
     return result
@@ -68,18 +61,11 @@ const ControllerLoop = (opts = {}) => {
 
   function* stop() {
     if(currentLoopTask) {
-      console.log('-------------------------------------------');
-      console.log('-------------------------------------------');
-      console.log('STOP')
       yield cancel(currentLoopTask)  
     }
   }
 
-  function* onRouteChange() {
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.log('ROIUTE CHANGE!!!!')
+  function* onRouteChange() { 
     yield call(stop)
     yield call(start)
   }

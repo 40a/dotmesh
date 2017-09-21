@@ -6,6 +6,7 @@ import forms from '../forms'
 import * as actions from '../actions'
 import * as selectors from '../selectors'
 
+import listUtils from '../utils/list'
 import tools from '../tools'
 
 const REQUIRED_APIS = [
@@ -20,9 +21,12 @@ const RepoSagas = (opts = {}) => {
   })
 
   function* setData(payload) {
+    let repos = payload.Volumes
+    let servers = payload.Servers
+    repos = listUtils.sortObjectList(repos, selectors.repo.name)
     yield put(actions.value.set('reposLoaded', true))
-    yield put(actions.value.set('repos', payload.Volumes || []))
-    yield put(actions.value.set('servers', payload.Servers || []))
+    yield put(actions.value.set('repos', repos || []))
+    yield put(actions.value.set('servers', servers || []))
   }
 
   // called if there is an error so the user is not looking at stale data
