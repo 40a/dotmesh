@@ -4,6 +4,11 @@ import Dropdown from 'react-toolbox/lib/dropdown'
 
 import * as selectors from '../selectors'
 
+import SearchBox from './widgets/SearchBox'
+import Pager from './widgets/Pager'
+
+import CommitListItem from './CommitListItem'
+
 import theme from './theme/repo.css'
 import colors from './theme/colors.css'
 
@@ -20,6 +25,47 @@ class RepoPageData extends Component {
         source={ data }
         value={ this.props.info.Branch }
         onChange={ this.props.changeBranch }
+        theme={{
+          inputInput: theme.branchDropdownInput
+        }}
+      />
+    )
+  }
+
+  dataList() {
+    const data = this.props.commits || []
+    return (
+      <div className={ theme.listContainer }>
+        {
+          data.map((commit, i) => {
+            return (
+              <CommitListItem
+                key={ i }
+                index={ i }
+                commit={ commit }
+              />
+            )
+          })
+        }
+      </div>
+    )
+  }
+
+  search() {
+    return (
+      <SearchBox
+        value={ this.props.search }
+        onChange={ this.props.updateSearch }
+      />
+    )
+  }
+
+  pager() {
+    return (
+      <Pager
+        count={ this.props.pageCount }
+        current={ this.props.pageCurrent }
+        onClick={ this.props.updatePage }
       />
     )
   }
@@ -31,6 +77,15 @@ class RepoPageData extends Component {
         <div className={ theme.branchContainer }>
           <div className={ theme.branchTitle }>Branch:</div>
           <div className={ theme.branchDropdown }>{ this.branchDropDown() }</div>
+          <h2 className={ theme.commitTitle }>Commits</h2>
+          <div>
+            <div className={ theme.commitSearchContainer }>
+              { this.search() }
+            </div>
+            <div>
+              { this.dataList() }
+            </div>
+          </div>
         </div>
       </div>
     )

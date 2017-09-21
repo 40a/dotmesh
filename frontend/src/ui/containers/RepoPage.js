@@ -24,7 +24,6 @@ export default connect(
     const branch = selectors.repo.getBranch(repo, info.Branch)
 
     const commits = selectors.commits.all(state)
-
     const section = selectors.router.firstValue(state, 'repoPageSection')
 
     return {

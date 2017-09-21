@@ -175,6 +175,14 @@ export const commits = {
   all: (state) => valueSelector(state, 'commits') || [],
 }
 
+export const commit = {
+  id: (data = {}) => data.Id,
+  metadata: (data = {}) => data.Metadata || {},
+  name: (data = {}) => commit.metadata(data).message,
+  author: (data = {}) => commit.metadata(data).author,
+  timestamp: (data = {}) => commit.metadata(data).timestamp
+}
+
 export const help = {
   currentPage: (state) => {
     const params = state.router.params || {}

@@ -49,6 +49,9 @@ const config = {
   repolist: {
     pageSize: 5
   },
+  commitlist: {
+    pageSize: 5
+  },
   images: {
     appbar: '/images/datamesh-on-dark.png'
   },
