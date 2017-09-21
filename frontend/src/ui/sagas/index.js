@@ -45,10 +45,15 @@ const hooks = Hooks({
   config: configSaga
 })
 
+const controllerLoop = Controller({
+  hooks
+})
+
 const router = RouterSaga({
   hooks,
   basepath: config.basepath,
   authenticate: auth.authenticateRoute,
+  onChange: controllerLoop.onRouteChange,
   trigger: (name, payload) => {
     if(process.env.NODE_ENV=='development') {
       console.log(`hook: ${name} ${payload && payload.name ? payload.name : ''}`)
@@ -57,16 +62,11 @@ const router = RouterSaga({
   }
 })
 
-const controllerLoop = Controller({
-  hooks
-})
-
 function* initialize() {
   yield call(delay, 1)
   yield call(auth.initialize)
   yield put(actions.value.set('initialized', true))
   yield call(router.initialize)
-  yield call(controllerLoop.start)
 }
 
 export default function* root() {

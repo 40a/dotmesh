@@ -82,7 +82,7 @@ class RepoList extends Component {
 
   buttons() {
     const actions = [
-      { label: 'New', accent: true, raised: true, icon: config.icons.add}
+      { label: 'New', accent: true, raised: true, icon: config.icons.add, onClick: () => this.props.clickNew() }
     ]
     return (
       <div className={ theme.buttonsContainer }>

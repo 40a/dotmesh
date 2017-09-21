@@ -42,9 +42,21 @@ const authRegister = formWrapper({
   }
 })
 
+const repo = formWrapper({
+  name: 'repo',
+  fields: {
+    Name: models.string({
+      title: 'Name',
+      component: fields.input,
+      validate: [validators.required]
+    })
+  }
+})
+
 const forms = {
   authLogin,
-  authRegister
+  authRegister,
+  repo
 }
 
 export default forms

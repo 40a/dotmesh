@@ -11,6 +11,7 @@ import config from './config'
 import Application from './containers/Application'
 import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
+import RepoForm from './containers/RepoForm'
 import PaymentPage from './containers/PaymentPage'
 import SectionTabs from './containers/SectionTabs'
 import Help from './containers/Help'
@@ -53,6 +54,10 @@ export const routeConfig = processRoutes({
     authRedirect: '/login',
     controlLoopSaga: 'repoList'
   },
+  '/repos/new': {
+    user: true,
+    authRedirect: '/login'
+  },
   '/payment': {
     user: true,
     authRedirect: '/login'
@@ -64,6 +69,9 @@ export const routeConfig = processRoutes({
   '/register': {
     user: false,
     authRedirect: '/dashboard'
+  },
+  '/*': {
+    TEST: 10
   }
 }, config.basepath)
 
@@ -91,7 +99,7 @@ export const routes = (
         <Help />
       </Route>
 
-      <Route path='/dashboard'>
+      <Route path='/dashboard' exact>
         <Section>
           <UserLayout>
             <SectionTabs
@@ -101,13 +109,13 @@ export const routes = (
         </Section>
       </Route>
 
-      <Route path='/payment'>
+      <Route path='/payment' exact>
         <Section>
           <PaymentPage />
         </Section>
       </Route>
 
-      <Route path='/repos'>
+      <Route path='/repos' exact>
         <Section>
           <UserLayout>
             <SectionTabs
@@ -117,7 +125,18 @@ export const routes = (
         </Section>
       </Route>
 
-      <Route path='/repos/page/:page'>
+      <Route path='/repos/new' exact>
+        <Section>
+          <UserLayout>
+            <RepoForm
+              title='New Repository'
+            >
+            </RepoForm>
+          </UserLayout>
+        </Section>
+      </Route>
+
+      <Route path='/repos/page/:page' exact>
         <Section>
           <UserLayout>
             <SectionTabs
@@ -127,7 +146,7 @@ export const routes = (
         </Section>
       </Route>
 
-      <Route path='/servers'>
+      <Route path='/servers' exact>
         <Section>
           <UserLayout>
             <SectionTabs
@@ -137,13 +156,13 @@ export const routes = (
         </Section>
       </Route>
 
-      <Route path='/login'>
+      <Route path='/login' exact>
         <Section>
           <LoginForm />
         </Section>
       </Route>
 
-      <Route path='/register'>
+      <Route path='/register' exact>
         <Section>
           <RegisterForm />
         </Section>

@@ -1,6 +1,8 @@
 import { take, put, call, fork, select, all, takeLatest, takeEvery, cancel, cancelled } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
 
+import { TYPES } from 'template-ui/lib/plugins/router/actions'
+
 import config from '../config'
 import forms from '../forms'
 import * as actions from '../actions'
@@ -35,6 +37,13 @@ const ControllerLoop = (opts = {}) => {
     const saga = sagaName && hooks[sagaName] ? hooks[sagaName] : null
     let result = null
     if(saga) {
+      console.log('-------------------------------------------');
+      console.log('-------------------------------------------');
+      console.log('-------------------------------------------');
+      console.log('-------------------------------------------');
+      console.log('-------------------------------------------');
+      console.log('-------------------------------------------');
+      console.log('running loop: ' + sagaName)
       result = yield call(saga)
     }
     return result
@@ -59,13 +68,26 @@ const ControllerLoop = (opts = {}) => {
 
   function* stop() {
     if(currentLoopTask) {
+      console.log('-------------------------------------------');
+      console.log('-------------------------------------------');
+      console.log('STOP')
       yield cancel(currentLoopTask)  
     }
   }
 
+  function* onRouteChange() {
+    console.log('-------------------------------------------');
+    console.log('-------------------------------------------');
+    console.log('-------------------------------------------');
+    console.log('ROIUTE CHANGE!!!!')
+    yield call(stop)
+    yield call(start)
+  }
+
   return {
     start,
-    stop
+    stop,
+    onRouteChange
   }
 }
 
