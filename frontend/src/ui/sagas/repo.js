@@ -20,6 +20,7 @@ const RepoSagas = (opts = {}) => {
   })
 
   function* setData(payload) {
+    yield put(actions.value.set('reposLoaded', true))
     yield put(actions.value.set('repos', payload.Volumes || []))
     yield put(actions.value.set('servers', payload.Servers || []))
   }

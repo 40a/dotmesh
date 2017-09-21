@@ -22,7 +22,7 @@ export default connect(
     return {
       error: selectors.api.error(state, API_NAME),
       loading: selectors.api.loading(state, API_NAME),
-      loaded: apiState && typeof(apiState.status)=='string',
+      loaded: selectors.value(state, 'reposLoaded'),
       data: selectors.repos.pageResults(state),
       search: selectors.repos.search(state),
       repoCount: selectors.repos.count(state),

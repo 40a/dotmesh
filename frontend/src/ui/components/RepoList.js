@@ -7,6 +7,7 @@ import config from '../config'
 import RepoListItem from './RepoListItem'
 import Pager from './widgets/Pager'
 import SearchBox from './widgets/SearchBox'
+import FadedText from './widgets/FadedText'
 import theme from './theme/repolist.css'
 
 class RepoList extends Component {
@@ -59,10 +60,18 @@ class RepoList extends Component {
   search() {
     return (
       <div className={ theme.searchContainer }>
-        <SearchBox
-          value={ this.props.search }
-          onChange={ this.props.updateSearch }
-        />
+        {
+          this.props.repoCount > 0 ? (
+            <SearchBox
+              value={ this.props.search }
+              onChange={ this.props.updateSearch }
+            />
+          ) : (
+            <FadedText>
+              Create a repository using the dm command line or click the "new" button...
+            </FadedText>
+          )
+        }
       </div>
     )
   }

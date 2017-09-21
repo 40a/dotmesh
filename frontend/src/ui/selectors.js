@@ -11,7 +11,7 @@ import labels from './utils/labels'
 
 export const valuesSelector = (state) => state.value || {}
 export const valueSelector = (state, name) => valuesSelector(state)[name]
-export const value = (name) => (state) => valueSelector(state, name)
+export const value = valueSelector
 export const routeInfoSelector = (state) => state.router.result
 
 export const formValuesSelector = (name) => {
@@ -36,7 +36,7 @@ export const billing = {
 }
 
 export const auth = {
-  user: value(config.userValueName),
+  user: (state) => value(state, config.userValueName),
   email: (state) => {
     const user = auth.user(state) || {}
     return user.Email
