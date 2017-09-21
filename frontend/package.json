@@ -8,6 +8,7 @@
     "release": "NODE_ENV=production UV_THREADPOOL_SIZE=100 webpack --colors --profile --progress",
     "watch": "NODE_ENV=development UV_THREADPOOL_SIZE=100 node --require babel-register ./server",
     "analyze": "NODE_ENV=production UV_THREADPOOL_SIZE=100 webpack  --json | webpack-bundle-size-analyzer",
+    "buildhelp": "node scripts/buildhelp.js > src/ui/help.json",
     "test": "tape -r babel-register src/**/*.test.js"
   },
   "dependencies": {
@@ -52,9 +53,11 @@
     "css-loader": "^0.26.1",
     "express": "^4.13.4",
     "extract-text-webpack-plugin": "^1.0.1",
+    "fs-readdir-recursive": "^1.0.0",
     "html-webpack-plugin": "^2.29.0",
     "js-yaml": "^3.8.2",
     "json-loader": "^0.5.4",
+    "marked": "^0.3.6",
     "postcss-cssnext": "^2.9.0",
     "postcss-each": "^0.9.3",
     "postcss-import": "^9.1.0",

@@ -1,0 +1,36 @@
+{
+    "quickstart.md": [
+        {
+            "type": "html",
+            "text": "## quick start\n\nthis is some text\n\n * with\n * a list\n * and another\n\n",
+            "html": "<h2 id=\"quick-start\">quick start</h2>\n<p>this is some text</p>\n<ul>\n<li>with</li>\n<li>a list</li>\n<li>and another</li>\n</ul>\n"
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "$ here is code\n"
+        },
+        {
+            "type": "html",
+            "text": "#### and another thing\n\nhello\n",
+            "html": "<h4 id=\"and-another-thing\">and another thing</h4>\n<p>hello</p>\n"
+        }
+    ],
+    "snippets/norepos.md": [
+        {
+            "type": "html",
+            "text": "## installing datamesh\n\nsome text about getting datamesh installed\n\n * with\n * a list\n * and another\n\n",
+            "html": "<h2 id=\"installing-datamesh\">installing datamesh</h2>\n<p>some text about getting datamesh installed</p>\n<ul>\n<li>with</li>\n<li>a list</li>\n<li>and another</li>\n</ul>\n"
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "$ here is code\n"
+        },
+        {
+            "type": "html",
+            "text": "#### and another thing\n\nhello\n",
+            "html": "<h4 id=\"and-another-thing\">and another thing</h4>\n<p>hello</p>\n"
+        }
+    ]
+}

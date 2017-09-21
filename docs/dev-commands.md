@@ -502,6 +502,16 @@ make frontend.start
 
 You can `docker exec -ti datamesh-frontend bash` to get a CLI inside the frontend container to run any other commands.
 
+#### changing the help markdown
+
+If you change any of the `.md` files inside `frontend/help` - you will need to re-run the following command:
+
+```bash
+make help
+```
+
+This will generate the following file: `frontend/src/ui/help.json` which is used to generate the help pages in React.
+
 #### building frontend production code
 
 To build the production distribution of the frontend code:
