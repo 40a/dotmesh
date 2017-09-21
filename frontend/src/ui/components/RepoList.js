@@ -9,7 +9,7 @@ import Pager from './widgets/Pager'
 import SearchBox from './widgets/SearchBox'
 import FadedText from './widgets/FadedText'
 import HelpPage from './widgets/HelpPage'
-import theme from './theme/repolist.css'
+import theme from './theme/repo.css'
 
 class RepoList extends Component {
 
@@ -34,6 +34,7 @@ class RepoList extends Component {
               <RepoListItem
                 key={ i }
                 repo={ repo }
+                clickRepo={ this.props.clickRepo }
               />
             )
           })

@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from 'react'
 
 import * as selectors from '../selectors'
-import theme from './theme/repolist.css'
+import theme from './theme/repo.css'
 import colors from './theme/colors.css'
 
 import StatusChip from './widgets/StatusChip'
@@ -14,8 +14,8 @@ class RepoListItem extends Component {
       <div className={ theme.listItem }>
         <div className={ theme.repoInfo }>
           <div>
-            <div className={ theme.repoName + ' ' + colors.bluelink }>
-              { selectors.repo.namespace(repo) } / { selectors.repo.name(repo) }
+            <div className={ theme.repoName + ' ' + colors.bluelink } onClick={ () => this.props.clickRepo(repo) }>
+              { selectors.repo.title(repo) }
             </div>
             {
               selectors.repo.isPrivate(repo) ? (

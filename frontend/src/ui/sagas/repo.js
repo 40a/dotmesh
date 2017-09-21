@@ -104,12 +104,21 @@ const RepoSagas = (opts = {}) => {
     yield put(actions.router.redirect('/repos'))
   }
 
+  function* open(repo) {
+    const namespace = selectors.repo.namespace(repo)
+    const name = selectors.repo.name(repo)
+
+    yield put(actions.router.redirect(`/${namespace}/${name}`))
+    yield call(list)
+  }
+
   return {
     list,
     updateSearch,
     updatePage,
     formInitialize,
-    formSubmit
+    formSubmit,
+    open
   }
 }
 

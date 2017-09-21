@@ -12,6 +12,7 @@ import Application from './containers/Application'
 import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
 import RepoForm from './containers/RepoForm'
+import RepoPage from './containers/RepoPage'
 import PaymentPage from './containers/PaymentPage'
 import SectionTabs from './containers/SectionTabs'
 import Help from './containers/Help'
@@ -72,7 +73,7 @@ export const routeConfig = processRoutes({
     authRedirect: '/dashboard'
   },
   '/*': {
-    TEST: 10
+    hooks: ['repoList']
   }
 }, config.basepath)
 
@@ -144,6 +145,12 @@ export const routes = (
               active={0}
             />
           </UserLayout>
+        </Section>
+      </Route>
+
+      <Route route='/*' exact>
+        <Section>
+          <RepoPage />
         </Section>
       </Route>
 

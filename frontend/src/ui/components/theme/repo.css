@@ -34,6 +34,9 @@
   display: inline-block;
   font-size: 1.3em;
   font-weight: bold;
+}
+
+.link {
   cursor: pointer;
 }
 
@@ -49,4 +52,8 @@
 
 .fadedText {
   text-align: right;
+}
+
+.largeTitle {
+  font-size: 1.5em;
 }

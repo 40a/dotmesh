@@ -101,18 +101,33 @@ export const repos = {
     const startIndex = (pageCurrent - 1) * pageSize
     return searchResults.slice(startIndex, startIndex + pageSize)
   },
+  // grab the Namespace and Name from the url
+  extractUrlName: (state) => {
+    const routerState = state.router
+    const urlChunk = routerState.params._ || ''
+    const parts = urlChunk.split('/')
+    return {
+      Namespace: parts[0],
+      Name: parts[1]
+    }
+  },
   // Name is {Name,Namespace}
-  exists: (state, Name) => {
+  get: (state, Name) => {
     return repos.all(state).filter(data => {
       return repo.name(data) == Name.Name && repo.namespace(data) == Name.Namespace
-    }).length > 0
-  }
+    })[0]
+  },
+  getFromUrl: (state) => {
+    const urlName = repos.extractUrlName(state)
+    return repos.get(state, urlName)
+  },
+  // Name is {Name,Namespace}
+  exists: (state, Name) => repos.get(state, Name) ? true : false
 }
 
 export const repo = {
-  top: (data) => data.TopLevelVolume,
+  top: (data) => (data || {}).TopLevelVolume || {},
   id: (data) => repo.top(data).Id,
-
   fullname: (data) => repo.top(data).Name || {},
   title: (data) => {
     const fullname = repo.fullname(data)
