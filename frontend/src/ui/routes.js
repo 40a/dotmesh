@@ -136,7 +136,7 @@ export const routes = (
         </Section>
       </Route>
 
-      <Route path='/repos/page/:page' exact>
+      <Route route='/repos/page/:page' exact>
         <Section>
           <UserLayout>
             <SectionTabs
