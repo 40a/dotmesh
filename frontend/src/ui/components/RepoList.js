@@ -8,7 +8,7 @@ import RepoListItem from './RepoListItem'
 import Pager from './widgets/Pager'
 import SearchBox from './widgets/SearchBox'
 import FadedText from './widgets/FadedText'
-import NoRepos from './help/NoRepos'
+import Markdown from './widgets/Markdown'
 import theme from './theme/repolist.css'
 
 class RepoList extends Component {
@@ -16,7 +16,9 @@ class RepoList extends Component {
   noData() {
     return (
       <div className={ theme.container }>
-        <NoRepos />
+        <Markdown
+          page='snippets/norepos.md'
+        />
       </div>
     )
   }
@@ -69,7 +71,7 @@ class RepoList extends Component {
             />
           ) : (
             <FadedText>
-              Create a repository using the dm command line or click the "new" button...
+              Once you create some repositories they will display here...
             </FadedText>
           )
         }

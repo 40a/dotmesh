@@ -7,7 +7,9 @@ some text about getting datamesh installed
  * and another
 
 ```bash
-$ here is code
+$ dm init apples
+$ dm branch
+$ dm list
 ```
 
 #### and another thing

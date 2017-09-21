@@ -25,9 +25,7 @@ class SyntaxHighlight extends Component {
           wrapLines={ true }
           language={ this.props.language }
           style={ monokai }
-        >
-          { this.props.children }
-        </SyntaxHighlighter>
+        >{ this.props.children }</SyntaxHighlighter>
       </div>
     )
   }

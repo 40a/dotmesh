@@ -60,6 +60,9 @@ const processMarkdown = (content) => {
     if(ret.type=='html') {
       ret.html = marked(ret.text)
     }
+    else if(ret.type=='code') {
+      ret.code = ret.text.replace(/\n$/, '')
+    }
     return ret
   })
 }

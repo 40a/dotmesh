@@ -8,7 +8,8 @@
         {
             "type": "code",
             "language": "bash",
-            "text": "$ here is code\n"
+            "text": "$ here is code\n",
+            "code": "$ here is code"
         },
         {
             "type": "html",
@@ -25,7 +26,8 @@
         {
             "type": "code",
             "language": "bash",
-            "text": "$ here is code\n"
+            "text": "$ dm init apples\n$ dm branch\n$ dm list\n",
+            "code": "$ dm init apples\n$ dm branch\n$ dm list"
         },
         {
             "type": "html",
