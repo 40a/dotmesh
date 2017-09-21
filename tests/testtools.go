@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
@@ -444,10 +446,10 @@ func poolId(now int64, i, j int) string {
 }
 
 func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Node {
-	nodeIP := s(t,
+	nodeIP := strings.TrimSpace(s(t,
 		nodeName(now, i, j),
 		`ifconfig eth0 | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1`,
-	)
+	))
 	config := s(t,
 		nodeName(now, i, j),
 		"cat /root/.datamesh/config",
@@ -772,4 +774,40 @@ func copyMedia(node string) error {
 	`, node))
 
 	return err
+}
+
+func registerUser(ip, username, email, password string) error {
+	registerPayload := struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{
+		Username: username,
+		Email:    email,
+		Password: password,
+	}
+
+	b, err := json.Marshal(registerPayload)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(
+		fmt.Sprintf("http://%s:6969/register", ip),
+		"application/json",
+		bytes.NewReader(b),
+	)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Invalid response from user registration request: %d: %v", resp.StatusCode, body)
+	}
+
+	return nil
 }

@@ -503,7 +503,7 @@ func (f *fsMachine) snapshot(e *Event) (responseEvent *Event, nextState stateFn)
 
 // find the user-facing name of a given filesystem id. if we're a branch
 // (clone), return the name of our parent filesystem.
-func (f *fsMachine) name() (string, error) {
+func (f *fsMachine) name() (VolumeName, error) {
 	tlf, _, err := f.state.registry.LookupFilesystemId(f.filesystemId)
 	return tlf.TopLevelVolume.Name, err
 }
@@ -515,7 +515,7 @@ func (f *fsMachine) containersRunning() ([]DockerContainer, error) {
 	if err != nil {
 		return []DockerContainer{}, err
 	}
-	return f.state.containers.Related(name)
+	return f.state.containers.Related(name.String())
 }
 
 func (f *fsMachine) stopContainers() error {
@@ -525,7 +525,7 @@ func (f *fsMachine) stopContainers() error {
 	if err != nil {
 		return err
 	}
-	return f.state.containers.Stop(name)
+	return f.state.containers.Stop(name.String())
 }
 
 func (f *fsMachine) startContainers() error {
@@ -535,7 +535,7 @@ func (f *fsMachine) startContainers() error {
 	if err != nil {
 		return err
 	}
-	return f.state.containers.Start(name)
+	return f.state.containers.Start(name.String())
 }
 
 func activeState(f *fsMachine) stateFn {
@@ -565,7 +565,7 @@ func activeState(f *fsMachine) stateFn {
 			}
 			f.lastTransferRequestId = transferRequestId
 
-			log.Printf("GOT TRANSFER REQUEST %s", f.lastTransferRequest)
+			log.Printf("GOT TRANSFER REQUEST %+v", f.lastTransferRequest)
 			if f.lastTransferRequest.Direction == "push" {
 				return pushInitiatorState
 			} else if f.lastTransferRequest.Direction == "pull" {
@@ -593,7 +593,7 @@ func activeState(f *fsMachine) stateFn {
 			}
 			f.lastTransferRequestId = transferRequestId
 
-			log.Printf("GOT PEER TRANSFER REQUEST %s", f.lastTransferRequest)
+			log.Printf("GOT PEER TRANSFER REQUEST %+v", f.lastTransferRequest)
 			if f.lastTransferRequest.Direction == "push" {
 				return pushPeerState
 			} else if f.lastTransferRequest.Direction == "pull" {
@@ -843,7 +843,7 @@ func (f *fsMachine) mount() (responseEvent *Event, nextState stateFn) {
 			Args: &EventArgs{"err": err, "combined-output": string(out)},
 		}, backoffState
 	}
-	out, err = exec.Command("mount.zfs",
+	out, err = exec.Command("mount.zfs", "-o", "noatime",
 		fq(f.filesystemId), mnt(f.filesystemId)).CombinedOutput()
 	if err != nil {
 		log.Printf("%v while trying to mount %s", err, fq(f.filesystemId))
@@ -975,8 +975,10 @@ func transferRequestify(in interface{}) (TransferRequest, error) {
 		User:                 typed["User"].(string),
 		ApiKey:               typed["ApiKey"].(string),
 		Direction:            typed["Direction"].(string),
+		LocalNamespace:       typed["LocalNamespace"].(string),
 		LocalFilesystemName:  typed["LocalFilesystemName"].(string),
 		LocalCloneName:       typed["LocalCloneName"].(string),
+		RemoteNamespace:      typed["RemoteNamespace"].(string),
 		RemoteFilesystemName: typed["RemoteFilesystemName"].(string),
 		RemoteCloneName:      typed["RemoteCloneName"].(string),
 		TargetSnapshot:       typed["TargetSnapshot"].(string),
@@ -1002,7 +1004,7 @@ func missingState(f *fsMachine) stateFn {
 		return receivingState
 	case e := <-f.innerRequests:
 		if e.Name == "transfer" {
-			log.Printf("GOT TRANSFER REQUEST (while missing) %s", e.Args)
+			log.Printf("GOT TRANSFER REQUEST (while missing) %+v", e.Args)
 
 			// TODO dedupe
 			transferRequest, err := transferRequestify((*e.Args)["Transfer"])
@@ -1066,7 +1068,7 @@ func missingState(f *fsMachine) stateFn {
 				}
 				return backoffState
 			} else if f.lastTransferRequest.Direction == "push" {
-				log.Printf("GOT PEER TRANSFER REQUEST FROM MISSING %s", f.lastTransferRequest)
+				log.Printf("GOT PEER TRANSFER REQUEST FROM MISSING %+v", f.lastTransferRequest)
 				return pushPeerState
 			}
 		} else if e.Name == "create" {
@@ -1352,7 +1354,7 @@ func receivingState(f *fsMachine) stateFn {
 
 func updatePollResult(transferRequestId string, pollResult TransferPollResult) error {
 	log.Printf(
-		"[updatePollResult] attempting to update poll result for %s: %s",
+		"[updatePollResult] attempting to update poll result for %s: %+v",
 		transferRequestId, pollResult,
 	)
 	kapi, err := getEtcdKeysApi()
@@ -1396,8 +1398,10 @@ func TransferPollResultFromTransferRequest(
 		ApiKey:            transferRequest.ApiKey,
 		Direction:         transferRequest.Direction,
 
+		LocalNamespace:       transferRequest.LocalNamespace,
 		LocalFilesystemName:  transferRequest.LocalFilesystemName,
 		LocalCloneName:       transferRequest.LocalCloneName,
+		RemoteNamespace:      transferRequest.RemoteNamespace,
 		RemoteFilesystemName: transferRequest.RemoteFilesystemName,
 		RemoteCloneName:      transferRequest.RemoteCloneName,
 
@@ -1424,8 +1428,14 @@ func pushInitiatorState(f *fsMachine) stateFn {
 	// Set /filesystems/transfers/:transferId = TransferPollResult{...}
 	transferRequest := f.lastTransferRequest
 	transferRequestId := f.lastTransferRequestId
+	log.Printf(
+		"[pushInitiator] request: %v %+v",
+		transferRequestId,
+		transferRequest,
+	)
 	path, err := f.state.registry.deducePathToTopLevelFilesystem(
-		transferRequest.LocalFilesystemName, transferRequest.LocalCloneName,
+		VolumeName{transferRequest.LocalNamespace, transferRequest.LocalFilesystemName},
+		transferRequest.LocalCloneName,
 	)
 	if err != nil {
 		f.innerResponses <- &Event{
@@ -1605,6 +1615,7 @@ func (f *fsMachine) retryPush(
 
 			// tell the remote what snapshot to expect
 			var result bool
+			log.Printf("[retryPush] calling RegisterTransfer with args: %+v", pollResult)
 			err = client.CallRemote(
 				context.Background(), "DatameshRPC.RegisterTransfer", pollResult, &result,
 			)
@@ -2236,7 +2247,7 @@ func pushPeerState(f *fsMachine) stateFn {
 		)
 		f.innerResponses <- &Event{
 			Name: "error-listing-containers-during-push-receive",
-			Args: &EventArgs{"err": err},
+			Args: &EventArgs{"err": fmt.Sprintf("%v", err)},
 		}
 		return backoffState
 	}
@@ -2451,6 +2462,7 @@ func pullInitiatorState(f *fsMachine) stateFn {
 	// for inter-cluster opentracing.
 	err = client.CallRemote(context.Background(),
 		"DatameshRPC.DeducePathToTopLevelFilesystem", map[string]interface{}{
+			"RemoteNamespace":      transferRequest.RemoteNamespace,
 			"RemoteFilesystemName": transferRequest.RemoteFilesystemName,
 			"RemoteCloneName":      transferRequest.RemoteCloneName,
 		},

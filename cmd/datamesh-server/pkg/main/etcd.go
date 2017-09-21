@@ -584,13 +584,13 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		return s.updateSnapshotsFromKnownState(server, filesystem, snapshots)
 	}
 	/*
-		(0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<name> =>
+		(0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<namespace>/(5)name =>
 		{"Uuid": "<fs-uuid>"}
 			fs-uuid can be a branch or filesystem uuid
 	*/
 	updateFilesystemRegistry := func(node *client.Node) error {
 		pieces := strings.Split(node.Key, "/")
-		name := pieces[4]
+		name := VolumeName{pieces[4], pieces[5]}
 		rf := registryFilesystem{}
 		err := json.Unmarshal([]byte(node.Value), &rf)
 		if err != nil {
@@ -782,9 +782,11 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		}
 	}
 	if registryFilesystems != nil {
-		for _, topLevelFilesystem := range registryFilesystems.Nodes {
-			if err = updateFilesystemRegistry(topLevelFilesystem); err != nil {
-				return err
+		for _, namespace := range registryFilesystems.Nodes {
+			for _, topLevelFilesystem := range namespace.Nodes {
+				if err = updateFilesystemRegistry(topLevelFilesystem); err != nil {
+					return err
+				}
 			}
 		}
 	}

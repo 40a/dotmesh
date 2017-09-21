@@ -76,7 +76,15 @@ func (s *InMemoryState) repl() {
 							break
 						}
 					} else if len(words) == 2 {
-						fsMachine, ch, err = s.CreateFilesystem(AdminContext(context.TODO()), &words[1])
+						namespace, localName, err := parseNamespacedVolume(words[1])
+						if err != nil {
+							out("Error:", err)
+							return
+						}
+
+						name := VolumeName{namespace, localName}
+
+						fsMachine, ch, err = s.CreateFilesystem(AdminContext(context.TODO()), &name)
 						if err != nil {
 							out("Error:", err)
 							break

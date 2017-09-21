@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var remoteVolume string
+
 func NewCmdPush(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "push <remote>",
@@ -35,7 +37,7 @@ volume 'postgres' to cluster 'backups':
 					return err
 				}
 				transferId, err := dm.RequestTransfer(
-					"push", peer, filesystemName, branchName, "", "",
+					"push", peer, filesystemName, branchName, remoteVolume, "",
 				)
 				if err != nil {
 					return err
@@ -52,5 +54,7 @@ volume 'postgres' to cluster 'backups':
 			}
 		},
 	}
+	cmd.PersistentFlags().StringVarP(&remoteVolume, "remote-volume", "", "",
+		"Remote volume name to push to, including remote namespace e.g. alice/apples")
 	return cmd
 }

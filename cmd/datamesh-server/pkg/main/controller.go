@@ -464,13 +464,14 @@ func (s *InMemoryState) maybeFilesystem(filesystemId string) (*fsMachine, error)
 }
 
 func (s *InMemoryState) CreateFilesystem(
-	ctx context.Context, filesystemName *string,
+	ctx context.Context, filesystemName *VolumeName,
 ) (*fsMachine, chan *Event, error) {
 	id, err := uuid.NewV4()
 	if err != nil {
 		return nil, nil, err
 	}
 	filesystemId := id.String()
+	log.Printf("[CreateFilesystem} called with name=%+v, assigned id=%s", filesystemName, filesystemId)
 	err = s.registry.RegisterFilesystem(ctx, *filesystemName, filesystemId)
 	if err != nil {
 		log.Printf(

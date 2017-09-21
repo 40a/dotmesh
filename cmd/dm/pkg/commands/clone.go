@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var cloneLocalVolume string
+
 func NewCmdClone(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clone <remote> <volume> <branch>",
@@ -37,10 +39,8 @@ copy of 'app_billing_postgres' at all yet:
 					return err
 				}
 				transferId, err := dm.RequestTransfer(
-					"pull", peer, filesystemName, branchName,
-					// 'dm clone' semantics are (for now) always that we clone into the
-					// same named filesystem as on the remote, rather than the current
-					// filesystem whatever that is.
+					"pull", peer,
+					cloneLocalVolume, branchName,
 					filesystemName, branchName,
 					// TODO also switch to the remote?
 				)
@@ -51,6 +51,16 @@ copy of 'app_billing_postgres' at all yet:
 				if err != nil {
 					return err
 				}
+
+				// TODO: In future, when we add
+				// "remote tracking", we'll need to
+				// record that local volumne
+				// "cloneLocalVolume" is associated with
+				// "filesystemName" on "peer", so that
+				// future pushes/pulls of the volume
+				// can automatically go to the right
+				// place.
+
 				return nil
 			}()
 			if err != nil {
@@ -59,5 +69,9 @@ copy of 'app_billing_postgres' at all yet:
 			}
 		},
 	}
+
+	cmd.PersistentFlags().StringVarP(&cloneLocalVolume, "local-volume", "", "",
+		"Local volume name to create")
+
 	return cmd
 }

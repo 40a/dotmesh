@@ -294,10 +294,12 @@ func NewCmdList(out io.Writer) *cobra.Command {
 				}
 
 				for _, v := range vs {
-					active, err := dm.CurrentVolume()
+					activeQualified, err := dm.CurrentVolume()
 					if err != nil {
 						return err
 					}
+					activeNamespace, activeVolume, err := remotes.ParseNamespacedVolume(activeQualified)
+					active := remotes.VolumeName{activeNamespace, activeVolume}
 
 					start := "  "
 					if active == v.Name {
@@ -310,7 +312,7 @@ func NewCmdList(out io.Writer) *cobra.Command {
 					}
 
 					// TODO maybe show all branches
-					b, err := dm.CurrentBranch(v.Name)
+					b, err := dm.CurrentBranch(v.Name.String())
 					if err != nil {
 						return err
 					}
@@ -333,7 +335,7 @@ func NewCmdList(out io.Writer) *cobra.Command {
 					}
 
 					cells := []string{
-						v.Name, b, v.Master, strings.Join(containerNames, ","),
+						v.Name.String(), b, v.Master, strings.Join(containerNames, ","),
 						sizeString, fmt.Sprintf("%d", v.CommitCount), dirtyString,
 					}
 					fmt.Fprintf(target, start)
