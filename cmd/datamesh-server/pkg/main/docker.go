@@ -64,10 +64,17 @@ type ResponseList struct {
 }
 
 // create a symlink from /datamesh/:name[@:branch] into /dmfs/:filesystemId
-func newContainerMountSymlink(name, filesystemId string) (string, error) {
+func newContainerMountSymlink(name VolumeName, filesystemId string) (string, error) {
 	if _, err := os.Stat(CONTAINER_MOUNT_PREFIX); err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(CONTAINER_MOUNT_PREFIX, 0700); err != nil {
+				return "", err
+			}
+		}
+	}
+	if _, err := os.Stat(containerMntParent(name)); err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(containerMntParent(name), 0700); err != nil {
 				return "", err
 			}
 		}
@@ -123,7 +130,7 @@ func (state *InMemoryState) runPlugin() {
 		log.Printf("=> %s", string(responseJSON))
 		w.Write(responseJSON)
 	})
-	reallyProcureFilesystem := func(name string) (string, error) {
+	reallyProcureFilesystem := func(name VolumeName) (string, error) {
 		// move filesystem here if it's not here already (coordinate the move
 		// with the current master via etcd), also (TODO check this) DON'T
 		// ALLOW PATH TO BE PASSED TO DOCKER IF IT IS NOT ACTUALLY MOUNTED
@@ -134,9 +141,9 @@ func (state *InMemoryState) runPlugin() {
 		// machine.
 
 		cloneName := ""
-		if strings.Contains(name, "@") {
-			shrapnel := strings.Split(name, "@")
-			name = shrapnel[0]
+		if strings.Contains(name.Name, "@") {
+			shrapnel := strings.Split(name.Name, "@")
+			name.Name = shrapnel[0]
 			cloneName = shrapnel[1]
 			if cloneName == DEFAULT_BRANCH {
 				cloneName = ""
@@ -248,7 +255,7 @@ func (state *InMemoryState) runPlugin() {
 		}
 		return filesystemId, nil
 	}
-	procureFilesystem := func(name string) (string, error) {
+	procureFilesystem := func(name VolumeName) (string, error) {
 		s, err := reallyProcureFilesystem(name)
 		if err != nil {
 			// retry once, to handle the case where we race with another node
@@ -281,7 +288,13 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		name := request.Name
+		namespace, localName, err := parseNamespacedVolume(request.Name)
+		if err != nil {
+			writeResponseErr(err, w)
+			return
+		}
+
+		name := VolumeName{namespace, localName}
 
 		// for now, just name the volumes as requested by the user. later,
 		// adding ids and per-fs metadata may be useful.
@@ -324,7 +337,14 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		name := request.Name
+		namespace, localName, err := parseNamespacedVolume(request.Name)
+		if err != nil {
+			writeResponseErr(err, w)
+			return
+		}
+
+		name := VolumeName{namespace, localName}
+
 		log.Printf("Mountpoint for %s: %s", name, containerMnt(name))
 		responseJSON, _ := json.Marshal(&ResponseMount{
 			Mountpoint: containerMnt(name),
@@ -350,7 +370,13 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		name := request.Name
+		namespace, localName, err := parseNamespacedVolume(request.Name)
+		if err != nil {
+			writeResponseErr(err, w)
+			return
+		}
+
+		name := VolumeName{namespace, localName}
 
 		filesystemId, err := procureFilesystem(name)
 		if err != nil {
@@ -401,7 +427,7 @@ func (state *InMemoryState) runPlugin() {
 		for _, fs := range (*state).registry.Filesystems() {
 			log.Printf("Mountpoint for %s: %s", fs, containerMnt(fs))
 			response.Volumes = append(response.Volumes, ResponseListVolume{
-				Name:       fs,
+				Name:       fs.String(),
 				Mountpoint: containerMnt(fs),
 			})
 		}
@@ -454,7 +480,14 @@ func (state *InMemoryState) runErrorPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		name := request.Name
+		namespace, localName, err := parseNamespacedVolume(request.Name)
+		if err != nil {
+			writeResponseErr(err, w)
+			return
+		}
+
+		name := VolumeName{namespace, localName}
+
 		log.Printf("Mountpoint for %s: %s", name, containerMnt(name))
 		responseJSON, _ := json.Marshal(&ResponseMount{
 			Mountpoint: containerMnt(name),

@@ -161,6 +161,14 @@ linux_two_single_node_clusters:
     script:
         - ./test.sh -run TestTwoSingleNodeClusters
 
+linux_three_single_node_clusters:
+    stage: test
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestThreeSingleNodeClusters
+
 deploy_client_binaries:
     stage: deploy
     tags:

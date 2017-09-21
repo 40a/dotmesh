@@ -5,6 +5,7 @@ import (
 	"io"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"golang.org/x/net/context"
@@ -22,7 +23,7 @@ type DatameshAPI struct {
 
 type DatameshVolume struct {
 	Id          string
-	Name        string
+	Name        VolumeName
 	Clone       string
 	Master      string
 	SizeBytes   int64
@@ -69,7 +70,15 @@ func (dm *DatameshAPI) Ping() (bool, error) {
 
 func (dm *DatameshAPI) NewVolume(volumeName string) error {
 	var response bool
-	err := dm.client.CallRemote(context.Background(), "DatameshRPC.Create", volumeName, &response)
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return err
+	}
+	sendVolumeName := VolumeName{
+		Namespace: namespace,
+		Name: name,
+	}
+	err = dm.client.CallRemote(context.Background(), "DatameshRPC.Create", sendVolumeName, &response)
 	if err != nil {
 		return err
 	}
@@ -87,19 +96,27 @@ func (dm *DatameshAPI) setCurrentBranch(volumeName, branchName string) error {
 
 func (dm *DatameshAPI) CreateBranch(volumeName, sourceBranch, newBranch string) error {
 	var result bool
+
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return err
+	}
+
 	commitId, err := dm.findCommit("HEAD", volumeName, sourceBranch)
 	if err != nil {
 		return err
 	}
+
 	return dm.client.CallRemote(
 		context.Background(),
 		"DatameshRPC.Clone",
 		struct {
 			// Create a named clone from a given volume+branch pair at a given
 			// commit (that branch's latest commit)
-			Volume, SourceBranch, NewBranchName, SourceSnapshotId string
+			Namespace, Volume, SourceBranch, NewBranchName, SourceSnapshotId string
 		}{
-			Volume:           volumeName,
+			Namespace:        namespace,
+			Volume:           name,
 			SourceBranch:     sourceBranch,
 			SourceSnapshotId: commitId,
 			NewBranchName:    newBranch,
@@ -113,8 +130,13 @@ func (dm *DatameshAPI) CreateBranch(volumeName, sourceBranch, newBranch string) 
 	*/
 }
 
-func (dm *DatameshAPI) CheckoutBranch(volume, from, to string, create bool) error {
-	exists, err := dm.BranchExists(volume, to)
+func (dm *DatameshAPI) CheckoutBranch(volumeName, from, to string, create bool) error {
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return err
+	}
+
+	exists, err := dm.BranchExists(volumeName, to)
 	if err != nil {
 		return err
 	}
@@ -124,7 +146,7 @@ func (dm *DatameshAPI) CheckoutBranch(volume, from, to string, create bool) erro
 		if exists {
 			return fmt.Errorf("Branch already exists: %s", to)
 		}
-		if err := dm.CreateBranch(volume, from, to); err != nil {
+		if err := dm.CreateBranch(volumeName, from, to); err != nil {
 			return err
 		}
 	}
@@ -133,13 +155,14 @@ func (dm *DatameshAPI) CheckoutBranch(volume, from, to string, create bool) erro
 			return fmt.Errorf("Branch does not exist: %s", to)
 		}
 	}
-	if err := dm.setCurrentBranch(volume, to); err != nil {
+	if err := dm.setCurrentBranch(volumeName, to); err != nil {
 		return err
 	}
 	var result bool
 	err = dm.client.CallRemote(context.Background(),
 		"DatameshRPC.SwitchContainers", map[string]string{
-			"TopLevelFilesystemName": volume,
+			"Namespace":              namespace,
+			"TopLevelFilesystemName": name,
 			"CurrentCloneName":       deMasterify(from),
 			"NewCloneName":           deMasterify(to),
 		}, &result)
@@ -167,9 +190,14 @@ func (dm *DatameshAPI) BranchExists(volumeName, branchName string) (bool, error)
 }
 
 func (dm *DatameshAPI) Branches(volumeName string) ([]string, error) {
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return []string{}, err
+	}
+
 	branches := []string{}
-	err := dm.client.CallRemote(
-		context.Background(), "DatameshRPC.Clones", volumeName, &branches,
+	err = dm.client.CallRemote(
+		context.Background(), "DatameshRPC.Clones", VolumeName{namespace, name}, &branches,
 	)
 	if err != nil {
 		return []string{}, err
@@ -178,19 +206,25 @@ func (dm *DatameshAPI) Branches(volumeName string) ([]string, error) {
 }
 
 func (dm *DatameshAPI) VolumeExists(volumeName string) (bool, error) {
-	volumes := map[string]DatameshVolume{}
-	err := dm.client.CallRemote(
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return false, err
+	}
+
+	volumes := map[string]map[string]DatameshVolume{}
+	err = dm.client.CallRemote(
 		context.Background(), "DatameshRPC.List", nil, &volumes,
 	)
 	if err != nil {
 		return false, err
 	}
-	for volume, _ := range volumes {
-		if volume == volumeName {
-			return true, nil
-		}
+
+	volumesInNamespace, ok := volumes[namespace]
+	if !ok {
+		return false, nil
 	}
-	return false, nil
+	_, ok = volumesInNamespace[name]
+	return ok, nil
 }
 
 func (dm *DatameshAPI) SwitchVolume(volumeName string) error {
@@ -202,9 +236,14 @@ func (dm *DatameshAPI) CurrentBranch(volumeName string) (string, error) {
 }
 
 func (dm *DatameshAPI) AllBranches(volumeName string) ([]string, error) {
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return []string{}, err
+	}
+
 	var branches []string
-	err := dm.client.CallRemote(
-		context.Background(), "DatameshRPC.Clones", volumeName, &branches,
+	err = dm.client.CallRemote(
+		context.Background(), "DatameshRPC.Clones", VolumeName{namespace, name}, &branches,
 	)
 	// the "main" filesystem (topLevelFilesystemId) is the master branch
 	// (DEFAULT_BRANCH)
@@ -214,7 +253,7 @@ func (dm *DatameshAPI) AllBranches(volumeName string) ([]string, error) {
 }
 
 func (dm *DatameshAPI) AllVolumes() ([]DatameshVolume, error) {
-	filesystems := map[string]DatameshVolume{}
+	filesystems := map[string]map[string]DatameshVolume{}
 	result := []DatameshVolume{}
 	interim := map[string]DatameshVolume{}
 	err := dm.client.CallRemote(
@@ -224,9 +263,19 @@ func (dm *DatameshAPI) AllVolumes() ([]DatameshVolume, error) {
 		return result, err
 	}
 	names := []string{}
-	for filesystem, v := range filesystems {
-		interim[filesystem] = v
-		names = append(names, filesystem)
+	for namespace, volumesInNamespace := range filesystems {
+		var prefix string
+		if namespace == "admin" {
+			prefix = ""
+		} else {
+			prefix = namespace + "/"
+		}
+
+		for filesystem, v := range volumesInNamespace {
+			name := prefix + filesystem
+			interim[name] = v
+			names = append(names, name)
+		}
 	}
 	sort.Strings(names)
 	for _, name := range names {
@@ -243,14 +292,21 @@ func deMasterify(s string) string {
 	return s
 }
 
-func (dm *DatameshAPI) Commit(activeVolume, activeBranch, commitMessage string) (string, error) {
+func (dm *DatameshAPI) Commit(activeVolumeName, activeBranch, commitMessage string) (string, error) {
 	var result bool
-	err := dm.client.CallRemote(
+
+	activeNamespace, activeVolume, err := ParseNamespacedVolume(activeVolumeName)
+	if err != nil {
+		return "", err
+	}
+
+	err = dm.client.CallRemote(
 		context.Background(),
 		"DatameshRPC.Snapshot",
 		// TODO replace these map[string]string's with typed structs that are
 		// shared between the client and the server for cross-rpc type safety
 		map[string]string{
+			"Namespace":              activeNamespace,
 			"TopLevelFilesystemName": activeVolume,
 			"CloneName":              deMasterify(activeBranch),
 			"Message":                commitMessage,
@@ -271,12 +327,19 @@ type snapshot struct {
 	Metadata *metadata
 }
 
-func (dm *DatameshAPI) ListCommits(activeVolume, activeBranch string) ([]snapshot, error) {
+func (dm *DatameshAPI) ListCommits(activeVolumeName, activeBranch string) ([]snapshot, error) {
 	var result []snapshot
-	err := dm.client.CallRemote(
+
+	activeNamespace, activeVolume, err := ParseNamespacedVolume(activeVolumeName)
+	if err != nil {
+		return []snapshot{}, err
+	}
+
+	err = dm.client.CallRemote(
 		context.Background(),
 		"DatameshRPC.Snapshots",
 		map[string]string{
+			"Namespace":              activeNamespace,
 			"TopLevelFilesystemName": activeVolume,
 			"CloneName":              deMasterify(activeBranch),
 		},
@@ -317,6 +380,11 @@ func (dm *DatameshAPI) ResetCurrentVolume(commit string) error {
 	if err != nil {
 		return err
 	}
+	namespace, name, err := ParseNamespacedVolume(activeVolume)
+	if err != nil {
+		return err
+	}
+
 	activeBranch, err := dm.CurrentBranch(activeVolume)
 	if err != nil {
 		return err
@@ -330,7 +398,8 @@ func (dm *DatameshAPI) ResetCurrentVolume(commit string) error {
 		context.Background(),
 		"DatameshRPC.Rollback",
 		map[string]string{
-			"TopLevelFilesystemName": activeVolume,
+			"Namespace":              namespace,
+			"TopLevelFilesystemName": name,
 			"CloneName":              deMasterify(activeBranch),
 			"SnapshotId":             commitId,
 		},
@@ -347,13 +416,14 @@ type Container struct {
 	Name string
 }
 
-func (dm *DatameshAPI) RelatedContainers(volumeName, branch string) ([]Container, error) {
+func (dm *DatameshAPI) RelatedContainers(volumeName VolumeName, branch string) ([]Container, error) {
 	result := []Container{}
 	err := dm.client.CallRemote(
 		context.Background(),
 		"DatameshRPC.Containers",
 		map[string]string{
-			"TopLevelFilesystemName": volumeName,
+			"Namespace":              volumeName.Namespace,
+			"TopLevelFilesystemName": volumeName.Name,
 			"CloneName":              deMasterify(branch),
 		},
 		&result,
@@ -492,8 +562,10 @@ type TransferRequest struct {
 	User                 string
 	ApiKey               string
 	Direction            string
+	LocalNamespace       string
 	LocalFilesystemName  string
 	LocalCloneName       string
+	RemoteNamespace      string
 	RemoteFilesystemName string
 	RemoteCloneName      string
 	TargetSnapshot       string
@@ -506,21 +578,64 @@ type TransferRequest struct {
 // behind NAT from its peer, and so it must initiate the connection.
 func (dm *DatameshAPI) RequestTransfer(
 	direction, peer,
-	filesystemName, branchName,
+	localFilesystemName, localBranchName,
 	remoteFilesystemName, remoteBranchName string,
 ) (string, error) {
 	connectionInitiator := dm.Configuration.CurrentRemote
 
 	var err error
-	var currentVolume string
 
+	remote, err := dm.Configuration.GetRemote(peer)
+	if err != nil {
+		return "", err
+	}
+
+	// Let's replace any missing things with defaults.
+	// The defaults depend on whether we're pushing or pulling.
+
+	if direction == "push" {
+		// We are pushing, so if no local filesystem/branch is
+		// specified, take the current one.
+		if localFilesystemName == "" {
+			localFilesystemName, err = dm.Configuration.CurrentVolume()
+			if err != nil {
+				return "", err
+			}
+		}
+
+		if localBranchName == "" {
+			localBranchName, err = dm.Configuration.CurrentBranch()
+			if err != nil {
+				return "", err
+			}
+		}
+	} else if direction == "pull" {
+		// We are pulling, so if no local filesystem/branch is
+		// specified, we take the remote name but strip it of its
+		// namespace. So if we pull "bob/apples", we pull into "apples",
+		// which is really "admin/apples".
+		if localFilesystemName == "" && remoteFilesystemName != "" {
+			_, localFilesystemName, err = ParseNamespacedVolume(remoteFilesystemName)
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+
+	// On the other hand, if a local is specified but no remote, we
+	// need to guess the remote.
+
+	// TODO: When we have "remote tracking" support, we'll have
+	// recorded the remote we cloned from so can just use that.
 	if remoteFilesystemName == "" {
-		currentVolume, err = dm.Configuration.CurrentVolume()
+		_, bareName, err := ParseNamespacedVolume(localFilesystemName)
 		if err != nil {
 			return "", err
 		}
-	} else {
-		currentVolume = remoteFilesystemName
+		remoteFilesystemName = remote.User + "/" + bareName
+	}
+	if remoteBranchName == "" {
+		remoteBranchName = localBranchName
 	}
 
 	if remoteBranchName != "" && remoteFilesystemName == "" {
@@ -529,22 +644,19 @@ func (dm *DatameshAPI) RequestTransfer(
 				"without specifying a remote filesystem name.",
 		)
 	}
-	var currentBranch string
-	if remoteBranchName == "" {
-		currentBranch, err = dm.Configuration.CurrentBranch()
-		if err != nil {
-			return "", err
-		}
-	} else {
-		currentBranch = remoteBranchName
+
+	localNamespace, localVolume, err := ParseNamespacedVolume(localFilesystemName)
+	if err != nil {
+		return "", err
+	}
+
+	remoteNamespace, remoteFilesystemName, err := ParseNamespacedVolume(remoteFilesystemName)
+	if err != nil {
+		return "", err
 	}
 
 	// connect to connectionInitiator
 	client, err := dm.Configuration.ClusterFromRemote(connectionInitiator)
-	if err != nil {
-		return "", err
-	}
-	remote, err := dm.Configuration.GetRemote(peer)
 	if err != nil {
 		return "", err
 	}
@@ -557,10 +669,12 @@ func (dm *DatameshAPI) RequestTransfer(
 			User:                 remote.User,
 			ApiKey:               remote.ApiKey,
 			Direction:            direction,
-			LocalFilesystemName:  currentVolume,
-			LocalCloneName:       deMasterify(currentBranch),
-			RemoteFilesystemName: filesystemName,
-			RemoteCloneName:      deMasterify(branchName),
+			LocalNamespace:       localNamespace,
+			LocalFilesystemName:  localVolume,
+			LocalCloneName:       deMasterify(localBranchName),
+			RemoteNamespace:      remoteNamespace,
+			RemoteFilesystemName: remoteFilesystemName,
+			RemoteCloneName:      deMasterify(remoteBranchName),
 			// TODO add TargetSnapshot here, to support specifying "push to a given
 			// snapshot" rather than just "push all snapshots up to the latest"
 		}, &transferId)
@@ -568,4 +682,33 @@ func (dm *DatameshAPI) RequestTransfer(
 		return "", err
 	}
 	return transferId, nil
+}
+
+// FIXME: Put this in a shared library, as it duplicates the copy in datamesh-server/pkg/main/utils.go
+
+type VolumeName struct {
+	Namespace string
+	Name      string
+}
+
+func (v VolumeName) String() string {
+	if v.Namespace == "admin" {
+		return v.Name
+	} else {
+		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
+	}
+}
+
+func ParseNamespacedVolume(name string) (string, string, error) {
+	parts := strings.Split(name, "/")
+	switch len(parts) {
+	case 0: // name was empty
+		return "", "", nil
+	case 1: // name was unqualified, no namespace, so we default to "admin"
+		return "admin", name, nil
+	case 2: // Qualified name
+		return parts[0], parts[1], nil
+	default: // Too many slashes!
+		return "", "", fmt.Errorf("Volume names must be of the form NAMESPACE/VOLUME or just VOLUME: '%s'", name)
+	}
 }

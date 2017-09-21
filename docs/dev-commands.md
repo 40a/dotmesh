@@ -82,7 +82,12 @@ Now we login and run the `ubuntu` prepare script:
 ```bash
 $ vagrant ssh
 $ bash /vagrant/scripts/prepare_vagrant.sh
+$ exit
+$ vagrant ssh
+$ go get github.com/tools/godep
 ```
+
+NOTE: you must exit and re-ssh to get the GOPATH to work
 
 Now you can skip directly to ["running tests"](#running-tests).
 
