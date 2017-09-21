@@ -270,6 +270,10 @@ func teardownFinishedTestRuns() {
 			}
 		}()
 	}
+	err = system("docker", "prune", "-fa")
+	if err != nil {
+		fmt.Printf("Error from docker prune -fa: %v", err)
+	}
 }
 
 func docker(node string, cmd string) (string, error) {
@@ -558,7 +562,10 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	// TODO regex the following yamels to refer to the newly pushed
 	// datamesh container image, rather than the latest stable
 	err := system("bash", "-c",
-		fmt.Sprintf("docker cp ../kubernetes/*.yaml %s:/YAMELS/", nodeName(now, i, 0)),
+		fmt.Sprintf(
+			"for X in ../kubernetes/*.yaml; do docker cp $X %s:/tmp/; done",
+			nodeName(now, i, 0),
+		),
 	)
 	if err != nil {
 		return err
@@ -617,7 +624,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 			"kubectl create secret generic datamesh "+
 			"    --from-file=datamesh-admin-password.txt -n datamesh && "+
 			"rm datamesh-admin-password.txt && "+
-			"kubectl apply -f /YAMELS && "+
+			"kubectl apply -f /tmp && "+
 			"while ! (echo secret123 | dm remote add local admin@127.0.0.1); "+
 			"    do echo 'retrying...' && sleep 1; done",
 	)
