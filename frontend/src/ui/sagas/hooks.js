@@ -14,14 +14,23 @@ const Logger = (type) => {
   return logger
 }
 
+const REQUIRED_SAGA_GROUPS = [
+  'auth',
+  'repo',
+  'billing',
+  'config'
+]
+
 const Hooks = (opts = {}) => {
-  if(!opts.auth) throw new Error('auth opt required for hooks')
-  if(!opts.repo) throw new Error('repo opt required for hooks')
-  if(!opts.config) throw new Error('config opt required for hooks')
+  REQUIRED_SAGA_GROUPS.forEach(name => {
+    if(!opts[name]) throw new Error(`${name} saga group required`)
+  })
+
   const auth = opts.auth
   const repo = opts.repo
   const billing = opts.billing
   const config = opts.config
+
   return {
 
     // auth hooks for register/login
@@ -36,6 +45,8 @@ const Hooks = (opts = {}) => {
     repoList: repo.list,
     repoUpdateSearch: repo.updateSearch,
     repoUpdatePage: repo.updatePage,
+    repoFormSubmit: repo.formSubmit,
+    repoFormInitialize: repo.formInitialize,
 
     // billing
     billingTokenReceived: billing.tokenReceived,

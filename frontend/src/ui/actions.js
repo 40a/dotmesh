@@ -22,7 +22,11 @@ export const auth = {
   setUser: (credentials) => value.set(config.userValueName, credentials)
 }
 
-
 export const repos = {
   updateSearch: search => value.set('repoListSearch', search)
+}
+
+export const application = {
+  setMessage: (message) => value.set('applicationMessage', message),
+  clearMessage: () => value.set('applicationMessage', null)
 }

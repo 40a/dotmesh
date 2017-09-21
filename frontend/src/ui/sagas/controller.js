@@ -66,8 +66,7 @@ const ControllerLoop = (opts = {}) => {
   }
 
   function* onRouteChange() { 
-    yield call(stop)
-    yield call(start)
+    yield call(singleLoop)
   }
 
   return {

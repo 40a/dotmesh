@@ -74,6 +74,7 @@ const loaders = {
 
   // all these methods need to be wrapped - they need auth
   repoList: wrapper(repo.list),
+  repoCreate: wrapper(repo.create),
 
   billingSubmitPayment: wrapper(billing.submitPayment),
 

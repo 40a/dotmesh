@@ -12,8 +12,18 @@ const sortObjectList = (arr, extractor) => {
   return arr
 }
 
+const searchObjectList = (allResults, search, extractor) => {
+  if(!search) return allResults
+  const useSearch = search.toLowerCase().replace(/\W/g, '')
+  return allResults.filter(data => {
+    const useName = (extractor(data) || '').toLowerCase().replace(/\W/g, '')
+    return useName.indexOf(useSearch) >= 0
+  })
+}
+
 const listUtils = {
-  sortObjectList
+  sortObjectList,
+  searchObjectList
 }
 
 export default listUtils

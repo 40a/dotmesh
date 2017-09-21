@@ -25,7 +25,8 @@ class RepoFormContainer extends Component {
 
 export default connect(
   (state, ownProps) => ({
-    
+    isValid: selectors.form.repo.valid(state),
+    formLoading: selectors.value(state, 'repoFormLoading')
   }),
   (dispatch) => ({
     submit: () => dispatch(actions.router.hook('repoFormSubmit')),

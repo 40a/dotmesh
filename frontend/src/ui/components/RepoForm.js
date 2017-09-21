@@ -10,12 +10,14 @@ class RepoForm extends Component {
   getActions() {
     return [{
       label: 'Cancel',
-      onClick: this.props.cancel
+      onClick: this.props.cancel,
+      disabled: this.props.formLoading
     },{
       label: 'Submit',
-      raised: true,
-      primary: true,
-      onClick: this.props.submit
+      raised: this.props.isValid,
+      primary: this.props.isValid,
+      onClick: this.props.submit,
+      disabled: this.props.formLoading
     }]
   }
 

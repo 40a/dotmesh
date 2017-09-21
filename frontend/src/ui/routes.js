@@ -56,7 +56,8 @@ export const routeConfig = processRoutes({
   },
   '/repos/new': {
     user: true,
-    authRedirect: '/login'
+    authRedirect: '/login',
+    hooks: ['repoFormInitialize']
   },
   '/payment': {
     user: true,
@@ -129,7 +130,7 @@ export const routes = (
         <Section>
           <UserLayout>
             <RepoForm
-              title='New Repository'
+              title='Create Repository'
             >
             </RepoForm>
           </UserLayout>

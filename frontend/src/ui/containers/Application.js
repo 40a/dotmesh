@@ -28,7 +28,8 @@ export default connect(
       user,
       menuOptions,
       autoScroll: autoScroll,
-      initialized: selectors.valueSelector(state, 'initialized')
+      initialized: selectors.valueSelector(state, 'initialized'),
+      message: selectors.application.message(state)
     }
   },
   (dispatch) => {
@@ -40,7 +41,8 @@ export default connect(
       },
       onOptionClick: (id) => {
         dispatch(actions.router.redirect(id))
-      }
+      },
+      clearMessage: () => dispatch(actions.application.clearMessage())
     }
   }
 )(ApplicationContainer)

@@ -43,7 +43,6 @@ const RPCExecutor = (opts = {}) => {
     })
     .then(data => {
       if(data.id != id) throw new Error(`request id ${id} does not match response id ${data.id}`)
-      if(!data.result) throw new Error(`no result found in response`)
       return data.result
     })
   }

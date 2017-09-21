@@ -8,6 +8,7 @@ export { default as router } from 'template-ui/lib/plugins/router/selectors'
 import forms from './forms'
 import config from './config'
 import labels from './utils/labels'
+import listUtils from './utils/list'
 
 export const valuesSelector = (state) => state.value || {}
 export const valueSelector = (state, name) => valuesSelector(state)[name]
@@ -24,7 +25,8 @@ export const formValuesSelector = (name) => {
 }
 
 export const application = {
-  servername: (state) => window.location.hostname
+  servername: (state) => window.location.hostname,
+  message: (state) => valueSelector(state, 'applicationMessage')
 }
 
 export const billing = {
@@ -73,13 +75,8 @@ export const repos = {
   search: (state) => valueSelector(state, 'repoListSearch') || '',
   searchResults: (state) => {
     const search = repos.search(state)
-    const useSearch = search.toLowerCase().replace(/\W/g, '')
     const allResults = repos.all(state)
-    if(!search) return allResults
-    return allResults.filter(data => {
-      const useName = (repo.name(data) || '').toLowerCase().replace(/\W/g, '')
-      return useName.indexOf(useSearch) >= 0
-    })
+    return listUtils.searchObjectList(allResults, search, repo.name)
   },
   pageCurrent: (state) => {
     const st = state.router.params.page || '1'
@@ -103,13 +100,24 @@ export const repos = {
     const pageCurrent = repos.pageCurrent(state)
     const startIndex = (pageCurrent - 1) * pageSize
     return searchResults.slice(startIndex, startIndex + pageSize)
+  },
+  // Name is {Name,Namespace}
+  exists: (state, Name) => {
+    return repos.all(state).filter(data => {
+      return repo.name(data) == Name.Name && repo.namespace(data) == Name.Namespace
+    }).length > 0
   }
 }
 
 export const repo = {
   top: (data) => data.TopLevelVolume,
   id: (data) => repo.top(data).Id,
+
   fullname: (data) => repo.top(data).Name || {},
+  title: (data) => {
+    const fullname = repo.fullname(data)
+    return [fullname.Namespace, fullname.Name].join(' / ')
+  },
   name: (data) => repo.fullname(data).Name,
   namespace: (data) => repo.fullname(data).Namespace,
   size: (data) => repo.top(data).SizeBytes,

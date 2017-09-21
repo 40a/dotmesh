@@ -10,7 +10,8 @@ import listUtils from '../utils/list'
 import tools from '../tools'
 
 const REQUIRED_APIS = [
-  'list'
+  'list',
+  'create'
 ]
 
 const RepoSagas = (opts = {}) => {
@@ -60,10 +61,55 @@ const RepoSagas = (opts = {}) => {
     yield put(actions.router.redirect(`/repos/page/${page}`))
   }
 
+  function* formInitialize() {
+    yield put(actions.forms.reset('repo'))
+  }
+
+  function* formSubmit() {
+    const isValid = yield select(state => selectors.form.repo.valid(state))
+    const values = yield select(state => selectors.form.repo.values(state))
+
+    if(!isValid) return
+
+    yield put(actions.value.set('repoFormLoading', true))
+    const Name = values.Name
+    const Namespace = yield select(selectors.auth.name)
+
+    const payload = {
+      Namespace,
+      Name
+    }
+
+    // load the repos so we can see if the one they are adding exists already
+    yield call(list)
+
+    const exists = yield select(state => selectors.repos.exists(state, payload))
+
+    if(exists) {
+      yield put(actions.value.set('repoFormLoading', false))
+      yield put(actions.application.setMessage(`repo with name: ${Namespace} / ${Name} already exists`))
+      return
+    }
+
+    const { answer, error } = yield call(apis.create.loader, payload)
+    
+    if(error) {
+      yield put(actions.value.set('repoFormLoading', false))
+      yield put(actions.application.setMessage(error.toString()))
+      return
+    }
+
+    yield put(actions.value.set('repoFormLoading', false))
+    yield put(actions.application.setMessage(`repo ${Namespace} / ${Name} created`))
+    yield put(actions.router.redirect('/repos'))
+  }
+
   return {
     list,
     updateSearch,
-    updatePage
+    updatePage,
+    formInitialize,
+    formSubmit
   }
 }
 

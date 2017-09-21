@@ -22,7 +22,8 @@ const auth = Auth({
 
 const repo = Repo({
   apis: {
-    list: apis.repoList
+    list: apis.repoList,
+    create: apis.repoCreate
   }
 })
 
@@ -57,7 +58,7 @@ const router = RouterSaga({
   trigger: (name, payload) => {
     if(process.env.NODE_ENV=='development') {
       console.log(`hook: ${name} ${payload && payload.name ? payload.name : ''}`)
-      console.dir(payload)
+      if(payload) console.dir(payload)
     }
   }
 })
