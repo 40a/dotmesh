@@ -15,7 +15,7 @@ class RepoListItem extends Component {
         <div className={ theme.repoInfo }>
           <div>
             <div className={ theme.repoName + ' ' + colors.bluelink }>
-              { selectors.repo.name(repo) }
+              { selectors.repo.namespace(repo) } / { selectors.repo.name(repo) }
             </div>
             {
               selectors.repo.isPrivate(repo) ? (
