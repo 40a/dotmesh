@@ -8,6 +8,7 @@ import RepoListItem from './RepoListItem'
 import Pager from './widgets/Pager'
 import SearchBox from './widgets/SearchBox'
 import FadedText from './widgets/FadedText'
+import NoRepos from './help/NoRepos'
 import theme from './theme/repolist.css'
 
 class RepoList extends Component {
@@ -15,7 +16,7 @@ class RepoList extends Component {
   noData() {
     return (
       <div className={ theme.container }>
-        No repos - display help page
+        <NoRepos />
       </div>
     )
   }
