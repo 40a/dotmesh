@@ -48,6 +48,7 @@ const Hooks = (opts = {}) => {
     repoFormSubmit: repo.formSubmit,
     repoFormInitialize: repo.formInitialize,
     repoOpen: repo.open,
+    repoOpenBranch: repo.openBranch,
 
     // billing
     billingTokenReceived: billing.tokenReceived,

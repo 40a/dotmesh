@@ -14,7 +14,7 @@ class RepoListItem extends Component {
       <div className={ theme.listItem }>
         <div className={ theme.repoInfo }>
           <div>
-            <div className={ theme.repoName + ' ' + colors.bluelink } onClick={ () => this.props.clickRepo(repo) }>
+            <div className={ theme.repoName + ' ' + colors.bluelink + ' ' + theme.link } onClick={ () => this.props.clickRepo(repo) }>
               { selectors.repo.title(repo) }
             </div>
             {

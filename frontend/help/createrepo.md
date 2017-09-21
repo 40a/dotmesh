@@ -1,13 +1,8 @@
 ## Create a Repository
 
-some text about getting datamesh installed
-
- * with
- * a list
- * and another
+To create a new repository:
 
 ```bash
-$ dm init apples
-$ dm branch
+$ dm init ${USER_NAME}/apples
 $ dm list
 ```

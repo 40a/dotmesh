@@ -112,13 +112,20 @@ const RepoSagas = (opts = {}) => {
     yield call(list)
   }
 
+  function* openBranch(branchname) {
+    const urlName = yield select(selectors.repos.extractUrlName)
+    const branchUrl = `/${urlName.Namespace}/${urlName.Name}/tree/${branchname}`
+    yield put(actions.router.redirect(branchUrl))
+  }
+
   return {
     list,
     updateSearch,
     updatePage,
     formInitialize,
     formSubmit,
-    open
+    open,
+    openBranch
   }
 }
 

@@ -106,10 +106,23 @@ export const repos = {
     const routerState = state.router
     const urlChunk = routerState.params._ || ''
     const parts = urlChunk.split('/')
+    const Namespace = parts.shift()
+    const Name = parts.shift()
+    const Section = parts.join('/')
+    const Parts = parts
     return {
-      Namespace: parts[0],
-      Name: parts[1]
+      Namespace,
+      Name,
+      Section,
+      Parts
     }
+  },
+  extractBranchName: (state) => {
+    const urlName = repos.extractUrlName(state)
+    let branch = null
+    if(urlName.Parts[0] == 'tree') branch = urlName.Parts[1]
+    branch = branch || 'master'
+    return branch
   },
   // Name is {Name,Namespace}
   get: (state, Name) => {
@@ -121,30 +134,58 @@ export const repos = {
     const urlName = repos.extractUrlName(state)
     return repos.get(state, urlName)
   },
+  getBranchFromUrl: (state) => {
+    const branchName = repos.extractBranchName(state)
+    const repoData = repos.getFromUrl(state)
+    return repo.getBranch(repoData, branchName)
+  },
   // Name is {Name,Namespace}
   exists: (state, Name) => repos.get(state, Name) ? true : false
 }
 
 export const repo = {
-  top: (data) => (data || {}).TopLevelVolume || {},
-  id: (data) => repo.top(data).Id,
-  fullname: (data) => repo.top(data).Name || {},
-  title: (data) => {
+  top: (data = {}) => (data || {}).TopLevelVolume || {},
+  id: (data = {}) => repo.top(data).Id,
+  fullname: (data = {}) => repo.top(data).Name || {},
+  names: (data = {}, joinst = '') => {
     const fullname = repo.fullname(data)
-    return [fullname.Namespace, fullname.Name].join(' / ')
+    return [fullname.Namespace, fullname.Name].join(joinst)
   },
-  name: (data) => repo.fullname(data).Name,
-  namespace: (data) => repo.fullname(data).Namespace,
-  size: (data) => repo.top(data).SizeBytes,
-  serverStatuses: (data) => repo.top(data).ServerStatuses || {},
-  sizeTitle: (data) => labels.size(repo.size(data)),
-  isPrivate: (data) => true,
-  branches: (data) => data.CloneVolumes || [],
-  branchCount: (data) => (repo.branches(data).length + 1),
-  branchCountTitle: (data) => {
+  title: (data = {}) => repo.names(data, ' / '),
+  url: (data = {}) => repo.names(data, '/'),
+  name: (data = {}) => repo.fullname(data).Name,
+  namespace: (data = {}) => repo.fullname(data).Namespace,
+  size: (data = {}) => repo.top(data).SizeBytes,
+  serverStatuses: (data = {}) => repo.top(data).ServerStatuses || {},
+  sizeTitle: (data = {}) => labels.size(repo.size(data)),
+  isPrivate: (data = {}) => true,
+  branches: (data = {}) => data.CloneVolumes || [],
+  branchList: (data = {}) => {
+    const branches = repo.branches(data).map(branchData => {
+      return {
+        id: branch.id(branchData),
+        name: branch.name(branchData)
+      }
+    })
+    return [{
+      id: repo.id(data),
+      name: 'master'
+    }].concat(branches)
+  },
+  getBranch: (data = {}, name = 'master') => {
+    if(name == 'master') return repo.top(data)
+    return repo.branches(data).filter(branchData => branch.name(branchData) == name)[0]
+  },
+  branchCount: (data = {}) => (repo.branches(data).length + 1),
+  branchCountTitle: (data = {}) => {
     const count = repo.branchCount(data)
     return `${ count } branch${ count==1 ? '' : 'es' }`
   }
+}
+
+export const branch = {
+  id: (data) => data.Id,
+  name: (data) => data.Clone
 }
 
 export const help = {

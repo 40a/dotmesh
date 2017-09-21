@@ -73,7 +73,8 @@ const config = {
     help: [
       ['quickstart', 'Quickstart'],
       ['install', 'Install Datamesh'],
-      ['createrepo', 'Create a Repository']
+      ['createrepo', 'Create a Repository'],
+      ['runcontainer', 'Run a Container']
     ]
   },
   icons
