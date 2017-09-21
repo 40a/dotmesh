@@ -29,6 +29,15 @@ func TestSingleNode(t *testing.T) {
 	node1 := f[0].GetNode(0).Container
 
 	// Sub-tests, to reuse common setup code.
+	t.Run("Init", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, "dm init "+fsname)
+		resp := s(t, node1, "dm list")
+		if !strings.Contains(resp, fsname) {
+			t.Error("unable to find volume name in ouput")
+		}
+	})
+
 	t.Run("Commit", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" touch /foo/X")

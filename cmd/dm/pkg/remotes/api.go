@@ -70,7 +70,15 @@ func (dm *DatameshAPI) Ping() (bool, error) {
 
 func (dm *DatameshAPI) NewVolume(volumeName string) error {
 	var response bool
-	err := dm.client.CallRemote(context.Background(), "DatameshRPC.Create", volumeName, &response)
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return err
+	}
+	sendVolumeName := VolumeName{
+		Namespace: namespace,
+		Name: name,
+	}
+	err = dm.client.CallRemote(context.Background(), "DatameshRPC.Create", sendVolumeName, &response)
 	if err != nil {
 		return err
 	}
