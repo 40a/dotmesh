@@ -20,7 +20,8 @@ export default connect(
     const menuOptions = config.menu.help
     return {
       menuOptions,
-      currentPage: selectors.help.currentPage(state)
+      currentPage: selectors.help.currentPage(state),
+      variables: selectors.help.variables(state)
     }
   },
   (dispatch) => ({

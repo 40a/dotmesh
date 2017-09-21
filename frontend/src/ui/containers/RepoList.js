@@ -28,7 +28,8 @@ export default connect(
       repoCount: selectors.repos.count(state),
       searchCount: selectors.repos.searchCount(state),
       pageCount: selectors.repos.pageCount(state),
-      pageCurrent: selectors.repos.pageCurrent(state)
+      pageCurrent: selectors.repos.pageCurrent(state),
+      helpVariables: selectors.help.variables(state)
     }
   },
   (dispatch) => ({

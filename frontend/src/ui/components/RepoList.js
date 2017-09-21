@@ -17,10 +17,8 @@ class RepoList extends Component {
     return (
       <div className={ theme.container }>
         <HelpPage
-          page='install.md'
-        />
-        <HelpPage
-          page='createrepo.md'
+          page='quickstart.md'
+          variables={ this.props.helpVariables }
         />
       </div>
     )

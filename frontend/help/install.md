@@ -1,13 +1,9 @@
-# Install Datamesh
+## Install Datamesh
 
-some text about getting datamesh installed
-
- * with
- * a list
- * and another
+These commands will install the `dm` binary onto your system:
 
 ```bash
-$ dm init apples
-$ dm branch
-$ dm list
+$ sudo curl -o /usr/local/bin/dm \
+    https://get.datamesh.io/$(uname -s)/dm
+$ sudo chmod +x /usr/local/bin/dm
 ```

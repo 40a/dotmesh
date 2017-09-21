@@ -2,8 +2,8 @@
     "createrepo.md": [
         {
             "type": "html",
-            "text": "# Create a Repository\n\nsome text about getting datamesh installed\n\n * with\n * a list\n * and another\n\n",
-            "html": "<h1 id=\"create-a-repository\">Create a Repository</h1>\n<p>some text about getting datamesh installed</p>\n<ul>\n<li>with</li>\n<li>a list</li>\n<li>and another</li>\n</ul>\n"
+            "text": "## Create a Repository\n\nsome text about getting datamesh installed\n\n * with\n * a list\n * and another\n\n",
+            "html": "<h2 id=\"create-a-repository\">Create a Repository</h2>\n<p>some text about getting datamesh installed</p>\n<ul>\n<li>with</li>\n<li>a list</li>\n<li>and another</li>\n</ul>\n"
         },
         {
             "type": "code",
@@ -20,14 +20,14 @@
     "install.md": [
         {
             "type": "html",
-            "text": "# Install Datamesh\n\nsome text about getting datamesh installed\n\n * with\n * a list\n * and another\n\n",
-            "html": "<h1 id=\"install-datamesh\">Install Datamesh</h1>\n<p>some text about getting datamesh installed</p>\n<ul>\n<li>with</li>\n<li>a list</li>\n<li>and another</li>\n</ul>\n"
+            "text": "## Install Datamesh\n\nThese commands will install the `dm` binary onto your system:\n\n",
+            "html": "<h2 id=\"install-datamesh\">Install Datamesh</h2>\n<p>These commands will install the <code>dm</code> binary onto your system:</p>\n"
         },
         {
             "type": "code",
             "language": "bash",
-            "text": "$ dm init apples\n$ dm branch\n$ dm list\n",
-            "code": "$ dm init apples\n$ dm branch\n$ dm list"
+            "text": "$ sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\n$ sudo chmod +x /usr/local/bin/dm\n",
+            "code": "$ sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\n$ sudo chmod +x /usr/local/bin/dm"
         },
         {
             "type": "html",
@@ -38,19 +38,41 @@
     "quickstart.md": [
         {
             "type": "html",
-            "text": "# Quickstart\n\nthis is some text\n\n * with\n * a list\n * and another\n\n",
-            "html": "<h1 id=\"quickstart\">Quickstart</h1>\n<p>this is some text</p>\n<ul>\n<li>with</li>\n<li>a list</li>\n<li>and another</li>\n</ul>\n"
+            "text": "## Quickstart\n\nGet your local `dm` command connected to this datamesh cluster.\n\n### Install Datamesh\n\nThese commands will install the `dm` binary onto your system:\n\n",
+            "html": "<h2 id=\"quickstart\">Quickstart</h2>\n<p>Get your local <code>dm</code> command connected to this datamesh cluster.</p>\n<h3 id=\"install-datamesh\">Install Datamesh</h3>\n<p>These commands will install the <code>dm</code> binary onto your system:</p>\n"
         },
         {
             "type": "code",
             "language": "bash",
-            "text": "$ here is code\n",
-            "code": "$ here is code"
+            "text": "sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\nsudo chmod +x /usr/local/bin/dm\n",
+            "code": "sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\nsudo chmod +x /usr/local/bin/dm"
         },
         {
             "type": "html",
-            "text": "## and another thing\n\nhello\n\n\n\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\nhello\n\nhello\nhello\nhello\n\nvhello\n\nhello\nhello\nhello\n",
-            "html": "<h2 id=\"and-another-thing\">and another thing</h2>\n<p>hello</p>\n<p>hello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello\nhello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello\nhello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello\nhello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello\nhello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello\nhello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello\nhello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello\nhello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello\nhello</p>\n<p>hello\nhello\nhello</p>\n<p>vhello</p>\n<p>hello\nhello\nhello</p>\n"
+            "text": "### Connect Remote\n\n",
+            "html": "<h3 id=\"connect-remote\">Connect Remote</h3>\n"
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "dm remote add mycluster ${USER_NAME}@${SERVER_NAME}\n# enter password\ndm remote -v\ndm remote switch mycluster\n",
+            "code": "dm remote add mycluster ${USER_NAME}@${SERVER_NAME}\n# enter password\ndm remote -v\ndm remote switch mycluster"
+        },
+        {
+            "type": "html",
+            "text": "### Create Volume\n\n",
+            "html": "<h3 id=\"create-volume\">Create Volume</h3>\n"
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "dm init apples\ndm list\n",
+            "code": "dm init apples\ndm list"
+        },
+        {
+            "type": "html",
+            "text": "",
+            "html": ""
         }
     ]
 }

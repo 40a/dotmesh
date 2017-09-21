@@ -1,117 +1,29 @@
-# Quickstart
+## Quickstart
 
-this is some text
+Get your local `dm` command connected to this datamesh cluster.
 
- * with
- * a list
- * and another
+### Install Datamesh
+
+These commands will install the `dm` binary onto your system:
 
 ```bash
-$ here is code
+sudo curl -o /usr/local/bin/dm \
+    https://get.datamesh.io/$(uname -s)/dm
+sudo chmod +x /usr/local/bin/dm
 ```
 
-## and another thing
+### Connect Remote
 
-hello
+```bash
+dm remote add mycluster ${USER_NAME}@${SERVER_NAME}
+# enter password
+dm remote switch mycluster
+dm remote -v
+```
 
+### Create Volume
 
-
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
-hello
-
-hello
-hello
-hello
-
-vhello
-
-hello
-hello
-hello
+```bash
+dm init apples
+dm list
+```

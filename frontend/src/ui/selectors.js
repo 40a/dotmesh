@@ -23,6 +23,10 @@ export const formValuesSelector = (name) => {
   return handler
 }
 
+export const application = {
+  servername: (state) => window.location.hostname
+}
+
 export const billing = {
   plans: (state) => {
     const config = valueSelector(state, 'config') || {}
@@ -122,5 +126,11 @@ export const help = {
   currentPage: (state) => {
     const params = state.router.params || {}
     return params._
+  },
+  variables: (state) => {
+    return {
+      USER_NAME: auth.name(state),
+      SERVER_NAME: application.servername(state)
+    }
   }
 }
