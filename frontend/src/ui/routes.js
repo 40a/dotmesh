@@ -78,10 +78,13 @@ export const routeConfig = processRoutes({
     '/settings': {
       repoPageSection: 'settings',
       settingsPageSection: 'collaborators',
+      hooks: ['repoLoadPageData'],
       '/collaborators': {
+        hooks: ['repoLoadPageData'],
         settingsPageSection: 'collaborators'
       },
       '/access': {
+        hooks: ['repoLoadPageData'],
         settingsPageSection: 'access'
       }
     },

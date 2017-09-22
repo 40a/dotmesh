@@ -28,6 +28,9 @@ export default connect(
     const section = selectors.router.firstValue(state, 'repoPageSection')
     const settingsSection = selectors.router.firstValue(state, 'settingsPageSection')
 
+    console.log('-------------------------------------------');
+    console.log('-------------------------------------------');
+    console.log(JSON.stringify(repo, null, 4))
     return {
       loaded: selectors.value(state, 'repoPageDataLoaded'),
       settingsMenuOptions: config.menu.repoSettings,
