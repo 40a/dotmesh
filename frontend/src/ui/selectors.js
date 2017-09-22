@@ -115,8 +115,8 @@ export const repos = {
       return repo.name(data) == info.Name && repo.namespace(data) == info.Namespace
     })[0]
   },
-  // Name is {Name,Namespace}
-  exists: (state, Name) => repos.get(state, Name) ? true : false
+  // info is {Name,Namespace}
+  exists: (state, info) => repos.getRepo(state, info) ? true : false
 }
 
 export const repoPage = {
