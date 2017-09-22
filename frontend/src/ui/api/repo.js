@@ -14,10 +14,17 @@ const loadCommits = (payload) => ({
   params: [payload]
 })
 
+// payload is {Volume: <ID>, Collaborator: <USERNAME>}
+const addCollaborator = (payload) => ({
+  method: 'AddCollaborator',
+  params: payload
+})
+
 const RepoApi = {
   list,
   create,
-  loadCommits
+  loadCommits,
+  addCollaborator
 }
 
 export default RepoApi

@@ -24,7 +24,8 @@ const repo = Repo({
   apis: {
     list: apis.repoList,
     create: apis.repoCreate,
-    loadCommits: apis.repoLoadCommits
+    loadCommits: apis.repoLoadCommits,
+    addCollaborator: apis.repoAddCollaborator
   }
 })
 

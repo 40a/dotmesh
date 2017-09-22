@@ -31,6 +31,8 @@ export const commits = {
 }
 
 export const application = {
-  setMessage: (message) => value.set('applicationMessage', message),
+  setMessage: (message) => {
+    return value.set('applicationMessage', message)
+  },
   clearMessage: () => value.set('applicationMessage', null)
 }

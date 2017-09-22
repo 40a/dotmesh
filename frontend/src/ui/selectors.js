@@ -43,19 +43,25 @@ export const billing = {
   }
 }
 
+export const user = {
+  email: (data) => data.Email,
+  emailhash: (data) => data.EmailHash,
+  name: (data) => data.Name
+}
+
 export const auth = {
   user: (state) => value(state, config.userValueName),
   email: (state) => {
-    const user = auth.user(state) || {}
-    return user.Email
+    const data = auth.user(state) || {}
+    return user.email(data)
   },
   emailHash: (state) => {
-    const user = auth.user(state) || {}
-    return user.EmailHash
+    const data = auth.user(state) || {}
+    return user.emailhash(data)
   },
   name: (state) => {
-    const user = auth.user(state) || {}
-    return user.Name
+    const data = auth.user(state) || {}
+    return user.name(data)
   }
 }
 
@@ -166,7 +172,8 @@ export const repo = {
   branchCountTitle: (data = {}) => {
     const count = repo.branchCount(data)
     return `${ count } branch${ count==1 ? '' : 'es' }`
-  }
+  },
+  collaborators: (data = {}) => data.Collaborators || []
 }
 
 export const branch = {

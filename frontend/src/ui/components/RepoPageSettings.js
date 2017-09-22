@@ -28,17 +28,13 @@ class RepoPageSettings extends Component {
 
   getCollaborators() {
     return (
-      <RepoPageSettingsCollaborators
-
-      />
+      <RepoPageSettingsCollaborators {...this.props} />
     )
   }
 
   getAccess() {
     return (
-      <RepoPageSettingsAccess
-
-      />
+      <RepoPageSettingsAccess {...this.props} />
     )
   }
 

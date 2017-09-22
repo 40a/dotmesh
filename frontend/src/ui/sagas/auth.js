@@ -111,6 +111,7 @@ const AuthSagas = (opts = {}) => {
 
       // we can only load the config once we are logged in
       yield put(actions.router.hook('configLoad'))
+      yield put(actions.value.set('reposLoaded', false))
       
       return credentials
     }
@@ -140,10 +141,12 @@ const AuthSagas = (opts = {}) => {
     const user = result.answer
 
     if(error) {
+      yield put(actions.application.setMessage(error.toString()))
       yield put(actions.router.hook('authRegisterError', error))
       return
     }
     else if(!user || !user.Created) {
+      yield put(actions.application.setMessage(`user was not created`))
       yield put(actions.router.hook('authRegisterError', 'user was not created'))
       return
     }

@@ -54,6 +54,7 @@ const Hooks = (opts = {}) => {
     repoOpenBranch: repo.openBranch,
     repoOpenSettingsPage: repo.openSettingsPage,
     repoLoadPageData: repo.loadPageData,
+    repoAddCollaborator: repo.addCollaborator,
 
     // billing
     billingTokenReceived: billing.tokenReceived,

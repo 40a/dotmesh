@@ -12,7 +12,8 @@ import tools from '../tools'
 const REQUIRED_APIS = [
   'list',
   'create',
-  'loadCommits'
+  'loadCommits',
+  'addCollaborator'
 ]
 
 const RepoSagas = (opts = {}) => {
@@ -52,7 +53,6 @@ const RepoSagas = (opts = {}) => {
     const { answer, error } = yield call(apis.list.loader)
 
     if(error) {
-      yield put(actions.application.setMessage(error.toString()))
       yield call(resetData)
     }
     else {
@@ -142,6 +142,52 @@ const RepoSagas = (opts = {}) => {
     yield put(actions.router.redirect('/repos'))
   }
 
+  function* addCollaborator() {
+
+    yield put(actions.value.set('collaboratorFormLoading', true))
+
+    const addName = yield select(state => selectors.value(state, 'addCollaboratorName'))
+
+    if(!addName || addName.length <= 0) {
+      yield put(actions.application.setMessage(`please enter a collaborator name`))
+      yield put(actions.value.set('collaboratorFormLoading', false))
+      return
+    }
+
+    const info = yield select(state => selectors.repoPage.urlInfo(state))
+    const repo = yield select(state => selectors.repos.getRepo(state, info))
+    const collaborators = yield select(state => selectors.repo.collaborators(repo))
+
+    const existing = collaborators.filter(collaborator => selectors.user.name(collaborator) == addName)[0]
+
+    if(existing) {
+      yield put(actions.application.setMessage(`collaborator with name: ${addName} already exists`))
+      yield put(actions.value.set('collaboratorFormLoading', false))
+      return
+    }
+
+    const payload = {
+      Volume: selectors.repo.id(repo),
+      Collaborator: addName
+    }
+
+    console.log('-------------------------------------------');
+    console.log('-------------------------------------------');
+    console.dir(apis.addCollaborator.loader)
+
+    const { answer, error } = yield call(apis.addCollaborator.loader, payload)
+    
+    if(error) {
+      yield put(actions.value.set('collaboratorFormLoading', false))
+      yield put(actions.application.setMessage(error.toString()))
+      return
+    }
+
+    yield put(actions.value.set('collaboratorFormLoading', false))
+    yield put(actions.application.setMessage(`collaborator ${addName} added`))
+    yield call(loadPageData)
+  }
+
   function* open(repo) {
     const namespace = selectors.repo.namespace(repo)
     const name = selectors.repo.name(repo)
@@ -190,7 +236,8 @@ const RepoSagas = (opts = {}) => {
     openTab,
     openBranch,
     openSettingsPage,
-    loadPageData
+    loadPageData,
+    addCollaborator
   }
 }
 

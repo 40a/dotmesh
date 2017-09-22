@@ -23,20 +23,20 @@ export default connect(
     
     const branches = repo ? selectors.repo.branchList(repo) : []
     const branch = selectors.repo.getBranch(repo, info.Branch)
+    const collaborators = repo ? selectors.repo.collaborators(repo) : []
 
     const commits = selectors.commits.all(state)
     const section = selectors.router.firstValue(state, 'repoPageSection')
     const settingsSection = selectors.router.firstValue(state, 'settingsPageSection')
 
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.log(JSON.stringify(repo, null, 4))
     return {
       loaded: selectors.value(state, 'repoPageDataLoaded'),
+      collaboratorFormLoading: selectors.value(state, 'collaboratorFormLoading'),
       settingsMenuOptions: config.menu.repoSettings,
       repo,
       branches,
       branch,
+      collaborators,
       info,
       section,
       settingsSection,
@@ -46,7 +46,8 @@ export default connect(
       searchCount: selectors.commits.searchCount(state),
       pageCount: selectors.commits.pageCount(state),
       pageSize: selectors.commits.pageSize(state),
-      pageCurrent: selectors.commits.pageCurrent(state)
+      pageCurrent: selectors.commits.pageCurrent(state),
+      addCollaboratorName: selectors.value(state, 'addCollaboratorName')
     }
   },
   (dispatch) => ({
@@ -55,6 +56,8 @@ export default connect(
     clickNamespace: (namespace) => dispatch(actions.router.redirect('/repos')),
     clickTab: (section) => dispatch(actions.router.hook('repoOpenTab', section)),
     changeBranch: (branchname) => dispatch(actions.router.hook('repoOpenBranch', branchname)),
-    onSettingsMenuClick: (id) => dispatch(actions.router.hook('repoOpenSettingsPage', id))
+    onSettingsMenuClick: (id) => dispatch(actions.router.hook('repoOpenSettingsPage', id)),
+    updateAddCollaboratorName: (val) => dispatch(actions.value.set('addCollaboratorName', val)),
+    addCollaboratorClick: () => dispatch(actions.router.hook('repoAddCollaborator'))
   })
 )(RepoPageContainer)

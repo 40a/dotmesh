@@ -76,6 +76,7 @@ const loaders = {
   repoList: wrapper(repo.list),
   repoCreate: wrapper(repo.create),
   repoLoadCommits: wrapper(repo.loadCommits),
+  repoAddCollaborator: wrapper(repo.addCollaborator),
 
   billingSubmitPayment: wrapper(billing.submitPayment),
 

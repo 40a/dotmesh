@@ -9,8 +9,8 @@ class SearchBox extends Component {
       <Input 
         theme={ theme }
         type='text' 
-        name='search'
-        hint='Search...'
+        name={ this.props.name || 'search' }
+        hint={ this.props.label || 'Search...' }
         value={ this.props.value }
         onChange={ this.props.onChange }
       />

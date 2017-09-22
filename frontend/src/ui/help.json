@@ -38,8 +38,19 @@
     "quickstart.md": [
         {
             "type": "html",
-            "text": "## Quickstart\n\n### Connect Remote\n\n",
-            "html": "<h2 id=\"quickstart\">Quickstart</h2>\n<h3 id=\"connect-remote\">Connect Remote</h3>\n"
+            "text": "## Quickstart\n\n### Install\n\n",
+            "html": "<h2 id=\"quickstart\">Quickstart</h2>\n<h3 id=\"install\">Install</h3>\n"
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "$ sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\n$ sudo chmod +x /usr/local/bin/dm\n$ dm cluster init\n",
+            "code": "$ sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\n$ sudo chmod +x /usr/local/bin/dm\n$ dm cluster init"
+        },
+        {
+            "type": "html",
+            "text": "### Connect Remote\n\n",
+            "html": "<h3 id=\"connect-remote\">Connect Remote</h3>\n"
         },
         {
             "type": "code",
@@ -49,8 +60,8 @@
         },
         {
             "type": "html",
-            "text": "### Create Volume\n\n",
-            "html": "<h3 id=\"create-volume\">Create Volume</h3>\n"
+            "text": "### Create a Repository\n\n",
+            "html": "<h3 id=\"create-a-repository\">Create a Repository</h3>\n"
         },
         {
             "type": "code",
