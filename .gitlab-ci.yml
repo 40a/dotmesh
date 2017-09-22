@@ -116,7 +116,7 @@ macos_docker_stable:
         - docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
         - cd ../..
         - ./smoke.sh $(pwd)/binaries/Darwin/dm datamesh-server
-        - docker system prune -fa
+        - docker container prune -f
 
 macos_docker_edge:
     stage: test
@@ -130,7 +130,7 @@ macos_docker_edge:
         - docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
         - cd ../..
         - ./smoke.sh $(pwd)/binaries/Darwin/dm datamesh-server
-        - docker system prune -fa
+        - docker container prune -f
 
 # run full dind tests on linux
 linux_single_node:

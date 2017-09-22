@@ -40,7 +40,7 @@ if docker info|grep -s '^Kernel Version: .*-moby$' > /dev/null 2>&1; then
     is_moby_linux=1
 fi
 
-EMBEDDED_CONFIG=y;DIND_IMAGE=mirantis/kubeadm-dind-cluster:v1.7
+EMBEDDED_CONFIG=y #;DIND_IMAGE=mirantis/kubeadm-dind-cluster:v1.7
 
 if [[ ! ${EMBEDDED_CONFIG:-} ]]; then
   source "${DIND_ROOT}/config.sh"
@@ -51,6 +51,7 @@ DIND_SUBNET="${DIND_SUBNET:-10.192.0.0}"
 POD_NETWORK_CIDR="${POD_NETWORK_CIDR:-10.244.0.0/16}"
 dind_ip_base="$(echo "${DIND_SUBNET}" | sed 's/\.0$//')"
 DIND_IMAGE="${DIND_IMAGE:-}"
+
 BUILD_KUBEADM="${BUILD_KUBEADM:-}"
 BUILD_HYPERKUBE="${BUILD_HYPERKUBE:-}"
 APISERVER_PORT=${APISERVER_PORT:-8080}

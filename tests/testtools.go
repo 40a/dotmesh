@@ -119,6 +119,7 @@ func testSetup(f Federation, stamp int64) error {
 				mount --make-shared $MOUNTPOINT;
 			fi
 			EXTRA_DOCKER_ARGS="-v /datamesh-test-pools:/datamesh-test-pools:rshared" \
+			DIND_IMAGE="quay.io/lukemarsden/kubeadm-dind-cluster:v1.7-hostport" \
 				../kubernetes/dind-cluster-v1.7.sh bare $NODE %s
 			sleep 1
 			docker exec -t $NODE bash -c '
@@ -272,9 +273,9 @@ func teardownFinishedTestRuns() {
 			}
 		}()
 	}
-	err = system("docker", "prune", "-fa")
+	err = system("docker", "container", "prune", "-f")
 	if err != nil {
-		fmt.Printf("Error from docker prune -fa: %v", err)
+		fmt.Printf("Error from docker container prune -f: %v", err)
 	}
 }
 
