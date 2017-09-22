@@ -3,6 +3,7 @@ import { connect } from 'react-redux'
 
 import * as selectors from '../selectors'
 import * as actions from '../actions'
+import config from '../config'
 
 import RepoPage from '../components/RepoPage'
 
@@ -25,14 +26,17 @@ export default connect(
 
     const commits = selectors.commits.all(state)
     const section = selectors.router.firstValue(state, 'repoPageSection')
+    const settingsSection = selectors.router.firstValue(state, 'settingsPageSection')
 
     return {
       loaded: selectors.value(state, 'repoPageDataLoaded'),
+      settingsMenuOptions: config.menu.repoSettings,
       repo,
       branches,
       branch,
       info,
       section,
+      settingsSection,
       commits: selectors.commits.pageResults(state),
       search: selectors.commits.search(state),
       commitCount: selectors.commits.count(state),
@@ -45,7 +49,8 @@ export default connect(
     updateSearch: (search) => dispatch(actions.router.hook('repoCommitUpdateSearch', search)),
     updatePage: (page) => dispatch(actions.router.hook('repoCommitUpdatePage', page)),
     clickNamespace: (namespace) => dispatch(actions.router.redirect('/repos')),
-    clickTab: (repo, section) => dispatch(actions.router.redirect(`/${selectors.repo.url(repo)}${section ? '/' + section : ''}`)),
-    changeBranch: (branchname) => dispatch(actions.router.hook('repoOpenBranch', branchname))
+    clickTab: (section) => dispatch(actions.router.hook('repoOpenTab', section)),
+    changeBranch: (branchname) => dispatch(actions.router.hook('repoOpenBranch', branchname)),
+    onSettingsMenuClick: (id) => dispatch(actions.router.hook('repoOpenSettingsPage', id))
   })
 )(RepoPageContainer)

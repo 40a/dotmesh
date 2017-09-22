@@ -125,7 +125,7 @@ export const repoPage = {
   },
   url: (state) => {
     const info = repoPage.urlInfo(state)
-    return `/${info.Namespace}/${info.Name}`
+    return `${info.Namespace}/${info.Name}`
   }
 }
 

@@ -76,7 +76,14 @@ export const routeConfig = processRoutes({
     repoPageSection: 'data',
     hooks: ['repoLoadPageData'],
     '/settings': {
-      repoPageSection: 'settings'
+      repoPageSection: 'settings',
+      settingsPageSection: 'collaborators',
+      '/collaborators': {
+        settingsPageSection: 'collaborators'
+      },
+      '/access': {
+        settingsPageSection: 'access'
+      }
     },
     '/tree/:branch': {
       repoPageSection: 'data',

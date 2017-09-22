@@ -25,7 +25,8 @@ const icons = {
   server: 'computer',
   payment: 'credit_card',
   back: 'arrow_back',
-  forward: 'arrow_forward'
+  forward: 'arrow_forward',
+  users: 'people'
 }
 
 const config = {
@@ -78,6 +79,10 @@ const config = {
       ['install', 'Install Datamesh'],
       ['createrepo', 'Create a Repository'],
       ['runcontainer', 'Run a Container']
+    ],
+    repoSettings: [
+      ['collaborators', 'Collaborators', icons.users],
+      ['access', 'Access', icons.settings]
     ]
   },
   icons

@@ -150,14 +150,26 @@ const RepoSagas = (opts = {}) => {
     yield call(list)
   }
 
+  function* openTab(section) {
+    const url = yield select(selectors.repoPage.url)
+    const tabUrl = `/${url}${section ? '/' + section : ''}`
+    yield put(actions.router.redirect(tabUrl))
+  }
+
   function* openBranch(branchname) {
     const info = yield select(selectors.repoPage.urlInfo)
     const branchUrl = `/${info.Namespace}/${info.Name}/tree/${branchname}`
     yield put(actions.router.redirect(branchUrl))
   }
 
+  function* openSettingsPage(page) {
+    const url = yield select(selectors.repoPage.url)
+    const pageUrl = `/${url}/settings${page ? '/' + page : ''}`
+    yield put(actions.router.redirect(pageUrl))
+  }
+
   function* loadPageData() {
-    yield put(actions.value.set('repoPageDataLoaded', false))
+    //yield put(actions.value.set('repoPageDataLoaded', false))
     yield call(list)
     const info = yield select(selectors.repoPage.urlInfo)
     const repo = yield select(state => selectors.repos.getRepo(state, info))
@@ -175,7 +187,9 @@ const RepoSagas = (opts = {}) => {
     formInitialize,
     formSubmit,
     open,
+    openTab,
     openBranch,
+    openSettingsPage,
     loadPageData
   }
 }

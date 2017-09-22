@@ -100,3 +100,8 @@
 .commitSearchContainer {
   margin-bottom: 20px;
 }
+
+.activeMenuItem {
+  color: #e91e63 !important;
+  font-weight: bold;
+}

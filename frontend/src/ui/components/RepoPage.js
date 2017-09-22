@@ -48,10 +48,10 @@ class RepoPage extends Component {
   tabs() {
     return (
       <Tabs index={SECTION_INDEXES[this.props.section]}>
-        <Tab label='Data' onClick={ () => this.props.clickTab(this.props.repo) }>
+        <Tab label='Data' onClick={ () => this.props.clickTab() }>
           <RepoPageData {...this.props} />
         </Tab>
-        <Tab label='Settings' onClick={ () => this.props.clickTab(this.props.repo, 'settings') }>
+        <Tab label='Settings' onClick={ () => this.props.clickTab('settings') }>
           <RepoPageSettings {...this.props} />
         </Tab>
       </Tabs>
