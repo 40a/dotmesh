@@ -506,7 +506,7 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		d(t, bobNode.Container, "dm push cluster_0 apples --remote-volume bob/apples")
 
 		// alice pulls it
-		d(t, aliceNode.Container, "dm pull cluster_0 bob/apples --local-volume bob-apples")
+		d(t, aliceNode.Container, "dm pull cluster_0 bob-apples --remote-volume bob/apples")
 
 		// Check we got the change
 		resp = s(t, aliceNode.Container, dockerRun("bob-apples")+" ls /foo/")
@@ -515,19 +515,48 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		}
 	})
 
-	t.Run("DefaultRemoteVolumePersists", func(t *testing.T) {
+	t.Run("DefaultRemoteNamespace", func(t *testing.T) {
 		// Alice pushes to the common node with no explicit remote volume, should default to alice/pears
 		d(t, aliceNode.Container, dockerRun("pears")+" touch /foo/alice")
-		d(t, aliceNode.Container, "echo 'alice is also great' | dm remote add common alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "echo 'alice is also great' | dm remote add common_pears alice@"+commonNode.IP)
 		d(t, aliceNode.Container, "dm switch pears")
 		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
-		d(t, aliceNode.Container, "dm push common pears")
+		d(t, aliceNode.Container, "dm push common_pears") // local pears becomes alice/pears
 
 		// Check it gets there
 		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | sort")
 		if !strings.Contains(resp, "alice/pears") {
 			t.Error("Didn't find alice/pears on the common node")
 		}
+	})
+
+	t.Run("DefaultRemoteVolume", func(t *testing.T) {
+		// Alice pushes to the common node with no explicit remote volume, should default to alice/pears
+		d(t, aliceNode.Container, dockerRun("bananas")+" touch /foo/alice")
+		d(t, aliceNode.Container, "echo 'alice is also great' | dm remote add common_bananas alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "dm switch bananas")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+		d(t, aliceNode.Container, "dm push common_bananas bananas")
+
+		// Add Bob as a collaborator
+		err := doAddCollaborator(commonNode.IP, "alice", "alice is also great", "alice", "bananas", "bob")
+		if err != nil {
+			t.Error(err)
+		}
+
+		// Clone it back as bob
+		d(t, bobNode.Container, "echo 'bob is great' | dm remote add common_bananas bob@"+commonNode.IP)
+		// Clone should save admin/bananas@common => alice/bananas
+		d(t, bobNode.Container, "dm clone common_bananas alice/bananas --local-volume bananas")
+
+		// And then do a pull, not specifying the remote or local volume
+		d(t, bobNode.Container, "dm switch bananas")
+		d(t, bobNode.Container, "dm pull common_bananas") // local = bananas as we switched, remote = alice/banas from saved default
+
+		// Now push back
+		d(t, bobNode.Container, dockerRun("bananas")+" touch /foo/bob")
+		d(t, bobNode.Container, "dm commit -m'Bob commits'")
+		d(t, bobNode.Container, "dm push common_bananas") // local = bananas as we switched, remote = alice/banas from saved default
 	})
 
 }

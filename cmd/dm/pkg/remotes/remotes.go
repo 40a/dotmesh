@@ -172,20 +172,20 @@ func (c *Configuration) DefaultRemoteVolumeFor(peer, namespace, volume string) (
 func (c *Configuration) SetDefaultRemoteVolumeFor(peer, namespace, volume, remoteNamespace, remoteVolume string) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	_, ok := c.Remotes[peer]
+	remote, ok := c.Remotes[peer]
 	if !ok {
 		return fmt.Errorf(
 			"Unable to find remote '%s', which was apparently current",
 			c.CurrentRemote,
 		)
 	}
-	if c.Remotes[c.CurrentRemote].DefaultRemoteVolumes == nil {
-		c.Remotes[c.CurrentRemote].DefaultRemoteVolumes = map[string]map[string]VolumeName{}
+	if remote.DefaultRemoteVolumes == nil {
+		remote.DefaultRemoteVolumes = map[string]map[string]VolumeName{}
 	}
-	if c.Remotes[c.CurrentRemote].DefaultRemoteVolumes[namespace] == nil {
-		c.Remotes[c.CurrentRemote].DefaultRemoteVolumes[namespace] = map[string]VolumeName{}
+	if remote.DefaultRemoteVolumes[namespace] == nil {
+		remote.DefaultRemoteVolumes[namespace] = map[string]VolumeName{}
 	}
-	c.Remotes[c.CurrentRemote].DefaultRemoteVolumes[namespace][volume] = VolumeName{remoteNamespace, remoteVolume}
+	remote.DefaultRemoteVolumes[namespace][volume] = VolumeName{remoteNamespace, remoteVolume}
 	return c.save()
 }
 

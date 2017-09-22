@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/rpc/v2/json2"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -763,5 +764,90 @@ func registerUser(ip, username, email, password string) error {
 		return fmt.Errorf("Invalid response from user registration request: %d: %v", resp.StatusCode, body)
 	}
 
+	return nil
+}
+
+func doRPC(hostname, user, apiKey, method string, args interface{}, result interface{}) error {
+	url := fmt.Sprintf("http://%s:6969/rpc", hostname)
+	message, err := json2.EncodeClientRequest(method, args)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(message))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(user, apiKey)
+	client := new(http.Client)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Printf("Test RPC FAIL: %+v -> %s -> %+v\n", args, method, err)
+		return err
+	}
+
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Test RPC FAIL: %+v -> %s -> %+v\n", args, method, err)
+		return fmt.Errorf("Error reading body: %s", err)
+	}
+	err = json2.DecodeClientResponse(bytes.NewBuffer(b), &result)
+	if err != nil {
+		fmt.Printf("Test RPC FAIL: %+v -> %s -> %+v\n", args, method, err)
+		return fmt.Errorf("Couldn't decode response '%s': %s", string(b), err)
+	}
+	fmt.Printf("Test RPC: %+v -> %s -> %+v\n", args, method, result)
+	return nil
+}
+
+func doAddCollaborator(hostname, user, apikey, namespace, volume, collaborator string) error {
+	// FIXME: Duplicated types, see issue #44
+	type VolumeName struct {
+		Namespace string
+		Name      string
+	}
+
+	var volumes map[string]map[string]struct {
+		Id             string
+		Name           VolumeName
+		Clone          string
+		Master         string
+		SizeBytes      int64
+		DirtyBytes     int64
+		CommitCount    int64
+		ServerStatuses map[string]string // serverId => status
+	}
+
+	err := doRPC(hostname, user, apikey,
+		"DatameshRPC.List",
+		struct {
+		}{},
+		&volumes)
+	if err != nil {
+		return err
+	}
+
+	volumeID := volumes[namespace][volume].Id
+
+	var result bool
+	err = doRPC(hostname, user, apikey,
+		"DatameshRPC.AddCollaborator",
+		struct {
+			Volume, Collaborator string
+		}{
+			Volume:       volumeID,
+			Collaborator: collaborator,
+		},
+		&result)
+	if err != nil {
+		return err
+	}
+	if !result {
+		return fmt.Errorf("AddCollaborator failed without an error")
+	}
 	return nil
 }
