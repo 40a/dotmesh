@@ -7,7 +7,7 @@ Datamesh supports:
 
 ## Prerequisites
 
-You need a Kubernetes 1.7.0+ cluster with working `nodePort` support.
+You need a Kubernetes 1.7.0+ cluster with working `hostPort` support.
 
 If you are using a `kubeadm` cluster with Weave Net, following the instructions [here](https://github.com/weaveworks/weave/issues/3016#issuecomment-321337923) on each of your nodes may help.
 

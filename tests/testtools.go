@@ -565,7 +565,9 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	// datamesh container image, rather than the latest stable
 	err := system("bash", "-c",
 		fmt.Sprintf(
-			"for X in ../kubernetes/*.yaml; do docker cp $X %s:/tmp/; done",
+			`MASTER=%s
+			docker exec $MASTER mkdir /datamesh-kube-yaml
+			for X in ../kubernetes/*.yaml; do docker cp $X $MASTER:/datamesh-kube-yaml/; done`,
 			nodeName(now, i, 0),
 		),
 	)
@@ -601,7 +603,6 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	fmt.Printf("JOIN URL: %s\n", joinArgs)
 
 	clusterName := fmt.Sprintf("cluster_%d", i)
-	c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, 0, clusterName))
 
 	for j := 1; j < c.DesiredNodeCount; j++ {
 		// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
@@ -614,8 +615,6 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		if err != nil {
 			return err
 		}
-		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
-
 		logTiming("join_" + poolId(now, i, j))
 	}
 	// now install datamesh yaml (setting initial admin pw)
@@ -626,12 +625,25 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 			"kubectl create secret generic datamesh "+
 			"    --from-file=datamesh-admin-password.txt -n datamesh && "+
 			"rm datamesh-admin-password.txt && "+
-			"kubectl apply -f /tmp && "+
-			"while ! (echo secret123 | dm remote add local admin@127.0.0.1); "+
-			"    do echo 'retrying...' && sleep 1; done",
+			// install datamesh once on the master (retry because etcd operator
+			// needs to initialize)
+			"while ! kubectl apply -f /datamesh-kube-yaml; do sleep 1; done",
 	)
 	if err != nil {
 		return err
+	}
+	// Add the nodes at the end, because NodeFromNodeName expects datamesh
+	// config to be set up.
+	for j := 0; j < c.DesiredNodeCount; j++ {
+		st, err = docker(
+			nodeName(now, i, j),
+			"while ! (echo secret123 | dm remote add local admin@127.0.0.1); "+
+				"    do echo 'retrying...' && sleep 1; done",
+		)
+		if err != nil {
+			return err
+		}
+		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
 	}
 	return nil
 }
