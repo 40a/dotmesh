@@ -21,7 +21,7 @@
 .listItem {
   min-height: 60px;
   border-bottom: 1px dashed #e5e5e5;
-  padding-top: 10px;
+  margin-top: 10px;
   padding: 5px;
 }
 

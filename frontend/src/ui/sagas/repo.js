@@ -23,12 +23,12 @@ const RepoSagas = (opts = {}) => {
   })
 
   function* setData(payload) {
-    let repos = payload.Volumes
-    let servers = payload.Servers
+    let repos = payload.Volumes || []
+    let servers = payload.Servers || []
     repos = listUtils.sortObjectList(repos, selectors.repo.name)
     yield put(actions.value.set('reposLoaded', true))
-    yield put(actions.value.set('repos', repos || []))
-    yield put(actions.value.set('servers', servers || []))
+    yield put(actions.value.set('repos', repos))
+    yield put(actions.value.set('servers', servers))
   }
 
   // called if there is an error so the user is not looking at stale data
@@ -38,7 +38,9 @@ const RepoSagas = (opts = {}) => {
   }
 
   function* setCommitData(payload) {
-    yield put(actions.value.set('commits', payload || []))
+    let commits = payload || []
+    commits = listUtils.sortObjectList(commits, selectors.commit.timestamp, true)
+    yield put(actions.value.set('commits', commits))
   }
 
   function* resetCommitData() {
@@ -81,6 +83,20 @@ const RepoSagas = (opts = {}) => {
 
   function* updatePage(page) {
     yield put(actions.router.redirect(`/repos/page/${page}`))
+  }
+
+  // make sure we are on page one as soon as they change the search
+  function* commitUpdateSearch(search) {
+    const pageInfo = yield select(selectors.repoPage.urlInfo)
+    if(pageInfo.Page>1) {
+      yield put(actions.router.redirect(`/${pageInfo.Namespace}/${pageInfo.Name}/tree/${pageInfo.Branch}/page/1`))
+    }
+    yield put(actions.commits.updateSearch(search))
+  }
+
+  function* commitUpdatePage(page) {
+    const pageInfo = yield select(selectors.repoPage.urlInfo)
+    yield put(actions.router.redirect(`/${pageInfo.Namespace}/${pageInfo.Name}/tree/${pageInfo.Branch}/page/${page}`))
   }
 
   function* formInitialize() {
@@ -141,17 +157,21 @@ const RepoSagas = (opts = {}) => {
   }
 
   function* loadPageData() {
+    yield put(actions.value.set('repoPageDataLoaded', false))
     yield call(list)
     const info = yield select(selectors.repoPage.urlInfo)
     const repo = yield select(state => selectors.repos.getRepo(state, info))
     const branch = yield select(state => selectors.repo.getBranch(repo, info.Branch))
     yield call(loadCommits, branch.Id)
+    yield put(actions.value.set('repoPageDataLoaded', true))
   }
 
   return {
     list,
     updateSearch,
     updatePage,
+    commitUpdateSearch,
+    commitUpdatePage,
     formInitialize,
     formSubmit,
     open,

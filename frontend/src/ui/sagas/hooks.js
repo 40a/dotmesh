@@ -45,6 +45,8 @@ const Hooks = (opts = {}) => {
     repoList: repo.list,
     repoUpdateSearch: repo.updateSearch,
     repoUpdatePage: repo.updatePage,
+    repoCommitUpdateSearch: repo.commitUpdateSearch,
+    repoCommitUpdatePage: repo.commitUpdatePage,
     repoFormSubmit: repo.formSubmit,
     repoFormInitialize: repo.formInitialize,
     repoOpen: repo.open,

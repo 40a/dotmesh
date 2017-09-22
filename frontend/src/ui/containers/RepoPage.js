@@ -27,15 +27,23 @@ export default connect(
     const section = selectors.router.firstValue(state, 'repoPageSection')
 
     return {
+      loaded: selectors.value(state, 'repoPageDataLoaded'),
       repo,
       branches,
       branch,
       info,
-      commits,
-      section
+      section,
+      commits: selectors.commits.pageResults(state),
+      search: selectors.commits.search(state),
+      commitCount: selectors.commits.count(state),
+      searchCount: selectors.commits.searchCount(state),
+      pageCount: selectors.commits.pageCount(state),
+      pageCurrent: selectors.commits.pageCurrent(state)
     }
   },
   (dispatch) => ({
+    updateSearch: (search) => dispatch(actions.router.hook('repoCommitUpdateSearch', search)),
+    updatePage: (page) => dispatch(actions.router.hook('repoCommitUpdatePage', page)),
     clickNamespace: (namespace) => dispatch(actions.router.redirect('/repos')),
     clickTab: (repo, section) => dispatch(actions.router.redirect(`/${selectors.repo.url(repo)}${section ? '/' + section : ''}`)),
     changeBranch: (branchname) => dispatch(actions.router.hook('repoOpenBranch', branchname))

@@ -5,6 +5,8 @@ import {
 import APISelector from 'template-ui/lib/plugins/api/selectors'
 export { default as router } from 'template-ui/lib/plugins/router/selectors'
 
+import dateUtils from 'template-tools/src/utils/date'
+
 import forms from './forms'
 import config from './config'
 import labels from './utils/labels'
@@ -117,7 +119,8 @@ export const repoPage = {
     return {
       Namespace: params.namespace,
       Name: params.name,
-      Branch: params.branch || 'master'
+      Branch: params.branch || 'master',
+      Page: params.page || 1
     }
   },
   url: (state) => {
@@ -172,7 +175,36 @@ export const branch = {
 }
 
 export const commits = {
-  all: (state) => valueSelector(state, 'commits') || [],
+  all: (state) => valueSelector(state, 'commits') || [], 
+  search: (state) => valueSelector(state, 'repoCommitListSearch') || '',
+  searchResults: (state) => {
+    const search = commits.search(state)
+    const allResults = commits.all(state)
+    return listUtils.searchObjectList(allResults, search, (data) => commit.name(data) + ' ' + commit.author(data))
+  },
+  pageCurrent: (state) => {
+    const st = state.router.params.page || '1'
+    const nm = parseInt(st)
+    return isNaN(nm) ? 1 : nm
+  },
+  pageSize: (state) => config.commitlist.pageSize,
+  count: (state) => commits.all(state).length,
+  searchCount: (state) => {
+    const results = commits.searchResults(state)
+    return results.length
+  },
+  pageCount: (state) => {
+    const results = commits.searchResults(state)
+    return Math.ceil(results.length/commits.pageSize())
+  },
+  // filter the search results (which could be all) through the page grouper
+  pageResults: (state) => {
+    const searchResults = commits.searchResults(state)
+    const pageSize = commits.pageSize(state)
+    const pageCurrent = commits.pageCurrent(state)
+    const startIndex = (pageCurrent - 1) * pageSize
+    return searchResults.slice(startIndex, startIndex + pageSize)
+  },
 }
 
 export const commit = {
@@ -180,7 +212,22 @@ export const commit = {
   metadata: (data = {}) => data.Metadata || {},
   name: (data = {}) => commit.metadata(data).message,
   author: (data = {}) => commit.metadata(data).author,
-  timestamp: (data = {}) => commit.metadata(data).timestamp
+  timestamp: (data = {}) => {
+    const ts = commit.metadata(data).timestamp
+    const ret = parseInt(ts)
+    if(isNaN(ret)) return 0
+    return Math.floor(ret/1000000)
+  },
+  dateTitle: (data = {}) => {
+    const ts = commit.timestamp(data)
+    const dt = new Date(ts)
+    return dateUtils.getDateTitle(dt)
+  },
+  timeTitle: (data = {}) => {
+    const ts = commit.timestamp(data)
+    const dt = new Date(ts)
+    return dateUtils.getTimeTitle(dt)
+  }
 }
 
 export const help = {

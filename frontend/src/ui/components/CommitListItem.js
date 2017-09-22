@@ -26,7 +26,7 @@ class CommitListItem extends Component {
           </div>
         </div>
         <div className={ theme.repoStats }>
-          { selectors.commit.timestamp(commit) }
+          { selectors.commit.dateTitle(commit) } | { selectors.commit.timeTitle(commit) }
         </div>
       </div>
     )

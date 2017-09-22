@@ -80,7 +80,11 @@ export const routeConfig = processRoutes({
     },
     '/tree/:branch': {
       repoPageSection: 'data',
-      hooks: ['repoLoadPageData']
+      hooks: ['repoLoadPageData'],
+      '/page/:page': {
+        repoPageSection: 'data',
+        hooks: ['repoLoadPageData']
+      }
     }
   }
 }, config.basepath)

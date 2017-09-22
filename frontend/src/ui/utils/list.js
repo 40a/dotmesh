@@ -1,11 +1,11 @@
-const sortObjectList = (arr, extractor) => {
+const sortObjectList = (arr, extractor, desc) => {
   const compare = (obja,objb) => {
     const a = extractor(obja)
     const b = extractor(objb)
     if (a < b)
-      return -1
+      return desc ? 1 : -1
     if (a > b)
-      return 1
+      return desc ? -1 : 1
     return 0
   }
   arr.sort(compare)

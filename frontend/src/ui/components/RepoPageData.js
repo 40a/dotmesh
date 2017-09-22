@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from 'react'
 
 import Dropdown from 'react-toolbox/lib/dropdown'
+import ProgressBar from 'react-toolbox/lib/progress_bar'
 
 import * as selectors from '../selectors'
 
@@ -77,15 +78,26 @@ class RepoPageData extends Component {
         <div className={ theme.branchContainer }>
           <div className={ theme.branchTitle }>Branch:</div>
           <div className={ theme.branchDropdown }>{ this.branchDropDown() }</div>
-          <h2 className={ theme.commitTitle }>Commits</h2>
-          <div>
-            <div className={ theme.commitSearchContainer }>
-              { this.search() }
-            </div>
-            <div>
-              { this.dataList() }
-            </div>
-          </div>
+          <h2 className={ theme.commitTitle }>Commits ({ this.props.searchCount })</h2>
+          {
+            this.props.loaded ? (
+              <div>
+                <div className={ theme.commitSearchContainer }>
+                  { this.search() }
+                </div>
+                <div>
+                  { this.dataList() }
+                </div>
+                <div>
+                  { this.pager() }
+                </div>
+              </div>
+            ) : (
+              <div>
+                <ProgressBar type='circular' mode='indeterminate' multicolor />
+              </div>
+            )
+          }
         </div>
       </div>
     )
