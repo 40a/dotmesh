@@ -60,19 +60,29 @@ function dind::setup-bridge {
   
   cat >/etc/cni/net.d/cni.conf <<EOF
 {
+    "cniVersion": "0.3.1",
     "name": "dindnet",
-    "type": "bridge",
-    "bridge": "dind0",
-    "ipam": {
-        "type": "host-local",
-        "subnet": "${NETWORK}/${NETWORK_SIZE}",
-        "rangeStart": "${HOST_MIN}",
-        "rangeEnd": "${HOST_MAX}",
-        "gateway": "${DEFAULT_GW}",
-        "routes": [
-            { "dst": "0.0.0.0/0" }
-        ]
-    }
+    "plugins": [
+        {
+            "type": "bridge",
+            "bridge": "dind0",
+            "ipam": {
+                "type": "host-local",
+				"subnet": "${NETWORK}/${NETWORK_SIZE}",
+				"rangeStart": "${HOST_MIN}",
+				"rangeEnd": "${HOST_MAX}",
+				"gateway": "${DEFAULT_GW}",
+                "routes": [
+                    { "dst": "0.0.0.0/0" }
+                ]
+            }
+        },
+        {
+            "type": "portmap",
+            "capabilities": {"portMappings": true},
+            "snat": true
+        }
+    ]
 }
 EOF
 }
