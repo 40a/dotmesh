@@ -75,7 +75,7 @@ class RepoPageSettingsCollaborators extends Component {
     return (
       <div>
         <div className={ theme.branchContainer }>
-          <h2 className={ theme.commitTitle }>Collaborators</h2>
+          <h2 className={ theme.collaboratorsTitle }>Collaborators</h2>
           {
             this.props.loaded ? (
               <div>

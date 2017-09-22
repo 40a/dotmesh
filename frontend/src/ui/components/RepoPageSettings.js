@@ -41,28 +41,26 @@ class RepoPageSettings extends Component {
   render() {
     const repo = this.props.repo || {}
     return (
-      <Grid>
-        <Row>
-          <Col xs={3}>
-            <ListMenu
-              options={ this.props.settingsMenuOptions }
-              onClick={ this.props.onSettingsMenuClick }
-              process={ this.processMenu.bind(this) }
-            />
-          </Col>
-          <Col xs={9}>
-            <Route route='/:namespace/:name/settings' exact>
-              {this.getCollaborators()}
-            </Route>
-            <Route route='/:namespace/:name/settings/collaborators' exact>
-              {this.getCollaborators()}
-            </Route>
-            <Route route='/:namespace/:name/settings/access' exact>
-              {this.getAccess()}
-            </Route>
-          </Col>
-        </Row>
-      </Grid>
+      <div className={ theme.settingsContainer }>
+        <div className={ theme.settingsMenu }>
+          <ListMenu
+            options={ this.props.settingsMenuOptions }
+            onClick={ this.props.onSettingsMenuClick }
+            process={ this.processMenu.bind(this) }
+          />
+        </div>
+        <div className={ theme.settingsPage }>
+          <Route route='/:namespace/:name/settings' exact>
+            {this.getCollaborators()}
+          </Route>
+          <Route route='/:namespace/:name/settings/collaborators' exact>
+            {this.getCollaborators()}
+          </Route>
+          <Route route='/:namespace/:name/settings/access' exact>
+            {this.getAccess()}
+          </Route>
+        </div>
+      </div>
     )
   }
 }

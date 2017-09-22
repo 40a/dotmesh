@@ -64,8 +64,12 @@ class RepoPage extends Component {
       <Grid fluid>
         <Row>
           <Col xs={12} sm={10} md={8} smOffset={1} mdOffset={2}>
-            { this.repoName() }
-            { this.tabs() }
+            <div className={ theme.titleContainer }>
+              { this.repoName() }
+            </div>
+            <div className={ theme.tabContainer }>
+              { this.tabs() }
+            </div>
           </Col>
         </Row>
       </Grid>

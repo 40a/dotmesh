@@ -171,10 +171,6 @@ const RepoSagas = (opts = {}) => {
       Collaborator: addName
     }
 
-    console.log('-------------------------------------------');
-    console.log('-------------------------------------------');
-    console.dir(apis.addCollaborator.loader)
-
     const { answer, error } = yield call(apis.addCollaborator.loader, payload)
     
     if(error) {
@@ -185,6 +181,7 @@ const RepoSagas = (opts = {}) => {
 
     yield put(actions.value.set('collaboratorFormLoading', false))
     yield put(actions.application.setMessage(`collaborator ${addName} added`))
+    yield put(actions.value.set('addCollaboratorName', ''))
     yield call(loadPageData)
   }
 
