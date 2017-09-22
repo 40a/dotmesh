@@ -76,7 +76,7 @@ func (dm *DatameshAPI) NewVolume(volumeName string) error {
 	}
 	sendVolumeName := VolumeName{
 		Namespace: namespace,
-		Name: name,
+		Name:      name,
 	}
 	err = dm.client.CallRemote(context.Background(), "DatameshRPC.Create", sendVolumeName, &response)
 	if err != nil {
@@ -583,6 +583,13 @@ func (dm *DatameshAPI) RequestTransfer(
 ) (string, error) {
 	connectionInitiator := dm.Configuration.CurrentRemote
 
+	/*
+		fmt.Printf("[DEBUG RequestTransfer] dir=%s peer=%s lfs=%s lb=%s rfs=%s rb=%s\n",
+			direction, peer,
+			localFilesystemName, localBranchName,
+			remoteFilesystemName, remoteBranchName)
+	*/
+
 	var err error
 
 	remote, err := dm.Configuration.GetRemote(peer)
@@ -667,6 +674,20 @@ func (dm *DatameshAPI) RequestTransfer(
 		return "", fmt.Errorf(
 			"It's dubious to specify a remote branch name " +
 				"without specifying a remote filesystem name.",
+		)
+	}
+
+	if direction == "push" {
+		fmt.Printf("Pushing %s/%s to %s:%s/%s\n",
+			localNamespace, localVolume,
+			peer,
+			remoteNamespace, remoteVolume,
+		)
+	} else {
+		fmt.Printf("Pulling %s/%s from %s:%s/%s\n",
+			localNamespace, localVolume,
+			peer,
+			remoteNamespace, remoteVolume,
 		)
 	}
 
