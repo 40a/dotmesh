@@ -1,0 +1,34 @@
+#!/bin/sh
+
+COMMAND=bash
+
+case $# in
+	 0)
+		  CLUSTER=0
+		  NODE=0
+		  ;;
+	 1)
+		  CLUSTER=$1
+		  NODE=0
+		  ;;
+	 2)
+		  CLUSTER=$1
+		  NODE=$2
+		  ;;
+	 *)
+		  CLUSTER=$1
+		  NODE=$2
+		  shift # Remote cluster/node args from "$@"
+		  shift
+		  COMMAND=args
+		  ;;
+esac
+
+CONTAINER=`docker ps --format '{{.Names}}' | egrep "^cluster-[0-9]+-$CLUSTER-node-$NODE\$"`
+
+if [ $COMMAND = bash ]
+then
+	 docker exec -ti $CONTAINER bash
+else
+	 docker exec -ti $CONTAINER "$@"
+fi
