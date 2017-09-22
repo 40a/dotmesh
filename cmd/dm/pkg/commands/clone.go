@@ -52,15 +52,6 @@ copy of 'app_billing_postgres' at all yet:
 					return err
 				}
 
-				// TODO: In future, when we add
-				// "remote tracking", we'll need to
-				// record that local volumne
-				// "cloneLocalVolume" is associated with
-				// "filesystemName" on "peer", so that
-				// future pushes/pulls of the volume
-				// can automatically go to the right
-				// place.
-
 				return nil
 			}()
 			if err != nil {

@@ -370,6 +370,7 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 			t.Error("unable to find commit message remote's log output")
 		}
 	})
+
 }
 
 func TestFrontend(t *testing.T) {
@@ -434,17 +435,18 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 	aliceNode := f[1].GetNode(0)
 	bobNode := f[2].GetNode(0)
 
-	t.Run("TwoUsersSameNamedVolume", func(t *testing.T) {
-		// Create users bob and alice
-		err = registerUser(commonNode.IP, "bob", "bob@bob.com", "bob is great")
-		if err != nil {
-			t.Error(err)
-		}
+	// Create users bob and alice on the common node
+	err = registerUser(commonNode.IP, "bob", "bob@bob.com", "bob is great")
+	if err != nil {
+		t.Error(err)
+	}
 
-		err = registerUser(commonNode.IP, "alice", "alice@bob.com", "alice is also great")
-		if err != nil {
-			t.Error(err)
-		}
+	err = registerUser(commonNode.IP, "alice", "alice@bob.com", "alice is also great")
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Run("TwoUsersSameNamedVolume", func(t *testing.T) {
 
 		// bob and alice both push to the common node
 		d(t, aliceNode.Container, dockerRun("apples")+" touch /foo/alice")
@@ -462,17 +464,17 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		d(t, bobNode.Container, "dm clone cluster_0 alice/apples --local-volume alice-apples")
 
 		// Check they get the right volumes
-		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | sort")
+		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | grep apples")
 		if resp != "alice/apples\nbob/apples\n" {
 			t.Error("Didn't find alice/apples and bob/apples on common node")
 		}
 
-		resp = s(t, aliceNode.Container, "dm list -H | cut -f 1 | sort")
+		resp = s(t, aliceNode.Container, "dm list -H | cut -f 1 | grep apples")
 		if resp != "apples\nbob-apples\n" {
 			t.Error("Didn't find apples and bob-apples on alice's node")
 		}
 
-		resp = s(t, bobNode.Container, "dm list -H | cut -f 1 | sort")
+		resp = s(t, bobNode.Container, "dm list -H | cut -f 1 | grep apples")
 		if resp != "alice-apples\napples\n" {
 			t.Error("Didn't find apples and alice-apples on bob's node")
 		}
@@ -503,4 +505,20 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 			t.Error("Filesystem bob-apples had the wrong content")
 		}
 	})
+
+	t.Run("DefaultRemoteVolumePersists", func(t *testing.T) {
+		// Alice pushes to the common node with no explicit remote volume, should default to alice/pears
+		d(t, aliceNode.Container, dockerRun("pears")+" touch /foo/alice")
+		d(t, aliceNode.Container, "echo 'alice is also great' | dm remote add common alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "dm switch pears")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+		d(t, aliceNode.Container, "dm push common pears")
+
+		// Check it gets there
+		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | sort")
+		if !strings.Contains(resp, "alice/pears") {
+			t.Error("Didn't find alice/pears on the common node")
+		}
+	})
+
 }
