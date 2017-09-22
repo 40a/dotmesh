@@ -524,6 +524,7 @@ func startDatameshContainer(pkiPath string) error {
 	var configFileExists bool
 	e, err := pathExists(configFile)
 	if err != nil {
+		fmt.Printf("we have an exists error: %s", err)
 		return err
 	}
 	if e {
@@ -531,6 +532,7 @@ func startDatameshContainer(pkiPath string) error {
 		if err != nil {
 			return err
 		}
+		fmt.Printf("we have a file: %s", string(absoluteConfigPath))
 		configFileExists = true
 	}
 	args := []string{
@@ -573,6 +575,9 @@ func startDatameshContainer(pkiPath string) error {
 		args = append(args, []string{
 			"-v", fmt.Sprintf("%s:%s", absoluteConfigPath, "/etc/datamesh/config.yaml"),
 		}...)
+		args = append(args, []string{
+			"-e", fmt.Sprintf("%s=%s", "HOST_CONFIG_PATH", absoluteConfigPath),
+		}...)
 	}
 	args = append(args, []string{
 		datameshDockerImage,
@@ -581,6 +586,7 @@ func startDatameshContainer(pkiPath string) error {
 		// actual datamesh-server with an rshared bind-mount of /var/pool.
 		"/require_zfs.sh", "datamesh-server",
 	}...)
+	fmt.Printf("docker %s\n", strings.Join(args, " "))
 	fmt.Fprintf(logFile, "docker %s\n", strings.Join(args, " "))
 	resp, err := exec.Command("docker", args...).CombinedOutput()
 	if err != nil {

@@ -76,7 +76,7 @@ func (dm *DatameshAPI) NewVolume(volumeName string) error {
 	}
 	sendVolumeName := VolumeName{
 		Namespace: namespace,
-		Name: name,
+		Name:      name,
 	}
 	err = dm.client.CallRemote(context.Background(), "DatameshRPC.Create", sendVolumeName, &response)
 	if err != nil {
