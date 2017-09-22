@@ -56,11 +56,11 @@ func WriteError(w http.ResponseWriter) {
 }
 
 type RegistrationPayload struct {
-	Name string
-	Email string
-	Password string
-	EmailError string
-	NameError string
+	Name          string
+	Email         string
+	Password      string
+	EmailError    string
+	NameError     string
 	PasswordError string
 	Created       bool
 	Submit        bool
@@ -68,9 +68,9 @@ type RegistrationPayload struct {
 }
 
 type JSONPayload struct {
-	Name string `json:"Name"`
-  Email string `json:"Email"`
-  Password string `json:"Password"`
+	Name     string `json:"Name"`
+	Email    string `json:"Email"`
+	Password string `json:"Password"`
 }
 
 func (payload *RegistrationPayload) Validate() bool {
@@ -90,11 +90,11 @@ func (payload *RegistrationPayload) Validate() bool {
 
 func NewRegistrationPayload(r *http.Request) (RegistrationPayload, error) {
 	payload := RegistrationPayload{
-		Name: "",
-		Email: "",
-		Password: "",
-		EmailError: "",
-		NameError: "",
+		Name:          "",
+		Email:         "",
+		Password:      "",
+		EmailError:    "",
+		NameError:     "",
 		PasswordError: "",
 		Created:       false,
 		Submit:        false,
@@ -118,7 +118,7 @@ func NewRegistrationPayload(r *http.Request) (RegistrationPayload, error) {
 			return payload, err
 		}
 
-    payload.Name = jsonPacket.Name
+		payload.Name = jsonPacket.Name
 		payload.Email = jsonPacket.Email
 		payload.Password = jsonPacket.Password
 		payload.Json = true

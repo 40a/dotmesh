@@ -66,8 +66,8 @@ func (d *DatameshRPC) Get(
 }
 
 type PaymentDeets struct {
-	Token   string
-	PlanId	string
+	Token  string
+	PlanId string
 }
 
 func (d *DatameshRPC) SubmitPayment(
@@ -81,7 +81,7 @@ func (d *DatameshRPC) SubmitPayment(
 	}
 	if user.CustomerId == "" {
 		customerParams := &stripe.CustomerParams{
- 		  Desc: fmt.Sprintf("Customer for %s", user.Email),
+			Desc: fmt.Sprintf("Customer for %s", user.Email),
 		}
 		customerParams.SetSource(paymentDeets.Token)
 		c, err := customer.New(customerParams)
@@ -94,32 +94,32 @@ func (d *DatameshRPC) SubmitPayment(
 			return err
 		}
 	}
-	
-  // if user.CurrentPlan != free then we're _changing_ plan, do
-  // something special? currently the frontend shouldn't allow
-  // this to happen (there's cancelling and subscribing; nothing
-  // else)
-	
+
+	// if user.CurrentPlan != free then we're _changing_ plan, do
+	// something special? currently the frontend shouldn't allow
+	// this to happen (there's cancelling and subscribing; nothing
+	// else)
+
 	// create new subscription for user
 	log.Printf("[SubmitPayment] Payment Deets = %+v", paymentDeets)
 	s, err := sub.New(&stripe.SubParams{
-    Customer: user.CustomerId,
-    Items: []*stripe.SubItemsParams{
-      {
-        Plan: paymentDeets.PlanId,
-      },
-    },
-  })
-  if err != nil {
-  	return err
-  }
-  fmt.Sprintf("[SubmitPayment] succeeded creating subscription %v for user %v! ka-ching! :-D", s, user)
+		Customer: user.CustomerId,
+		Items: []*stripe.SubItemsParams{
+			{
+				Plan: paymentDeets.PlanId,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Sprintf("[SubmitPayment] succeeded creating subscription %v for user %v! ka-ching! :-D", s, user)
 
 	// TODO: go talk to stripe, smash together some stuff and update the
 	// current user's CustomerId. Later, Stripe will tell us about an updated
 	// CurrentPlan.
 	*result = true
-	
+
 	return nil
 }
 
