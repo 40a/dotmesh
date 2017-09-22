@@ -35,6 +35,7 @@ class RepoPageData extends Component {
 
   dataList() {
     const data = this.props.commits || []
+    const startIndex = (this.props.pageCurrent-1) * this.props.pageSize
     return (
       <div className={ theme.listContainer }>
         {
@@ -42,7 +43,7 @@ class RepoPageData extends Component {
             return (
               <CommitListItem
                 key={ i }
-                index={ i }
+                index={ startIndex + i }
                 commit={ commit }
               />
             )

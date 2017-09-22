@@ -45,6 +45,7 @@ export default connect(
       commitCount: selectors.commits.count(state),
       searchCount: selectors.commits.searchCount(state),
       pageCount: selectors.commits.pageCount(state),
+      pageSize: selectors.commits.pageSize(state),
       pageCurrent: selectors.commits.pageCurrent(state)
     }
   },
