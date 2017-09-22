@@ -3,24 +3,36 @@
 ### Install
 
 ```bash
-$ sudo curl -o /usr/local/bin/dm \
+sudo curl -o /usr/local/bin/dm \
     https://get.datamesh.io/$(uname -s)/dm
-$ sudo chmod +x /usr/local/bin/dm
-$ dm cluster init
+```
+
+```bash
+sudo chmod +x /usr/local/bin/dm
+```
+
+```bash
+dm cluster init
 ```
 
 ### Connect Remote
 
 ```bash
-$ dm remote add mycluster ${USER_NAME}@${SERVER_NAME}
-$ # enter password
-$ dm remote switch mycluster
-$ dm remote -v
+dm remote add origin ${USER_NAME}@${SERVER_NAME}
 ```
 
-### Create a Repository
+Enter your password.
+
+### Create a repository and push it
 
 ```bash
-$ dm init ${USER_NAME}/apples
-$ dm list
+docker run -ti -v apples:/data busybox touch /data/my-data
+```
+
+```bash
+dm switch apples
+```
+
+```bash
+dm push origin apples
 ```
