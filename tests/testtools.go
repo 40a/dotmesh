@@ -120,6 +120,7 @@ func testSetup(f Federation, stamp int64) error {
 			fi
 			EXTRA_DOCKER_ARGS="-v /datamesh-test-pools:/datamesh-test-pools:rshared" \
 			DIND_IMAGE="quay.io/lukemarsden/kubeadm-dind-cluster:v1.7-hostport" \
+			CNI_PLUGIN=weave \
 				../kubernetes/dind-cluster-v1.7.sh bare $NODE %s
 			sleep 1
 			docker exec -t $NODE bash -c '
@@ -577,7 +578,8 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	}
 	st, err := docker(
 		nodeName(now, i, 0),
-		"systemctl start kubelet && "+
+		"rm /etc/machine-id && systemd-machine-id-setup && "+
+			"systemctl start kubelet && "+
 			"kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks && "+
 			"mkdir /root/.kube && cp /etc/kubernetes/admin.conf /root/.kube/config",
 	)
@@ -609,7 +611,8 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
 		// node).
 		_, err = docker(nodeName(now, i, j), fmt.Sprintf(
-			"systemctl start kubelet && "+
+			"rm /etc/machine-id && systemd-machine-id-setup && "+
+				"systemctl start kubelet && "+
 				"kubeadm join --skip-preflight-checks %s",
 			joinArgs,
 		))
@@ -621,7 +624,8 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	// now install datamesh yaml (setting initial admin pw)
 	st, err = docker(
 		nodeName(now, i, 0),
-		"kubectl create namespace datamesh && "+
+		"kubectl apply -f https://git.io/weave-kube-1.6 && "+
+			"kubectl create namespace datamesh && "+
 			"echo 'secret123' > datamesh-admin-password.txt && "+
 			"kubectl create secret generic datamesh "+
 			"    --from-file=datamesh-admin-password.txt -n datamesh && "+

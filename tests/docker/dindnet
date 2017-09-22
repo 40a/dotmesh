@@ -60,7 +60,7 @@ function dind::setup-bridge {
   
   cat >/etc/cni/net.d/cni.conf <<EOF
 {
-    "cniVersion": "0.3.1",
+    "cniVersion": "0.3.0",
     "name": "dindnet",
     "plugins": [
         {
