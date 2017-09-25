@@ -26,7 +26,7 @@ Enter your password.
 ### Create a repository and push it
 
 ```bash
-docker run -ti -v apples:/data busybox touch /data/my-data
+docker run -ti -v apples:/data --volume-driver dm busybox touch /data/my-data
 ```
 
 ```bash
