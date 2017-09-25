@@ -10,10 +10,11 @@ class PaymentPage extends Component {
           name="Datamesh Developer Plan"
           description="Payment for Datamesh Cloud"
           panelLabel="Rock on!"
-          stripeKey={ this.props.config.StripePublicKey }
-          amount={ 10000 }
+          stripeKey={ this.props.stripeKey }
+          amount={ this.props.amount }
           email={ this.props.email }
           onToken={ this.props.onToken }
+          currency={ this.props.currency }
         />
       </div>
     )

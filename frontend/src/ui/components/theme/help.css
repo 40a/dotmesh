@@ -1,0 +1,8 @@
+.panel {
+  top: 0px !important;
+}
+
+.activePageText {
+  color: #e91e63 !important;
+  font-weight: bold;
+}

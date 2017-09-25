@@ -6,7 +6,6 @@ class ServerTable extends Component {
     const data = this.props.data || []
     return (
       <div id="serverPage">
-        <h1 id="title">Servers</h1>
         <Table selectable={ false } style={{ marginTop: 10 }}>
           <TableHead>
             <TableCell>ID</TableCell>

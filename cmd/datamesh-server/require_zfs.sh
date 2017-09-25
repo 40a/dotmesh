@@ -171,7 +171,7 @@ if [[ "$INITIAL_ADMIN_PASSWORD_FILE" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]]
 fi
 
 if [ -f /etc/datamesh/config.yaml ]; then
-    config_path="-v /etc/datamesh/config.yaml:/etc/datamesh/config.yaml"
+    config_path="-v ${HOST_CONFIG_PATH}:/etc/datamesh/config.yaml"
 fi
 
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
