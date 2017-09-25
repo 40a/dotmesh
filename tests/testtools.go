@@ -732,10 +732,12 @@ func copyMedia(node string) error {
 }
 
 func registerUser(ip, username, email, password string) error {
+	fmt.Printf("Registering test user %s on node %s\n", username, ip)
+
 	registerPayload := struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Username string `json:"Name"`
+		Email    string `json:"Email"`
+		Password string `json:"Password"`
 	}{
 		Username: username,
 		Email:    email,
@@ -761,7 +763,7 @@ func registerUser(ip, username, email, password string) error {
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Invalid response from user registration request: %d: %v", resp.StatusCode, body)
+		return fmt.Errorf("Invalid response from user registration request: %d: %v", resp.StatusCode, string(body))
 	}
 
 	return nil
