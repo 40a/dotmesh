@@ -88,8 +88,8 @@
         {
             "type": "code",
             "language": "bash",
-            "text": "docker run -ti -v apples:/data busybox touch /data/my-data\n",
-            "code": "docker run -ti -v apples:/data busybox touch /data/my-data"
+            "text": "docker run -ti -v apples:/data --volume-driver dm busybox touch /data/my-data\n",
+            "code": "docker run -ti -v apples:/data --volume-driver dm busybox touch /data/my-data"
         },
         {
             "type": "html",
