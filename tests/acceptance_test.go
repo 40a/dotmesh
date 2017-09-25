@@ -103,9 +103,15 @@ func TestSingleNode(t *testing.T) {
 	t.Run("RunningContainersListed", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname, "-d --name tester")+" sleep 100")
-		resp := s(t, node1, "dm list")
-		if !strings.Contains(resp, "tester") {
-			t.Error("container running not listed")
+		err := tryUntilSucceeds(func() error {
+			resp := s(t, node1, "dm list")
+			if !strings.Contains(resp, "tester") {
+				return fmt.Errorf("container running not listed")
+			}
+			return nil
+		}, "listing containers")
+		if err != nil {
+			t.Error(err)
 		}
 	})
 
