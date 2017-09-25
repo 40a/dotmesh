@@ -538,6 +538,12 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
 		d(t, aliceNode.Container, "dm push common_bananas bananas")
 
+		// Check the remote branch got recorded
+		resp := s(t, aliceNode.Container, "dm volume show -H bananas | grep defaultRemoteVolume")
+		if resp != "defaultRemoteVolume\tcommon_bananas\talice/bananas\n" {
+			t.Error("alice/bananas is not the default remote for bananas on common_bananas")
+		}
+
 		// Add Bob as a collaborator
 		err := doAddCollaborator(commonNode.IP, "alice", "alice is also great", "alice", "bananas", "bob")
 		if err != nil {
@@ -548,15 +554,46 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		d(t, bobNode.Container, "echo 'bob is great' | dm remote add common_bananas bob@"+commonNode.IP)
 		// Clone should save admin/bananas@common => alice/bananas
 		d(t, bobNode.Container, "dm clone common_bananas alice/bananas --local-volume bananas")
+		d(t, bobNode.Container, "dm switch bananas")
+
+		// Check it did so
+		resp = s(t, bobNode.Container, "dm volume show -H bananas | grep defaultRemoteVolume")
+		if resp != "defaultRemoteVolume\tcommon_bananas\talice/bananas\n" {
+			t.Error("alice/bananas is not the default remote for bananas on common_bananas")
+		}
 
 		// And then do a pull, not specifying the remote or local volume
-		d(t, bobNode.Container, "dm switch bananas")
+		// There is no bob/bananas, so this will fail if the default remote volume is not saved.
 		d(t, bobNode.Container, "dm pull common_bananas") // local = bananas as we switched, remote = alice/banas from saved default
 
 		// Now push back
 		d(t, bobNode.Container, dockerRun("bananas")+" touch /foo/bob")
 		d(t, bobNode.Container, "dm commit -m'Bob commits'")
 		d(t, bobNode.Container, "dm push common_bananas") // local = bananas as we switched, remote = alice/banas from saved default
+	})
+
+	t.Run("DefaultRemoteNamespaceOverride", func(t *testing.T) {
+		// Alice pushes to the common node with no explicit remote volume, should default to alice/kiwis
+		d(t, aliceNode.Container, dockerRun("kiwis")+" touch /foo/alice")
+		d(t, aliceNode.Container, "echo 'alice is also great' | dm remote add common_kiwis alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "dm switch kiwis")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+		d(t, aliceNode.Container, "dm push common_kiwis") // local kiwis becomes alice/kiwis
+
+		// Check the remote branch got recorded
+		resp := s(t, aliceNode.Container, "dm volume show -H kiwis | grep defaultRemoteVolume")
+		if resp != "defaultRemoteVolume\tcommon_kiwis\talice/kiwis\n" {
+			t.Error("alice/kiwis is not the default remote for kiwis on common_kiwis")
+		}
+
+		// Manually override it (the remote repo doesn't need to exist)
+		d(t, aliceNode.Container, "dm volume set-upstream common_kiwis bob/kiwis")
+
+		// Check the remote branch got changed
+		resp = s(t, aliceNode.Container, "dm volume show -H kiwis | grep defaultRemoteVolume")
+		if resp != "defaultRemoteVolume\tcommon_kiwis\tbob/kiwis\n" {
+			t.Error("bob/kiwis is not the default remote for kiwis on common_kiwis, looks like the set-upstream failed")
+		}
 	})
 
 }
