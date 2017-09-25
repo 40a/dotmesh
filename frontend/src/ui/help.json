@@ -110,6 +110,17 @@
         {
             "type": "code",
             "language": "bash",
+            "text": "dm commit -m \"how do you like them apples\"\n",
+            "code": "dm commit -m \"how do you like them apples\""
+        },
+        {
+            "type": "html",
+            "text": "",
+            "html": ""
+        },
+        {
+            "type": "code",
+            "language": "bash",
             "text": "dm push origin apples\n",
             "code": "dm push origin apples"
         },

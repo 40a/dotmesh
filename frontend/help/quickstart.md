@@ -34,5 +34,9 @@ dm switch apples
 ```
 
 ```bash
+dm commit -m "how do you like them apples"
+```
+
+```bash
 dm push origin apples
 ```
