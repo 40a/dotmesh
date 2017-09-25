@@ -68,11 +68,11 @@ First - install vagrant.
 Then:
 
 ```bash
-$ vagrant up
-$ vagrant ssh
-$ ssh-keygen
-$ # yes to all options
-$ cat ~/.ssh/id_rsa.pub
+vagrant up
+vagrant ssh
+ssh-keygen
+# yes to all options
+cat ~/.ssh/id_rsa.pub
 ```
 
 Now paste this key into your github account AND your gitlab account.
@@ -80,16 +80,52 @@ Now paste this key into your github account AND your gitlab account.
 Now we login and run the `ubuntu` prepare script:
 
 ```bash
-$ vagrant ssh
-$ bash /vagrant/scripts/prepare_vagrant.sh
-$ exit
-$ vagrant ssh
-$ go get github.com/tools/godep
+vagrant ssh
+bash /vagrant/scripts/prepare_vagrant.sh
+exit
+vagrant ssh
+go get github.com/tools/godep
 ```
 
 NOTE: you must exit and re-ssh to get the GOPATH to work
 
+If you want to skip compiling Kubernetes (for example if you are only running the frontend tests):
+
+```bash
+SKIP_K8S=1 bash /vagrant/scripts/prepare_vagrant.sh
+```
+
 Now you can skip directly to ["running tests"](#running-tests).
+
+#### reset vagrant
+
+To reset and bring the vagrant setup up to date:
+
+```bash
+vagrant ssh
+bash /vagrant/scripts/reset_vagrant.sh
+```
+
+If you want to skip recompiling Kubernetes for this step:
+
+```bash
+SKIP_K8S=1 bash /vagrant/scripts/reset_vagrant.sh
+```
+
+#### symlink code
+
+It is possible to mount your local codebase into the vagrant VM so you can re-run the test suite without having to git commit & push.
+
+There can be issues with Vagrant shared folders hence this being a manual step:
+
+```bash
+vagrant ssh
+cd $GOPATH/src/github.com/lukemarsden
+# might as well keep this
+mv datamesh datamesh2
+ln -s /vagrant datamesh
+# now $GOPATH/src/github.com/lukemarsden/datamesh -> /vagrant -> this repo on your host
+```
 
 ## setup
 
@@ -101,14 +137,10 @@ cd $GOPATH/src/github.com/lukemarsden
 git clone git@neo.lukemarsden.net:root/datamesh
 ```
 
-We're going to create `~/kubernetes`, `~/datamesh-instrumentation` and
+We're going to create `~/datamesh-instrumentation` and
 `~/discovery.datamesh.io` directories:
 
 ```
-cd ~/
-git clone git@github.com:kubernetes/kubernetes
-cd kubernetes
-git clone git@github.com:lukemarsden/kubeadm-dind-cluster dind
 cd ~/
 git clone git@github.com:lukemarsden/datamesh-instrumentation
 cd datamesh-instrumentation
@@ -190,7 +222,7 @@ How to develop a single datamesh server, frontend and CLI locally with Docker.
 Before you begin, upgrade your Docker then build the required images:
 
 ```bash
-$ make build
+make build
 ```
 
 This will:
@@ -202,10 +234,13 @@ This will:
 You can run the three build stages seperately:
 
 ```bash
-$ make cluster.build
-$ make cli.build
-$ make frontend.build
+make cluster.build
+make frontend.build
+make cli.build
 ```
+
+NOTE: you will need to copy the `dm` binary as instructed by the output of the `make cli.build` command - make sure you do this
+
 
 ## run the stack
 
@@ -213,40 +248,116 @@ $ make frontend.build
 First we bring up a datamesh cluster:
 
 ```bash
-$ make cluster.start
+make cluster.start
 ```
 
 This will start an etcd and 2 datamesh containers - `docker ps` will show this.
+
+If this produces errors - you can use this command to reset and try again:
+
+```bash
+make reset
+```
+
+#### start cluster with billing
+
+You will need to create a `config.stripe.yaml` in the root of the repo (it's gitignore) like this:
+
+```yaml
+StripePrivateKey: XXX
+StripePublicKey: XXX
+Plans:
+  - 
+    Id: free
+    Name: Free
+    TotalSize: 100M
+    Transfer: 1G
+    VolumeCount: 5
+    PriceUSD: 0
+  - 
+    Id: developer
+    Name: "Developer Plan"
+    TotalSize: 1G
+    Transfer: 10G
+    VolumeCount: 10
+    PriceUSD: 1000
+  - 
+    Id: team
+    Name: team
+    TotalSize: 10G
+    Transfer: 100G
+    VolumeCount: 100
+    PriceUSD: 100000
+```
+
+Then export the `DATAMESH_CONFIG` variable:
+
+```bash
+export DATAMESH_CONFIG=$PWD/config.stripe.yaml
+make cluster.start
+```
+
+#### adding stripe webhooks
+
+Stripe issues webhooks for each event that happens with a customer.  To get these events sent to your local stack:
+
+ * port forward :8080 from your router to your local machine
+ * get your public IP from [whatismyip.com](http://whatismyip.com)
+ * login to the Stripe control panel -> api -> webhooks -> add endpoint
+ * enter `http://<your-public-ip>:8080/stripe` as a new webhook (NOTE: **in test mode!**)
+ * make sure the stack is up `make cluster.start && make frontend.start`
+ * click - `send test webhook`
+ * `docker logs datamesh-server-inner | grep [Stripe Handler]`
+
+#### interacting with etcd
+
+You can use the `etcdctl` dev command to view the contents of the database.
+
+```bash
+bash dev.sh etcdctl ls /datamesh.io
+```
+
+**list users**
+
+```bash
+bash dev.sh etcdctl ls /datamesh.io/users
+```
+
+**show user**
+
+```bash
+bash dev.sh etcdctl get /datamesh.io/users/00000000-0000-0000-0000-000000000000
+```
 
 #### start frontend
 Then we bring up the frontend container (which proxies back to the cluster for api requests):
 
 ```bash
-$ make frontend.start
+make frontend.start
 ```
 
 To attach to the frontend logs:
 
 ```bash
-$ make frontend.logs
+make frontend.logs
 ```
 
 Now you should be able to open the app in your browser:
 
 ```bash
-$ open http://localhost:8080
+open http://localhost:8080
 ```
 
 To view the new UI:
 
 ```bash
-$ open http://localhost:8080/ui
+open http://localhost:8080/ui
 ```
 
 If you want to see the cluster server directly - you can:
 
 ```bash
-$ open http://localhost:6969
+open http://localhost:6969
 ```
 
 #### frontend CLI
@@ -254,8 +365,8 @@ $ open http://localhost:6969
 Sometimes it's useful to have the frontend container hooked up but with a bash prompt:
 
 ```bash
-$ make frontend.dev
-$ yarn run watch
+make frontend.dev
+yarn run watch
 ```
 
 #### linking templatestack
@@ -265,24 +376,24 @@ The `template-ui` and `template-tools` npm modules are used in the UI and to ite
 To do this - you first need to clone https://github.com/binocarlos/templatestack.git to the same folder as datamesh then:
 
 ```bash
-$ make frontend.link
-$ yarn run watch
+make frontend.link
+yarn run watch
 ```
 
-Now - any changes made to `templatestack/template-ui` will hot-reload.
+Now - any changes made to `templatestack/template-ui` will hot-reload.  Changes made to template-ui must be published to npm!
 
 #### reset & boot errors
 
 If anything happens which results in the cluster not being able to boot - usually the solution is:
 
 ```bash
-$ make reset
+make reset
 ```
 
 which does:
 
 ```bash
-$ dm cluster reset
+dm cluster reset
 ```
 
 ## stop the stack
@@ -290,9 +401,9 @@ $ dm cluster reset
 To stop a running stack - use these commands:
 
 ```bash
-$ make cluster.stop
-$ make frontend.stop
-$ make reset
+make cluster.stop
+make frontend.stop
+make reset
 ```
 
 We currently need to reset the cluster each time we stop - this means you will have to re-create your user account when you restart the stack.
@@ -315,21 +426,32 @@ Here is how you would edit code for the 3 main sections of datamesh:
 Once you have edited the [server code](cmd/datamesh-server) - run the build script:
 
 ```bash
-$ make cluster.build
+make cluster.build
 ```
 
 Then we run the `upgrade` script which will replace in place the server container with our new image:
 
 ```bash
-$ make cluster.upgrade
+make cluster.upgrade
 ```
+
+#### adding go dependencies
+
+If you have included a new godep in your code - follow these steps:
+
+ * symlink the current repo into $GOPATH/src/github.com/lukemarsden/datamesh
+ * cd $GOPATH/src/github.com/lukemarsden/datamesh/cmd/{datamesh-server,dm}
+ * godep restore # only if not run already
+ * go get github.com/stripe/stripe-go/customer
+ * godep save ./...
+ * # now commit the vendor & Godeps folder
 
 #### cli
 
 Once you have edited the [cli code](cmd/dm) - run the build script:
 
 ```bash
-$ make cli.build
+make cli.build
 ```
 
 This will build the go code in a container and output it to `binaries/$GOOS`.
@@ -337,8 +459,8 @@ This will build the go code in a container and output it to `binaries/$GOOS`.
 We then move the binary to use it:
 
 ```bash
-$ sudo mv -f binaries/darwin/dm /usr/local/bin/dm
-$ sudo chmod +x /usr/local/bin/dm
+sudo mv -f binaries/darwin/dm /usr/local/bin/dm
+sudo chmod +x /usr/local/bin/dm
 ```
 
 #### frontend
@@ -356,32 +478,42 @@ There are times when you will need to rebuild the frontend image for example if 
 First, stop the frontend server:
 
 ```bash
-$ make frontend.stop
+make frontend.stop
 ```
 
 Then - use yarn to add the module:
 
 ```bash
-$ cd frontend
-$ yarn add my-new-kool-aid
-$ cd ..
+cd frontend
+yarn add my-new-kool-aid
+cd ..
 ```
 
 Build and start the frontend image:
 
 ```bash
-$ make frontend.build
-$ make frontend.start
+make frontend.build
+make frontend.start
 ```
 
 You can `docker exec -ti datamesh-frontend bash` to get a CLI inside the frontend container to run any other commands.
+
+#### changing the help markdown
+
+If you change any of the `.md` files inside `frontend/help` - you will need to re-run the following command:
+
+```bash
+make help
+```
+
+This will generate the following file: `frontend/src/ui/help.json` which is used to generate the help pages in React.
 
 #### building frontend production code
 
 To build the production distribution of the frontend code:
 
 ```bash
-$ make frontend.dist
+make frontend.dist
 ```
 
 This will create output in `frontend/dist` which can be copied into the server container for production.
@@ -393,17 +525,17 @@ The frontend `dist` folder is merged into the datamesh-server image in the `merg
 To run the frontend code in production mode (i.e. static files inside the server) - do the following:
 
 ```bash
-$ make prod
+make prod
 ```
 
 This will:
 
 ```bash
-$ make frontend.build
-$ make frontend.dist
-$ make cluster.build
-$ make cluster.prodbuild
-$ make cluster.start
+make frontend.build
+make frontend.dist
+make cluster.build
+make cluster.prodbuild
+make cluster.start
 ```
 
 and end up with the same as `cluster.start` but with the frontend code built into the server.
@@ -419,14 +551,14 @@ It is useful to run the frontend tests against a running hot-reloading developme
 First - startup chromedriver and build the test image.
 
 ```bash
-$ make frontend.test.build # only needed once
-$ make chromedriver.start
+make frontend.test.build # only needed once
+make chromedriver.start
 ```
 
 Then - as the frontend is rebuilding as you make changes - you can re-run the test suite:
 
 ```bash
-$ make frontend.test
+make frontend.test
 ```
 
 Videos & screenshots are produced after each test run - they live in `frontend/.media`
@@ -436,6 +568,6 @@ Videos & screenshots are produced after each test run - they live in `frontend/.
 If you are running the production trim (where the frontend code is burnt into the server):
 
 ```bash
-$ make chromedriver.start.prod
-$ make frontend.test.prod
+make chromedriver.start.prod
+make frontend.test.prod
 ```

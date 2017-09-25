@@ -51,6 +51,12 @@ frontend.dev: ; CLI=1 make frontend.start
 .PHONY: frontend.link
 frontend.link: ; CLI=1 LINKMODULES=1 make frontend.start
 
+.PHONY: frontend.cli
+frontend.cli: ; docker exec -ti datamesh-frontend bash
+
+.PHONY: help
+help: ; docker exec -ti datamesh-frontend yarn run buildhelp
+
 .PHONY: frontend.logs
 frontend.logs: ; docker logs -f datamesh-frontend
 

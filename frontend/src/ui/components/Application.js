@@ -2,8 +2,11 @@ import React, { Component, PropTypes } from 'react'
 
 import { Layout, NavDrawer, Sidebar, Panel } from 'react-toolbox/lib/layout'
 import AppBar from 'react-toolbox/lib/app_bar'
+import SnackBar from 'react-toolbox/lib/snackbar'
 import ListMenu from 'template-ui/lib/components/ListMenu'
 import IconMenu from 'template-ui/lib/components/IconMenu'
+
+import UserChip from './widgets/UserChip'
 
 import config from '../config'
 
@@ -57,8 +60,17 @@ class ApplicationComponent extends Component {
           onLeftIconClick={ this.props.toggleMenu }
           title={ title }
         >
-          <div id="appBarMenu">
-            { appbarMenu }
+          <div>
+            <div className={ appBarTheme.rightContent } id="appBarMenu">
+              { appbarMenu }
+            </div>
+            {
+              this.props.user ? (
+                <div className={ appBarTheme.rightContent }>
+                  <UserChip user={ this.props.user } />
+                </div>
+              ) : null
+            }
           </div>
         </AppBar>
         <Panel bodyScroll={ bodyScroll }>
@@ -70,6 +82,12 @@ class ApplicationComponent extends Component {
               ) 
           }
         </Panel>
+        <SnackBar
+          active={this.props.message ? true : false}
+          label={this.props.message}
+          timeout={5000}
+          onTimeout={this.props.clearMessage}
+        />
       </Layout>
     )
   }

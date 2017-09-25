@@ -8,3 +8,6 @@ binaries
 *.sw*
 *.log
 .vagrant
+config.stripe.yaml
+*.tar.gz
+*.tar

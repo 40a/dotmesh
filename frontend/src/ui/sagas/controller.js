@@ -1,5 +1,7 @@
-import { take, put, call, fork, select, all, takeLatest, takeEvery, cancel } from 'redux-saga/effects'
+import { take, put, call, fork, select, all, takeLatest, takeEvery, cancel, cancelled } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
+
+import { TYPES } from 'template-ui/lib/plugins/router/actions'
 
 import config from '../config'
 import forms from '../forms'
@@ -9,7 +11,7 @@ import * as selectors from '../selectors'
 import tools from '../tools'
 
 const REQUIRED_OPTS = [
-  
+  'hooks'
 ]
 
 /*
@@ -23,16 +25,21 @@ const ControllerLoop = (opts = {}) => {
     if(!opts[name]) throw new Error(`${name} opt required`)
   })
 
-  const handlers = opts.handlers
+  const hooks = opts.hooks
+
+  // reference to the saga so we can cancel it
   let currentLoopTask = null
 
+  // block whilst we are doing the saga itself
   function* singleLoop() {
-    const routerResults = yield select(state => state.router.result)
-
-    const hooks = routerResults.controlLoopHooks || []
-
-    yield all(hooks.map(hookName => put(actions.router.hook(hookName))))
-
+    const routerResults = yield select(state => state.router.result || {})
+    const sagaName = routerResults.controlLoopSaga
+    const saga = sagaName && hooks[sagaName] ? hooks[sagaName] : null
+    let result = null
+    if(saga) {
+      result = yield call(saga)
+    }
+    return result
   }
 
   function* runLoop() {
@@ -58,9 +65,14 @@ const ControllerLoop = (opts = {}) => {
     }
   }
 
+  function* onRouteChange() { 
+    yield call(singleLoop)
+  }
+
   return {
     start,
-    stop
+    stop,
+    onRouteChange
   }
 }
 

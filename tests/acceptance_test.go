@@ -419,7 +419,7 @@ func TestFrontend(t *testing.T) {
 		d(t, node1, "dm init testvolume")
 		d(t, node1, "dm list")
 
-		runFrontendTest(t, node1, "specs/volumes.js", userLogin)
+		runFrontendTest(t, node1, "specs/repos.js", userLogin)
 		runFrontendTest(t, node1, "specs/rememberme.js", userLogin)
 
 		copyMedia(node1)

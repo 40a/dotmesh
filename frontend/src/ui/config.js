@@ -23,13 +23,17 @@ const icons = {
   search: 'search',
   disk: 'storage',
   server: 'computer',
-  payment: 'credit_card'
+  payment: 'credit_card',
+  back: 'arrow_back',
+  forward: 'arrow_forward',
+  users: 'people'
 }
 
 const config = {
   title:'Datamesh Console',
   basepath:'/ui',
   rpcNamespace: 'DatameshRPC',
+  devmodePlanName: 'developer',
   rpcUrl: '/rpc',
   userValueName: 'user',
   userLocalStorageName: 'user',
@@ -42,7 +46,13 @@ const config = {
     }
   },
   // milliseconds delay for each iteration of the control loop
-  controlLoopInterval: 1000000,
+  controlLoopInterval: process.env.NODE_ENV == 'development' ? 10000 : 1000,
+  repolist: {
+    pageSize: 3
+  },
+  commitlist: {
+    pageSize: 3
+  },
   images: {
     appbar: '/images/datamesh-on-dark.png'
   },
@@ -56,16 +66,36 @@ const config = {
     ],
     user: [
       ['/dashboard', 'Dashboard', icons.dashboard],
-      ['/volumes', 'Volumes', icons.disk],
+      ['/repos', 'Repos', icons.disk],
       ['/servers', 'Servers', icons.server],
       ['/payment', 'Payment', icons.payment],
       ['-'],
       ['/help', 'Help', icons.help],
       ['-'],
       ['authLogout', 'Logout', icons.logout]
+    ],
+    help: [
+      ['quickstart', 'Quickstart'],
+      ['install', 'Install Datamesh'],
+      ['createrepo', 'Create a Repository'],
+      ['runcontainer', 'Run a Container']
+    ],
+    repoSettings: [
+      ['collaborators', 'Collaborators', icons.users],
+      ['access', 'Access', icons.settings]
     ]
   },
   icons
+}
+
+if(process.env.NODE_ENV == 'development') {
+  console.log('-------------------------------------------');
+  console.log('-------------------------------------------');
+  console.log('-------------------------------------------');
+  console.log('-------------------------------------------');
+  console.log('-------------------------------------------');
+  console.log('DEV MODE')
+  console.log('data loop is 10 seconds not 1')
 }
 
 export default config
