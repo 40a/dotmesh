@@ -24,7 +24,42 @@ require internet access.
 
 ## setup - nixos
 
-Use a [config like this](https://github.com/lukemarsden/nixos/blob/master/vmware-guest/configuration.nix) for `/etc/nixos/configuration.nix`.
+Use a config like this:
+
+```
+boot.supportedFilesystems = [ "zfs" ];
+networking.hostId = "cafecafe"; # Make a random one.
+networking.hostName = "devmachine"; # Define your hostname.
+networking.extraHosts = "127.0.0.1 ${config.networking.hostName}.local";
+#nixpkgs.config.allowUnfree = true;
+environment.systemPackages = with pkgs; [
+#  chromium
+#  slack
+  wget
+  vim
+  docker
+  docker_compose
+  universal-ctags
+  mtr
+  go
+  jq
+  tmux
+  tmate
+  gnumake
+  git
+];
+boot.kernel.sysctl."vm.max_map_count" = 262144; # for elasticsearch
+virtualisation.docker = {
+  enable = true;
+  storageDriver = "overlay2";
+  extraOptions = "--insecure-registry ${config.networking.hostName}.local:80";
+};
+system.activationScripts.binbash = {
+  text = "ln -sf /run/current-system/sw/bin/bash /bin/bash";
+  deps = [];
+};
+networking.firewall.enable = false;
+```
 
 Then run:
 ```
