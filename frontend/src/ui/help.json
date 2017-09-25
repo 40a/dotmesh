@@ -44,8 +44,30 @@
         {
             "type": "code",
             "language": "bash",
-            "text": "$ sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\n$ sudo chmod +x /usr/local/bin/dm\n$ dm cluster init\n",
-            "code": "$ sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\n$ sudo chmod +x /usr/local/bin/dm\n$ dm cluster init"
+            "text": "sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm\n",
+            "code": "sudo curl -o /usr/local/bin/dm \\\n    https://get.datamesh.io/$(uname -s)/dm"
+        },
+        {
+            "type": "html",
+            "text": "",
+            "html": ""
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "sudo chmod +x /usr/local/bin/dm\n",
+            "code": "sudo chmod +x /usr/local/bin/dm"
+        },
+        {
+            "type": "html",
+            "text": "",
+            "html": ""
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "dm cluster init\n",
+            "code": "dm cluster init"
         },
         {
             "type": "html",
@@ -55,19 +77,41 @@
         {
             "type": "code",
             "language": "bash",
-            "text": "$ dm remote add mycluster ${USER_NAME}@${SERVER_NAME}\n$ # enter password\n$ dm remote switch mycluster\n$ dm remote -v\n",
-            "code": "$ dm remote add mycluster ${USER_NAME}@${SERVER_NAME}\n$ # enter password\n$ dm remote switch mycluster\n$ dm remote -v"
+            "text": "dm remote add origin ${USER_NAME}@${SERVER_NAME}\n",
+            "code": "dm remote add origin ${USER_NAME}@${SERVER_NAME}"
         },
         {
             "type": "html",
-            "text": "### Create a Repository\n\n",
-            "html": "<h3 id=\"create-a-repository\">Create a Repository</h3>\n"
+            "text": "Enter your password.\n\n### Create a repository and push it\n\n",
+            "html": "<p>Enter your password.</p>\n<h3 id=\"create-a-repository-and-push-it\">Create a repository and push it</h3>\n"
         },
         {
             "type": "code",
             "language": "bash",
-            "text": "$ dm init ${USER_NAME}/apples\n$ dm list\n",
-            "code": "$ dm init ${USER_NAME}/apples\n$ dm list"
+            "text": "docker run -ti -v apples:/data busybox touch /data/my-data\n",
+            "code": "docker run -ti -v apples:/data busybox touch /data/my-data"
+        },
+        {
+            "type": "html",
+            "text": "",
+            "html": ""
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "dm switch apples\n",
+            "code": "dm switch apples"
+        },
+        {
+            "type": "html",
+            "text": "",
+            "html": ""
+        },
+        {
+            "type": "code",
+            "language": "bash",
+            "text": "dm push origin apples\n",
+            "code": "dm push origin apples"
         },
         {
             "type": "html",
