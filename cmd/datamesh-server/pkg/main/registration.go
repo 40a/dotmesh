@@ -62,6 +62,7 @@ type RegistrationPayload struct {
 	EmailError    string
 	NameError     string
 	PasswordError string
+	Valid         bool
 	Created       bool
 	Submit        bool
 	Json          bool
@@ -85,7 +86,8 @@ func (payload *RegistrationPayload) Validate() bool {
 	} else if strings.Contains(payload.Name, "/") {
 		payload.NameError = "Invalid username."
 	}
-	return payload.EmailError == "" && payload.NameError == "" && payload.PasswordError == ""
+	payload.Valid = (payload.EmailError == "") && (payload.NameError == "") && (payload.PasswordError == "")
+	return payload.Valid
 }
 
 func NewRegistrationPayload(r *http.Request) (RegistrationPayload, error) {
@@ -196,6 +198,10 @@ func (web RegistrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			WriteError(w)
 			return
 		}
+	}
+
+	if !payload.Valid {
+		w.WriteHeader(http.StatusBadRequest)
 	}
 
 	if payload.Json {

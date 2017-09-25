@@ -583,6 +583,13 @@ func (dm *DatameshAPI) RequestTransfer(
 ) (string, error) {
 	connectionInitiator := dm.Configuration.CurrentRemote
 
+	/*
+		fmt.Printf("[DEBUG RequestTransfer] dir=%s peer=%s lfs=%s lb=%s rfs=%s rb=%s\n",
+			direction, peer,
+			localFilesystemName, localBranchName,
+			remoteFilesystemName, remoteBranchName)
+	*/
+
 	var err error
 
 	remote, err := dm.Configuration.GetRemote(peer)
@@ -622,37 +629,66 @@ func (dm *DatameshAPI) RequestTransfer(
 		}
 	}
 
-	// On the other hand, if a local is specified but no remote, we
-	// need to guess the remote.
+	// Split the local volume name's namespace out
+	localNamespace, localVolume, err := ParseNamespacedVolume(localFilesystemName)
+	if err != nil {
+		return "", err
+	}
 
-	// TODO: When we have "remote tracking" support, we'll have
-	// recorded the remote we cloned from so can just use that.
+	// Guess defaults for the remote filesystem
+	var remoteNamespace, remoteVolume string
+
 	if remoteFilesystemName == "" {
-		_, bareName, err := ParseNamespacedVolume(localFilesystemName)
+		// No remote specified. Do we already have a default configured?
+		defaultRemoteNamespace, defaultRemoteVolume, ok := dm.Configuration.DefaultRemoteVolumeFor(peer, localNamespace, localVolume)
+		if ok {
+			// If so, use it
+			remoteNamespace = defaultRemoteNamespace
+			remoteVolume = defaultRemoteVolume
+		} else {
+			// If not, default to the un-namespaced local filesystem name.
+			// This causes it to default into the user's own namespace
+			// when we parse the name, too.
+			remoteNamespace = remote.User
+			remoteVolume = localVolume
+		}
+	} else {
+		// Default namespace for remote volume is the username on this remote
+		remoteNamespace, remoteVolume, err = ParseNamespacedVolumeWithDefault(remoteFilesystemName, remote.User)
 		if err != nil {
 			return "", err
 		}
-		remoteFilesystemName = remote.User + "/" + bareName
 	}
+
+	// Remember default remote if there isn't already one
+	_, _, ok := dm.Configuration.DefaultRemoteVolumeFor(peer, localNamespace, localVolume)
+	if !ok {
+		dm.Configuration.SetDefaultRemoteVolumeFor(peer, localNamespace, localVolume, remoteNamespace, remoteVolume)
+	}
+
 	if remoteBranchName == "" {
 		remoteBranchName = localBranchName
 	}
 
-	if remoteBranchName != "" && remoteFilesystemName == "" {
+	if remoteBranchName != "" && remoteVolume == "" {
 		return "", fmt.Errorf(
 			"It's dubious to specify a remote branch name " +
 				"without specifying a remote filesystem name.",
 		)
 	}
 
-	localNamespace, localVolume, err := ParseNamespacedVolume(localFilesystemName)
-	if err != nil {
-		return "", err
-	}
-
-	remoteNamespace, remoteFilesystemName, err := ParseNamespacedVolume(remoteFilesystemName)
-	if err != nil {
-		return "", err
+	if direction == "push" {
+		fmt.Printf("Pushing %s/%s to %s:%s/%s\n",
+			localNamespace, localVolume,
+			peer,
+			remoteNamespace, remoteVolume,
+		)
+	} else {
+		fmt.Printf("Pulling %s/%s from %s:%s/%s\n",
+			localNamespace, localVolume,
+			peer,
+			remoteNamespace, remoteVolume,
+		)
 	}
 
 	// connect to connectionInitiator
@@ -673,7 +709,7 @@ func (dm *DatameshAPI) RequestTransfer(
 			LocalFilesystemName:  localVolume,
 			LocalCloneName:       deMasterify(localBranchName),
 			RemoteNamespace:      remoteNamespace,
-			RemoteFilesystemName: remoteFilesystemName,
+			RemoteFilesystemName: remoteVolume,
 			RemoteCloneName:      deMasterify(remoteBranchName),
 			// TODO add TargetSnapshot here, to support specifying "push to a given
 			// snapshot" rather than just "push all snapshots up to the latest"
@@ -684,7 +720,8 @@ func (dm *DatameshAPI) RequestTransfer(
 	return transferId, nil
 }
 
-// FIXME: Put this in a shared library, as it duplicates the copy in datamesh-server/pkg/main/utils.go
+// FIXME: Put this in a shared library, as it duplicates the copy in
+// datamesh-server/pkg/main/utils.go (now with a few differences)
 
 type VolumeName struct {
 	Namespace string
@@ -699,16 +736,20 @@ func (v VolumeName) String() string {
 	}
 }
 
-func ParseNamespacedVolume(name string) (string, string, error) {
+func ParseNamespacedVolumeWithDefault(name, defaultNamespace string) (string, string, error) {
 	parts := strings.Split(name, "/")
 	switch len(parts) {
 	case 0: // name was empty
 		return "", "", nil
-	case 1: // name was unqualified, no namespace, so we default to "admin"
-		return "admin", name, nil
+	case 1: // name was unqualified, no namespace, so we default
+		return defaultNamespace, name, nil
 	case 2: // Qualified name
 		return parts[0], parts[1], nil
 	default: // Too many slashes!
 		return "", "", fmt.Errorf("Volume names must be of the form NAMESPACE/VOLUME or just VOLUME: '%s'", name)
 	}
+}
+
+func ParseNamespacedVolume(name string) (string, string, error) {
+	return ParseNamespacedVolumeWithDefault(name, "admin")
 }

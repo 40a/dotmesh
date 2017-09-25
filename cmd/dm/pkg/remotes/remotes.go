@@ -40,11 +40,12 @@ import (
 )
 
 type Remote struct {
-	User            string
-	Hostname        string
-	ApiKey          string
-	CurrentVolume   string
-	CurrentBranches map[string]string
+	User                 string
+	Hostname             string
+	ApiKey               string
+	CurrentVolume        string
+	CurrentBranches      map[string]string
+	DefaultRemoteVolumes map[string]map[string]VolumeName
 }
 
 type Configuration struct {
@@ -155,6 +156,36 @@ func (c *Configuration) SetCurrentVolume(volume string) error {
 		)
 	}
 	(*c.Remotes[c.CurrentRemote]).CurrentVolume = volume
+	return c.save()
+}
+
+func (c *Configuration) DefaultRemoteVolumeFor(peer, namespace, volume string) (string, string, bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	defaultRemoteVolume, ok := c.Remotes[peer].DefaultRemoteVolumes[namespace][volume]
+	if !ok {
+		return "", "", false
+	}
+	return defaultRemoteVolume.Namespace, defaultRemoteVolume.Name, true
+}
+
+func (c *Configuration) SetDefaultRemoteVolumeFor(peer, namespace, volume, remoteNamespace, remoteVolume string) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	remote, ok := c.Remotes[peer]
+	if !ok {
+		return fmt.Errorf(
+			"Unable to find remote '%s', which was apparently current",
+			c.CurrentRemote,
+		)
+	}
+	if remote.DefaultRemoteVolumes == nil {
+		remote.DefaultRemoteVolumes = map[string]map[string]VolumeName{}
+	}
+	if remote.DefaultRemoteVolumes[namespace] == nil {
+		remote.DefaultRemoteVolumes[namespace] = map[string]VolumeName{}
+	}
+	remote.DefaultRemoteVolumes[namespace][volume] = VolumeName{remoteNamespace, remoteVolume}
 	return c.save()
 }
 

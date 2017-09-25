@@ -49,7 +49,6 @@ add'. Create a datamesh cluster with 'dm cluster init'.`,
 
 func init() {
 	MainCmd.AddCommand(NewCmdCluster(os.Stdout))
-
 	MainCmd.AddCommand(NewCmdRemote(os.Stdout))
 	MainCmd.AddCommand(NewCmdList(os.Stdout))
 	MainCmd.AddCommand(NewCmdInit(os.Stdout))
@@ -59,12 +58,11 @@ func init() {
 	MainCmd.AddCommand(NewCmdBranch(os.Stdout))
 	MainCmd.AddCommand(NewCmdCheckout(os.Stdout))
 	MainCmd.AddCommand(NewCmdReset(os.Stdout))
-
 	MainCmd.AddCommand(NewCmdClone(os.Stdout))
 	MainCmd.AddCommand(NewCmdPull(os.Stdout))
 	MainCmd.AddCommand(NewCmdPush(os.Stdout))
-
 	MainCmd.AddCommand(NewCmdDebug(os.Stdout))
+	MainCmd.AddCommand(NewCmdVolume(os.Stdout))
 
 	MainCmd.PersistentFlags().StringVarP(
 		&configPath, "config", "c",
