@@ -31,13 +31,6 @@ if [ ! -d "$GOPATH/src/github.com/lukemarsden/datamesh" ]; then
   git clone git@neo.lukemarsden.net:root/datamesh
 fi
 
-if [ ! -d "$HOME/kubernetes" ]; then
-  cd $HOME/
-  git clone git@github.com:kubernetes/kubernetes
-  cd kubernetes
-  git clone git@github.com:lukemarsden/kubeadm-dind-cluster dind
-fi
-
 if [ ! -d "$HOME/datamesh-instrumentation" ]; then
   cd $HOME/
   git clone git@github.com:lukemarsden/datamesh-instrumentation
