@@ -101,14 +101,10 @@ cd $GOPATH/src/github.com/lukemarsden
 git clone git@neo.lukemarsden.net:root/datamesh
 ```
 
-We're going to create `~/kubernetes`, `~/datamesh-instrumentation` and
+We're going to create `~/datamesh-instrumentation` and
 `~/discovery.datamesh.io` directories:
 
 ```
-cd ~/
-git clone git@github.com:kubernetes/kubernetes
-cd kubernetes
-git clone git@github.com:lukemarsden/kubeadm-dind-cluster dind
 cd ~/
 git clone git@github.com:lukemarsden/datamesh-instrumentation
 cd datamesh-instrumentation
