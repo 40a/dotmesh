@@ -444,13 +444,16 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 	aliceNode := f[1].GetNode(0)
 	bobNode := f[2].GetNode(0)
 
+	bobKey := "bob is great"
+	aliceKey := "alice is great"
+
 	// Create users bob and alice on the common node
-	err = registerUser(commonNode.IP, "bob", "bob@bob.com", "bob is great")
+	err = registerUser(commonNode.IP, "bob", "bob@bob.com", bobKey)
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = registerUser(commonNode.IP, "alice", "alice@bob.com", "alice is also great")
+	err = registerUser(commonNode.IP, "alice", "alice@bob.com", aliceKey)
 	if err != nil {
 		t.Error(err)
 	}
@@ -518,7 +521,7 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 	t.Run("DefaultRemoteNamespace", func(t *testing.T) {
 		// Alice pushes to the common node with no explicit remote volume, should default to alice/pears
 		d(t, aliceNode.Container, dockerRun("pears")+" touch /foo/alice")
-		d(t, aliceNode.Container, "echo 'alice is also great' | dm remote add common_pears alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "echo '"+aliceKey+"' | dm remote add common_pears alice@"+commonNode.IP)
 		d(t, aliceNode.Container, "dm switch pears")
 		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
 		d(t, aliceNode.Container, "dm push common_pears") // local pears becomes alice/pears
@@ -533,7 +536,7 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 	t.Run("DefaultRemoteVolume", func(t *testing.T) {
 		// Alice pushes to the common node with no explicit remote volume, should default to alice/pears
 		d(t, aliceNode.Container, dockerRun("bananas")+" touch /foo/alice")
-		d(t, aliceNode.Container, "echo 'alice is also great' | dm remote add common_bananas alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "echo '"+aliceKey+"' | dm remote add common_bananas alice@"+commonNode.IP)
 		d(t, aliceNode.Container, "dm switch bananas")
 		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
 		d(t, aliceNode.Container, "dm push common_bananas bananas")
@@ -545,13 +548,13 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		}
 
 		// Add Bob as a collaborator
-		err := doAddCollaborator(commonNode.IP, "alice", "alice is also great", "alice", "bananas", "bob")
+		err := doAddCollaborator(commonNode.IP, "alice", aliceKey, "alice", "bananas", "bob")
 		if err != nil {
 			t.Error(err)
 		}
 
 		// Clone it back as bob
-		d(t, bobNode.Container, "echo 'bob is great' | dm remote add common_bananas bob@"+commonNode.IP)
+		d(t, bobNode.Container, "echo '"+bobKey+"' | dm remote add common_bananas bob@"+commonNode.IP)
 		// Clone should save admin/bananas@common => alice/bananas
 		d(t, bobNode.Container, "dm clone common_bananas alice/bananas --local-volume bananas")
 		d(t, bobNode.Container, "dm switch bananas")
@@ -575,7 +578,7 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 	t.Run("DefaultRemoteNamespaceOverride", func(t *testing.T) {
 		// Alice pushes to the common node with no explicit remote volume, should default to alice/kiwis
 		d(t, aliceNode.Container, dockerRun("kiwis")+" touch /foo/alice")
-		d(t, aliceNode.Container, "echo 'alice is also great' | dm remote add common_kiwis alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "echo '"+aliceKey+"' | dm remote add common_kiwis alice@"+commonNode.IP)
 		d(t, aliceNode.Container, "dm switch kiwis")
 		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
 		d(t, aliceNode.Container, "dm push common_kiwis") // local kiwis becomes alice/kiwis
