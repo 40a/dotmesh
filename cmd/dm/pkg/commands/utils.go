@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/remotes"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 )
 
 // pretty-print MiB or KiB or GiB

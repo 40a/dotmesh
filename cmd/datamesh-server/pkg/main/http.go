@@ -127,7 +127,7 @@ func (web WebServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
       </div>
       <div style="float:right;" id="top-navbar">
         <a href="{{.HomepageURL}}/docs/" class="button invisible"><span>Docs &amp; Install</span></a>
-        <a href="https://github.com/lukemarsden/datamesh/" id="view-on-github" class="padded-button button invisible"><span>GitHub</span></a>
+        <a href="https://github.com/datamesh-io/datamesh/" id="view-on-github" class="padded-button button invisible"><span>GitHub</span></a>
         <a href="http://eepurl.com/b7iEn1" class="button invisible" style="margin-left:10px;"><span>Newsletter</span></a>
 		<a href="javascript:void(0);" onclick="alert('Email support@datamesh.io to request modification to your account.')" class="button" style="margin-left:10px;"><span>Logged in as {{.UsernameHtml}}</span></a>
 		<a href="javascript:void(0);" onclick="logout();" class="button cta" style="margin-left:10px;"><span>Log out</span></a>

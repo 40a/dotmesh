@@ -315,7 +315,7 @@ func localImage() string {
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-server:pushpull", hostname)
+	return fmt.Sprintf("%s.local:80/datamesh-io/datamesh-server:pushpull", hostname)
 }
 
 func localFrontendTestRunnerImage() string {
@@ -323,7 +323,7 @@ func localFrontendTestRunnerImage() string {
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-frontend-test-runner:pushpull", hostname)
+	return fmt.Sprintf("%s.local:80/datamesh-io/datamesh-frontend-test-runner:pushpull", hostname)
 }
 
 func localChromeDriverImage() string {
@@ -331,7 +331,7 @@ func localChromeDriverImage() string {
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("%s.local:80/lukemarsden/datamesh-chromedriver:pushpull", hostname)
+	return fmt.Sprintf("%s.local:80/datamesh-io/datamesh-chromedriver:pushpull", hostname)
 }
 
 func localEtcdImage() string {
@@ -339,7 +339,7 @@ func localEtcdImage() string {
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("%s.local:80/lukemarsden/etcd:v3.0.15", hostname)
+	return fmt.Sprintf("%s.local:80/datamesh-io/etcd:v3.0.15", hostname)
 }
 
 func localImageArgs() string {

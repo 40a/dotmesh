@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/howeyc/gopass"
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/remotes"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/commands"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/commands"
 
 	"github.com/opentracing/opentracing-go"
 	zipkin "github.com/openzipkin/zipkin-go-opentracing"

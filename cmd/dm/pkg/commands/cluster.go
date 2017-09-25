@@ -21,12 +21,12 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/coreos/etcd/client"
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/pki"
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/remotes"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/pki"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
 )
 
-const DATAMESH_DOCKER_IMAGE = "quay.io/lukemarsden/datamesh-server:pushpull"
+const DATAMESH_DOCKER_IMAGE = "quay.io/datamesh-io/datamesh-server:pushpull"
 const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
 
 var (
@@ -113,7 +113,7 @@ another.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&etcdDockerImage, "etcd-image",
-		"quay.io/lukemarsden/etcd:v3.0.15",
+		"quay.io/datamesh-io/etcd:v3.0.15",
 		"etcd docker image to use",
 	)
 	cmd.PersistentFlags().StringVar(
@@ -787,7 +787,7 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 						"\nUnable to connect to datamesh server after 30s, " +
 							"please run `docker logs datamesh-server` " +
 							"and paste the result into an issue at " +
-							"https://github.com/lukemarsden/datamesh/issues/new\n")
+							"https://github.com/datamesh-io/datamesh/issues/new\n")
 				}
 				fmt.Printf(".")
 				time.Sleep(250 * time.Millisecond)
@@ -1083,7 +1083,7 @@ func clusterJoin(cmd *cobra.Command, args []string, out io.Writer) error {
 	// Now get PKI assets from discovery service.
 	// TODO: discovery service should mint new credentials just for us, rather
 	// than handing us the keys to the kingdom.
-	// https://github.com/lukemarsden/datamesh/issues/21
+	// https://github.com/datamesh-io/datamesh/issues/21
 	//fmt.Printf("clusterUrl: %s\n", clusterUrl)
 	getPath := fmt.Sprintf("%s/_secrets/_%s", clusterUrl, clusterSecret)
 	//fmt.Printf("getPath: %s\n", getPath)

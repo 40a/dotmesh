@@ -248,7 +248,7 @@ func (web RegistrationServer) RespondHTML(payload *RegistrationPayload, w http.R
       </div>
       <div style="float:right;" id="top-navbar">
         <a href="{{.HomepageURL}}/docs/" class="button invisible"><span>Docs &amp; Install</span></a>
-        <a href="https://github.com/lukemarsden/datamesh/" id="view-on-github" class="padded-button button invisible"><span>GitHub</span></a>
+        <a href="https://github.com/datamesh-io/datamesh/" id="view-on-github" class="padded-button button invisible"><span>GitHub</span></a>
         <a href="http://eepurl.com/b7iEn1" class="button invisible" style="margin-left:10px;"><span>Newsletter</span></a>
         <a href="/ux" class="button" style="margin-left:10px;"><span>Sign in</span></a>
         <a href="/register" class="button cta" style="margin-left:10px;"><span>Sign up</span></a>

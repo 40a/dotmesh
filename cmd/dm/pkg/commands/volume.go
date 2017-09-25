@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/remotes"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
 )
 
