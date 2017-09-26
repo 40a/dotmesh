@@ -403,32 +403,16 @@ func TestFrontend(t *testing.T) {
 	}
 	node1 := f[0].GetNode(0).Container
 
-	t.Run("Authenticate", func(t *testing.T) {
+	t.Run("Frontend", func(t *testing.T) {
 
-		// start chrome driver
+		// start chrome driver & gotty
 		startChromeDriver(t, node1)
+		startGotty(t, node1)
 		defer stopChromeDriver(t, node1)
+		defer stopGotty(t, node1)
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
-
-		// create the account locally so we can 'dm' with the same user that we
-		// register with.  need to do this AFTER we have register because dm
-		// remote add will check the api server with deets.
-		d(t, node1,
-			fmt.Sprintf(
-				"DATAMESH_PASSWORD=%s dm remote add testremote %s@localhost",
-				userLogin.Password, userLogin.Username,
-			),
-		)
-
-		d(t, node1, "dm remote switch local")
-		d(t, node1, "dm init testvolume")
-		d(t, node1, "dm list")
-
-		runFrontendTest(t, node1, "specs/repos.js", userLogin)
-		runFrontendTest(t, node1, "specs/rememberme.js", userLogin)
-
-		copyMedia(node1)
+		runFrontendTest(t, node1, "specs/endtoend.js", userLogin)
 	})
 }
 
