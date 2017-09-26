@@ -113,7 +113,7 @@ another.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&etcdDockerImage, "etcd-image",
-		"quay.io/datamesh-io/etcd:v3.0.15",
+		"quay.io/datamesh/etcd:v3.0.15",
 		"etcd docker image to use",
 	)
 	cmd.PersistentFlags().StringVar(
