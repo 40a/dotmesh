@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/lukemarsden/datamesh/cmd/dm",
+	"ImportPath": "github.com/datamesh-io/datamesh/cmd/dm",
 	"GoVersion": "go1.7",
 	"GodepVersion": "v79",
 	"Packages": [
