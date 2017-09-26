@@ -11,3 +11,4 @@ binaries
 config.stripe.yaml
 *.tar.gz
 *.tar
+frontend/src/ui/help.json

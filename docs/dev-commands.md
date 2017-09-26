@@ -541,13 +541,22 @@ You can `docker exec -ti datamesh-frontend bash` to get a CLI inside the fronten
 
 #### changing the help markdown
 
-If you change any of the `.md` files inside `frontend/help` - you will need to re-run the following command:
+If you change any of the `.md` files inside `frontend/help` - you will need to restart the frontend container.
 
-```bash
-make help
-```
+The markdown is automatically built when the frontend dev/release server is run - there is no hot-reloading on the help.
 
-This will generate the following file: `frontend/src/ui/help.json` which is used to generate the help pages in React.
+This will generate the following file: `frontend/src/ui/help.json` which is used to generate the help pages in React - this file is `.gitignored` and should be generated automatically as part of the normal dev/release commands.
+
+#### using variables in the help markdown
+
+You can use dynamic variables in the help markdown files using the following format: `${VAR_NAME}`
+
+These are populated client side and the following variables are available:
+
+ * `USER_NAME` - user name of current user
+ * `SERVER_NAME` - url of current datamesh installation
+
+These variables are defined in [frontend/src/ui/selectors.js](frontend/src/ui/selectors.js) -> `help.variables`
 
 #### building frontend production code
 
