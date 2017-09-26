@@ -605,4 +605,19 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		}
 	})
 
+	t.Run("NamespaceAuthorisation", func(t *testing.T) {
+		// Alice pushes to the common node with an explicit remote volume of bob/grapes
+		d(t, aliceNode.Container, dockerRun("grapes")+" touch /foo/alice")
+		d(t, aliceNode.Container, "echo '"+aliceKey+"' | dm remote add common_grapes alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "dm switch grapes")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+		// This SHOULD fail, so we reverse the sense of the return code.
+		d(t, aliceNode.Container, "if dm push common_grapes --remote-volume bob/grapes; then exit 1; else exit 0; fi")
+
+		// Check it doesn't get there
+		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | sort")
+		if strings.Contains(resp, "bob/grapes") {
+			t.Error("Found bob/grapes on the common node - but alice shouldn't have been able to create that!")
+		}
+	})
 }
