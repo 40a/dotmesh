@@ -1,8 +1,8 @@
 #!/bin/bash
 set -xe
 
-export IMAGE=${IMAGE:=$(hostname).local:80/datamesh-io/datamesh-frontend-test-runner:pushpull}
-export CHROMEDRIVER_IMAGE=${CHROMEDRIVER_IMAGE:=$(hostname).local:80/datamesh-io/datamesh-chromedriver:pushpull}
+export IMAGE=${IMAGE:=$(hostname).local:80/datamesh/datamesh-frontend-test-runner:latest}
+export CHROMEDRIVER_IMAGE=${CHROMEDRIVER_IMAGE:=$(hostname).local:80/datamesh/datamesh-chromedriver:latest}
 export DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 docker build -t ${IMAGE} -f ${DIR}/test/Dockerfile ${DIR}/test

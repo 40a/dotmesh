@@ -1,7 +1,7 @@
 #!/bin/bash
 set -xe
 
-IMAGE=${IMAGE:=$(hostname).local:80/datamesh-io/datamesh-server:pushpull}
+IMAGE=${IMAGE:=$(hostname).local:80/datamesh/datamesh-server:latest}
 
 docker build -t "${IMAGE}" -f Dockerfile.merge .
 

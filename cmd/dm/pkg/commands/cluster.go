@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const DATAMESH_DOCKER_IMAGE = "quay.io/datamesh-io/datamesh-server:pushpull"
+const DATAMESH_DOCKER_IMAGE = "quay.io/datamesh/datamesh-server:latest"
 const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
 
 var (
