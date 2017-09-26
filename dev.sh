@@ -139,6 +139,7 @@ function frontend-test-prod() {
 function frontend-test() {
   local linkserver="${1}"
   local linkport="${2}"
+  local timestamp=$(date +%s)
 
   if [ -z "${linkserver}" ]; then
     linkserver="${DATAMESH_FRONTEND_NAME}"
@@ -152,9 +153,10 @@ function frontend-test() {
     --link "${CHROME_DRIVER_NAME}:chromedriver" \
     -e "LAUNCH_URL=server:${linkport}/ui" \
     -e "SELENIUM_HOST=chromedriver" \
-    -e "WAIT_FOR_HOSTS=server:${linkport} chromedriver:4444 chromedriver:6060" \
-    -e "TEST_USER=test" \
-    -e "TEST_EMAIL=test@test.com" \
+    -e "WAIT_FOR_HOSTS=server:${linkport} chromedriver:4444 chromedriver:6060 ${GOTTY_HOST}:8081" \
+    -e "GOTTY_HOST=${GOTTY_HOST}:8081" \
+    -e "TEST_USER=test${timestamp}" \
+    -e "TEST_EMAIL=test${timestamp}@test.com" \
     -e "TEST_PASSWORD=test" \
     -v "${DIR}/frontend/.media/screenshots:/home/node/screenshots" \
     -v "${DIR}/frontend/.media/videos:/home/node/videos" \
@@ -184,6 +186,14 @@ function chromedriver-start-prod() {
 
 function chromedriver-stop() {
   docker rm -f ${CHROME_DRIVER_NAME} || true
+}
+
+function gotty-start() {
+  gotty --port 8081 -w bash
+}
+
+function gotty-stop() {
+  kill -9 $(pgrep gotty) || true
 }
 
 function build() {
@@ -218,6 +228,8 @@ Usage:
   chromedriver-start   start chromedriver
   chromedriver-start-prod   start chromedriver in prod
   chromedriver-stop    stop chromedriver
+  gotty-start          start gotty
+  gotty-stop           stop gotty
   frontend-build       rebuild the frontend image
   frontend-start       start the frontend dev container
   frontend-stop        stop the frontend dev container
@@ -241,6 +253,8 @@ function main() {
   cluster-start)       shift; cluster-start $@;;
   cluster-stop)        shift; cluster-stop $@;;
   cluster-upgrade)     shift; cluster-upgrade $@;;
+  gotty-start)         shift; gotty-start $@;;
+  gotty-stop)          shift; gotty-stop $@;;
   chromedriver-start)  shift; chromedriver-start $@;;
   chromedriver-start-prod)  shift; chromedriver-start-prod $@;;
   chromedriver-stop)   shift; chromedriver-stop $@;;
