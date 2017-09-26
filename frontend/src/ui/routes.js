@@ -11,46 +11,54 @@ import config from './config'
 import Application from './containers/Application'
 import LoginForm from './containers/LoginForm'
 import RegisterForm from './containers/RegisterForm'
-import VolumeTable from './containers/VolumeTable'
-import ServerTable from './containers/ServerTable'
+import RepoForm from './containers/RepoForm'
+import RepoPage from './containers/RepoPage'
 import PaymentPage from './containers/PaymentPage'
+import SectionTabs from './containers/SectionTabs'
+import Help from './containers/Help'
 
 import Home from './components/Home'
+import UserLayout from './containers/UserLayout'
 
 const Route = RouteFactory(config.basepath)
 
 export const routeConfig = processRoutes({
   '/': {
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
   '': {
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
-  '/help': {},
+  '/help': {
+    autoScroll: false
+  },
+  '/help/*': {
+    autoScroll: false
+  },
   '/dashboard': {
     user: true,
     authRedirect: '/login',
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
   '/servers': {
     user: true,
     authRedirect: '/login',
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
   },
-  '/volumes': {
+  '/repos': {
     user: true,
     authRedirect: '/login',
-    controlLoopHooks: [
-      'volumeList'
-    ]
+    controlLoopSaga: 'repoList'
+  },
+  '/repos/page/:page': {
+    user: true,
+    authRedirect: '/login',
+    controlLoopSaga: 'repoList'
+  },
+  '/repos/new': {
+    user: true,
+    authRedirect: '/login',
+    hooks: ['repoFormInitialize']
   },
   '/payment': {
     user: true,
@@ -63,6 +71,31 @@ export const routeConfig = processRoutes({
   '/register': {
     user: false,
     authRedirect: '/dashboard'
+  },
+  '/:namespace/:name': {
+    repoPageSection: 'data',
+    hooks: ['repoLoadPageData'],
+    '/settings': {
+      repoPageSection: 'settings',
+      settingsPageSection: 'collaborators',
+      hooks: ['repoLoadPageData'],
+      '/collaborators': {
+        hooks: ['repoLoadPageData'],
+        settingsPageSection: 'collaborators'
+      },
+      '/access': {
+        hooks: ['repoLoadPageData'],
+        settingsPageSection: 'access'
+      }
+    },
+    '/tree/:branch': {
+      repoPageSection: 'data',
+      hooks: ['repoLoadPageData'],
+      '/page/:page': {
+        repoPageSection: 'data',
+        hooks: ['repoLoadPageData']
+      }
+    }
   }
 }, config.basepath)
 
@@ -76,49 +109,90 @@ export const routes = (
           </UserWrapper>
           <UserWrapper loggedIn={ true }>
             <Section>
-              <VolumeTable />
+              <UserLayout>
+                <SectionTabs
+                  active={0}
+                />
+              </UserLayout>
             </Section>
           </UserWrapper>
         </Section>
       </Route>
 
       <Route path='/help'>
-        <div>
-          Help
-        </div>
+        <Help />
       </Route>
 
-      <Route path='/dashboard'>
+      <Route path='/dashboard' exact>
         <Section>
-          <VolumeTable />
+          <UserLayout>
+            <SectionTabs
+              active={0}
+            />
+          </UserLayout>
         </Section>
       </Route>
 
-      <Route path='/payment'>
+      <Route path='/payment' exact>
         <Section>
           <PaymentPage />
         </Section>
       </Route>
 
-      <Route path='/volumes'>
+      <Route path='/repos' exact>
         <Section>
-          <VolumeTable />
+          <UserLayout>
+            <SectionTabs
+              active={0}
+            />
+          </UserLayout>
         </Section>
       </Route>
 
-      <Route path='/servers'>
+      <Route path='/repos/new' exact>
         <Section>
-          <ServerTable />
+          <UserLayout>
+            <RepoForm
+              title='Create Repository'
+            >
+            </RepoForm>
+          </UserLayout>
         </Section>
       </Route>
 
-      <Route path='/login'>
+      <Route route='/repos/page/:page' exact>
+        <Section>
+          <UserLayout>
+            <SectionTabs
+              active={0}
+            />
+          </UserLayout>
+        </Section>
+      </Route>
+
+      <Route route='/:namespace/:name'>
+        <Section>
+          <RepoPage />
+        </Section>
+      </Route>
+
+      <Route path='/servers' exact>
+        <Section>
+          <UserLayout>
+            <SectionTabs
+              active={1}
+            />
+          </UserLayout>
+        </Section>
+      </Route>
+
+      <Route path='/login' exact>
         <Section>
           <LoginForm />
         </Section>
       </Route>
 
-      <Route path='/register'>
+      <Route path='/register' exact>
         <Section>
           <RegisterForm />
         </Section>

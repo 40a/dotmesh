@@ -2008,7 +2008,6 @@ func (f *fsMachine) push(
 	// TODO remove duplication (with replication.go)
 	// command writes into pipe
 	var cmd *exec.Cmd
-	// https://github.com/lukemarsden/datamesh/issues/34
 	// https://github.com/zfsonlinux/zfs/pull/5189
 	//
 	// Due to the above issues, -R doesn't send user properties on

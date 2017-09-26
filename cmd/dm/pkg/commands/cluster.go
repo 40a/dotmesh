@@ -21,12 +21,12 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/coreos/etcd/client"
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/pki"
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/remotes"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/pki"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
 )
 
-const DATAMESH_DOCKER_IMAGE = "quay.io/lukemarsden/datamesh-server:pushpull"
+const DATAMESH_DOCKER_IMAGE = "quay.io/datamesh/datamesh-server:latest"
 const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
 
 var (
@@ -113,7 +113,7 @@ another.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&etcdDockerImage, "etcd-image",
-		"quay.io/lukemarsden/etcd:v3.0.15",
+		"quay.io/datamesh/etcd:v3.0.15",
 		"etcd docker image to use",
 	)
 	cmd.PersistentFlags().StringVar(
@@ -524,6 +524,7 @@ func startDatameshContainer(pkiPath string) error {
 	var configFileExists bool
 	e, err := pathExists(configFile)
 	if err != nil {
+		fmt.Printf("we have an exists error: %s", err)
 		return err
 	}
 	if e {
@@ -531,6 +532,7 @@ func startDatameshContainer(pkiPath string) error {
 		if err != nil {
 			return err
 		}
+		fmt.Printf("we have a file: %s", string(absoluteConfigPath))
 		configFileExists = true
 	}
 	args := []string{
@@ -573,6 +575,9 @@ func startDatameshContainer(pkiPath string) error {
 		args = append(args, []string{
 			"-v", fmt.Sprintf("%s:%s", absoluteConfigPath, "/etc/datamesh/config.yaml"),
 		}...)
+		args = append(args, []string{
+			"-e", fmt.Sprintf("%s=%s", "HOST_CONFIG_PATH", absoluteConfigPath),
+		}...)
 	}
 	args = append(args, []string{
 		datameshDockerImage,
@@ -581,6 +586,7 @@ func startDatameshContainer(pkiPath string) error {
 		// actual datamesh-server with an rshared bind-mount of /var/pool.
 		"/require_zfs.sh", "datamesh-server",
 	}...)
+	fmt.Printf("docker %s\n", strings.Join(args, " "))
 	fmt.Fprintf(logFile, "docker %s\n", strings.Join(args, " "))
 	resp, err := exec.Command("docker", args...).CombinedOutput()
 	if err != nil {
@@ -781,7 +787,7 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 						"\nUnable to connect to datamesh server after 30s, " +
 							"please run `docker logs datamesh-server` " +
 							"and paste the result into an issue at " +
-							"https://github.com/lukemarsden/datamesh/issues/new\n")
+							"https://github.com/datamesh-io/datamesh/issues/new\n")
 				}
 				fmt.Printf(".")
 				time.Sleep(250 * time.Millisecond)
@@ -1077,7 +1083,7 @@ func clusterJoin(cmd *cobra.Command, args []string, out io.Writer) error {
 	// Now get PKI assets from discovery service.
 	// TODO: discovery service should mint new credentials just for us, rather
 	// than handing us the keys to the kingdom.
-	// https://github.com/lukemarsden/datamesh/issues/21
+	// https://github.com/datamesh-io/datamesh/issues/21
 	//fmt.Printf("clusterUrl: %s\n", clusterUrl)
 	getPath := fmt.Sprintf("%s/_secrets/_%s", clusterUrl, clusterSecret)
 	//fmt.Printf("getPath: %s\n", getPath)

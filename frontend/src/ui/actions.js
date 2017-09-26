@@ -21,3 +21,18 @@ export const router = RouterActions
 export const auth = {
   setUser: (credentials) => value.set(config.userValueName, credentials)
 }
+
+export const repos = {
+  updateSearch: search => value.set('repoListSearch', search)
+}
+
+export const commits = {
+  updateSearch: search => value.set('repoCommitListSearch', search)
+}
+
+export const application = {
+  setMessage: (message) => {
+    return value.set('applicationMessage', message)
+  },
+  clearMessage: () => value.set('applicationMessage', null)
+}

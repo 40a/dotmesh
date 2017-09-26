@@ -10,7 +10,8 @@ sync_github:
     stage: sync
     script:
         - git log
-        - git remote add github git@github.com:lukemarsden/datamesh || true
+        - git remote rm github || true
+        - git remote add github git@github.com:datamesh-io/datamesh
         - git checkout -b $CI_BUILD_REF_NAME || true
         - pwd
         - git remote -v
@@ -20,9 +21,9 @@ before_script:
     - mkdir -p gopath
     - export GOPATH=$(pwd)/gopath
     - cd gopath
-    - mkdir -p src/github.com/lukemarsden
-    - ln -s `realpath ..` ./src/github.com/lukemarsden/datamesh
-    - cd src/github.com/lukemarsden/datamesh
+    - mkdir -p src/github.com/datamesh-io
+    - ln -s `realpath ..` ./src/github.com/datamesh-io/datamesh
+    - cd src/github.com/datamesh-io/datamesh
 
 build_client_linux:
     stage: build
@@ -87,7 +88,7 @@ build_frontend_test_runner:
 # we have already built the binaries and frontend code
 # let's produce a final production image of the inner server
 # that has the frontend files burnt
-# it will overwrite $(hostname).local:80/lukemarsden/datamesh-server:pushpull
+# it will overwrite $(hostname).local:80/datamesh/datamesh-server:latest
 # so the tests use the image with the frontend
 merge_frontend:
     stage: merge
@@ -190,8 +191,8 @@ deploy_server_docker_image:
         - fast
     script:
         - docker login -u $QUAY_USER -p $QUAY_PASSWORD quay.io
-        - docker tag $(hostname).local:80/lukemarsden/datamesh-server:pushpull quay.io/lukemarsden/datamesh-server:pushpull
-        - docker push quay.io/lukemarsden/datamesh-server:pushpull
+        - docker tag $(hostname).local:80/datamesh/datamesh-server:latest quay.io/datamesh/datamesh-server:latest
+        - docker push quay.io/datamesh/datamesh-server:latest
     only:
         - master
 

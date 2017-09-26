@@ -31,3 +31,7 @@
 .titleContent > div {
   margin-left: 10px;
 }
+
+.rightContent {
+  float:right;
+}

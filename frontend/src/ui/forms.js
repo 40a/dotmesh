@@ -6,11 +6,13 @@ import validators from 'template-ui/lib/plugins/form/validators'
 const authLogin = formWrapper({
   name: 'authLogin',
   fields: {
-    username: models.string({
+    Name: models.string({
+      title: 'Username',
       component: fields.input,
       validate: [validators.required]
     }),
-    password: models.string({
+    Password: models.string({
+      title: 'Password',
       type: 'password',
       component: fields.input,
       validate: validators.required
@@ -21,15 +23,18 @@ const authLogin = formWrapper({
 const authRegister = formWrapper({
   name: 'authRegister',
   fields: {
-    email: models.string({
+    Email: models.string({
+      title: 'Email',
       component: fields.input,
       validate: [validators.required,validators.email]
     }),
-    username: models.string({
+    Name: models.string({
+      title: 'Username',
       component: fields.input,
       validate: [validators.required]
     }),
-    password: models.string({
+    Password: models.string({
+      title: 'Password',
       type: 'password',
       component: fields.input,
       validate: validators.required
@@ -37,9 +42,21 @@ const authRegister = formWrapper({
   }
 })
 
+const repo = formWrapper({
+  name: 'repo',
+  fields: {
+    Name: models.string({
+      title: 'Name',
+      component: fields.input,
+      validate: [validators.required]
+    })
+  }
+})
+
 const forms = {
   authLogin,
-  authRegister
+  authRegister,
+  repo
 }
 
 export default forms

@@ -11,6 +11,9 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/client"
+	stripe "github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/customer"
+	"github.com/stripe/stripe-go/sub"
 )
 
 // TODO ensure contexts are threaded through in all RPC calls for correct
@@ -39,9 +42,16 @@ func (d *DatameshRPC) Config(
 	return nil
 }
 
-func (d *DatameshRPC) Email(
-	r *http.Request, args *struct{}, result *string) error {
-	*result = "email@domain.com"
+func (d *DatameshRPC) CurrentUser(
+	r *http.Request, args *struct{}, result *SafeUser,
+) error {
+
+	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
+	if err != nil {
+		return err
+	}
+
+	*result = safeUser(user)
 	return nil
 }
 
@@ -52,6 +62,64 @@ func (d *DatameshRPC) Get(
 		return err
 	}
 	*result = v
+	return nil
+}
+
+type PaymentDeets struct {
+	Token  string
+	PlanId string
+}
+
+func (d *DatameshRPC) SubmitPayment(
+	r *http.Request, paymentDeets *PaymentDeets, result *bool,
+) error {
+	stripe.Key = d.state.config.StripePrivateKey
+
+	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
+	if err != nil {
+		return err
+	}
+	if user.CustomerId == "" {
+		customerParams := &stripe.CustomerParams{
+			Desc: fmt.Sprintf("Customer for %s", user.Email),
+		}
+		customerParams.SetSource(paymentDeets.Token)
+		c, err := customer.New(customerParams)
+		if err != nil {
+			return err
+		}
+		user.CustomerId = c.ID
+		err = user.Save()
+		if err != nil {
+			return err
+		}
+	}
+
+	// if user.CurrentPlan != free then we're _changing_ plan, do
+	// something special? currently the frontend shouldn't allow
+	// this to happen (there's cancelling and subscribing; nothing
+	// else)
+
+	// create new subscription for user
+	log.Printf("[SubmitPayment] Payment Deets = %+v", paymentDeets)
+	s, err := sub.New(&stripe.SubParams{
+		Customer: user.CustomerId,
+		Items: []*stripe.SubItemsParams{
+			{
+				Plan: paymentDeets.PlanId,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Sprintf("[SubmitPayment] succeeded creating subscription %v for user %v! ka-ching! :-D", s, user)
+
+	// TODO: go talk to stripe, smash together some stuff and update the
+	// current user's CustomerId. Later, Stripe will tell us about an updated
+	// CurrentPlan.
+	*result = true
+
 	return nil
 }
 

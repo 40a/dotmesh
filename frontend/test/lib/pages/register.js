@@ -9,22 +9,22 @@ module.exports = {
       selector: '.RegisterForm #title'
     },
     email: {
-      selector: '.RegisterForm input[name=email]'
+      selector: '.RegisterForm input[name=Email]'
     },
     emailError: {
-      selector: '.RegisterForm input[name=email] ~ span:last-child'
+      selector: '.RegisterForm input[name=Email] ~ span:last-child'
     },
     username: {
-      selector: '.RegisterForm input[name=username]'
+      selector: '.RegisterForm input[name=Name]'
     },
     usernameError: {
-      selector: '.RegisterForm input[name=username] ~ span:last-child'
+      selector: '.RegisterForm input[name=Name] ~ span:last-child'
     },
     password: {
-      selector: '.RegisterForm input[name=password]'
+      selector: '.RegisterForm input[name=Password]'
     },
     passwordError: {
-      selector: '.RegisterForm input[name=password] ~ span:last-child'
+      selector: '.RegisterForm input[name=Password] ~ span:last-child'
     },
     submitButton: {
       selector: '.RegisterForm button'

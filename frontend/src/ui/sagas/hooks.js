@@ -14,24 +14,50 @@ const Logger = (type) => {
   return logger
 }
 
+const REQUIRED_SAGA_GROUPS = [
+  'auth',
+  'repo',
+  'billing',
+  'config'
+]
+
 const Hooks = (opts = {}) => {
-  if(!opts.auth) throw new Error('auth opt required for hooks')
-  if(!opts.volume) throw new Error('volume opt required for hooks')
-  if(!opts.config) throw new Error('config opt required for hooks')
+  REQUIRED_SAGA_GROUPS.forEach(name => {
+    if(!opts[name]) throw new Error(`${name} saga group required`)
+  })
+
   const auth = opts.auth
-  const volume = opts.volume
+  const repo = opts.repo
+  const billing = opts.billing
   const config = opts.config
+
   return {
 
     // auth hooks for register/login
     authLogout: auth.logout,
+    authLoginError: () => {},
     authLoginSubmit: auth.loginSubmit,
     authLoginSuccess: auth.loginSuccess,
     authRegisterSubmit: auth.registerSubmit,
     authRegisterSuccess: auth.registerSuccess,
 
-    // volume
-    volumeList: volume.list,
+    // repo
+    repoList: repo.list,
+    repoUpdateSearch: repo.updateSearch,
+    repoUpdatePage: repo.updatePage,
+    repoCommitUpdateSearch: repo.commitUpdateSearch,
+    repoCommitUpdatePage: repo.commitUpdatePage,
+    repoFormSubmit: repo.formSubmit,
+    repoFormInitialize: repo.formInitialize,
+    repoOpen: repo.open,
+    repoOpenTab: repo.openTab,
+    repoOpenBranch: repo.openBranch,
+    repoOpenSettingsPage: repo.openSettingsPage,
+    repoLoadPageData: repo.loadPageData,
+    repoAddCollaborator: repo.addCollaborator,
+
+    // billing
+    billingTokenReceived: billing.tokenReceived,
 
     // config
     configLoad: config.load,

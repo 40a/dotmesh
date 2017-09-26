@@ -1,0 +1,136 @@
+.tabContainer {
+  
+}
+
+.titleContainer {
+  margin-bottom: 15px;
+}
+
+.listContainer {
+  
+}
+
+.optionsContainer {
+  margin-bottom: 20px;
+}
+
+.searchContainer {
+  display: inline-block;
+  width: 80%;
+  text-align: left;
+}
+
+.buttonsContainer {
+  display: inline-block;
+  width: 20%;
+  text-align: right;
+}
+
+.listItem {
+  min-height: 60px;
+  border-bottom: 1px dashed #e5e5e5;
+  margin-top: 10px;
+  padding: 5px;
+}
+
+.repoInfo {
+  float: left;
+  display: inline-block;  
+}
+
+.repoName {
+  display: inline-block;
+  font-size: 1.3em;
+  font-weight: bold;
+}
+
+.link {
+  cursor: pointer;
+}
+
+.repoName:hover {
+  text-decoration: underline;
+}
+
+.repoStats {
+  float: right;
+  color: #999;
+  font-size: .85em;
+}
+
+.fadedText {
+  text-align: right;
+}
+
+.largeTitle {
+  font-size: 1.5em;
+}
+
+.branchContainer {
+
+}
+
+.branchTitle {
+  display: inline-block;
+}
+
+.branchDropdown {
+  display: inline-block;
+  margin-left: 30px;
+}
+
+.branchDropdownInput {
+  padding: 0px !important;
+}
+
+.inline {
+  display: inline-block;
+}
+
+.commitName {
+  display: inline-block;
+  font-size: 1.3em;
+  font-weight: bold;
+}
+
+
+.commitNumber {
+  display: inline-block;
+  font-size: 1.3em;
+}
+
+.commitTitle {
+  margin: 0px !important;
+  margin-top: 20px !important;
+  margin-bottom: 10px !important;
+}
+
+.collaboratorsTitle {
+  margin: 0px !important;
+  margin-top: 0px !important;
+  margin-bottom: 10px !important;
+}
+
+.commitSearchContainer {
+  margin-bottom: 20px;
+}
+
+.activeMenuItem {
+  color: #e91e63 !important;
+  font-weight: bold;
+}
+
+.settingsContainer {
+  display: flex;
+}
+
+.settingsMenu {
+  min-width: 200px;
+  margin-right: 30px;
+  flex: 1 0 0;
+}
+
+.settingsPage { 
+  flex: 3 0 0;
+  padding-top: 10px;
+}

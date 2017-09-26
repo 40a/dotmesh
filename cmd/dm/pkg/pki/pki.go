@@ -1,4 +1,4 @@
-// imported from kubernetes/kubeadm and modified by lukemarsden
+// imported from kubernetes/kubeadm and modified by datamesh-io
 
 /*
 Copyright 2016 The Kubernetes Authors.
@@ -26,7 +26,7 @@ import (
 	"net"
 	"path"
 
-	certutil "github.com/lukemarsden/datamesh/cmd/dm/pkg/cert"
+	certutil "github.com/datamesh-io/datamesh/cmd/dm/pkg/cert"
 )
 
 type Configuration struct {

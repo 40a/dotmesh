@@ -23,9 +23,21 @@ export DATAMESH_FRONTEND_NAME=${DATAMESH_FRONTEND_NAME:="datamesh-frontend"}
 export DATAMESH_SERVER_PORT=${DATAMESH_SERVER_PORT:="6969"}
 export DATAMESH_FRONTEND_PORT=${DATAMESH_FRONTEND_PORT:="80"}
 
+export DEFAULT_DATAMESH_CONFIG="${DIR}/config.yaml"
+export DATAMESH_CONFIG=${DATAMESH_CONFIG:=$DEFAULT_DATAMESH_CONFIG}
+
+if [ ! -f "$DATAMESH_CONFIG" ]; then
+  echo >&2 "$DATAMESH_CONFIG file needed"
+  exit 1
+fi
+
 function cli-build() {
   echo "building datamesh CLI binary"
-  cd "${DIR}/cmd/dm" && GOOS=linux bash rebuild_docker.sh && GOOS=darwin bash rebuild_docker.sh
+  if [ -n "${GOOS}" ]; then
+    cd "${DIR}/cmd/dm" && bash rebuild_docker.sh
+  else
+    cd "${DIR}/cmd/dm" && GOOS=linux bash rebuild_docker.sh && GOOS=darwin bash rebuild_docker.sh
+  fi
 }
 
 function cluster-build() {
@@ -45,7 +57,8 @@ function cluster-start() {
   dm cluster init \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
-    --offline
+    --offline \
+    --config-file ${DATAMESH_CONFIG}
 }
 
 function cluster-stop() {
@@ -59,7 +72,8 @@ function cluster-upgrade() {
   dm cluster upgrade \
     --image ${SERVER_IMAGE} \
     --allow-public-registration \
-    --offline
+    --offline \
+    --config-file ${DATAMESH_CONFIG}
 }
 
 function frontend-build() {
@@ -184,6 +198,14 @@ function reset() {
   docker rm -f ${CHROME_DRIVER_NAME} || true
 }
 
+function etcdctl() {
+  docker exec -ti datamesh-etcd etcdctl \
+    --cert-file=/pki/apiserver.pem \
+    --key-file=/pki/apiserver-key.pem \
+    --ca-file=/pki/ca.pem \
+    --endpoints https://127.0.0.1:42379 "$@"
+}
+
 function usage() {
 cat <<EOF
 Usage:
@@ -205,6 +227,7 @@ Usage:
   frontend-test        run the frontend tests
   build                rebuild all images
   reset                reset the cluster
+  etcdctl              interact with etcd
   help                 display this message
 EOF
   exit 1
@@ -230,6 +253,7 @@ function main() {
   frontend-dist)       shift; frontend-dist $@;;
   build)               shift; build $@;;
   reset)               shift; reset $@;;
+  etcdctl)             shift; etcdctl $@;;
   help)                shift; usage $@;;
   *)                   usage $@;;
   esac

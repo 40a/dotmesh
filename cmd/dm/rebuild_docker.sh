@@ -10,7 +10,7 @@ OUTPUT_DIR="${DIR}/../../binaries/${GOOS}"
 echo "building dm for ${GOOS} into ${OUTPUT_DIR}"
 
 docker run -ti --rm \
-  -v "${DIR}:/go/src/github.com/lukemarsden/datamesh/cmd/dm" \
+  -v "${DIR}:/go/src/github.com/datamesh-io/datamesh/cmd/dm" \
   -v "${OUTPUT_DIR}:/target" \
   -e GOOS \
   -e CGO_ENABLED=0 \

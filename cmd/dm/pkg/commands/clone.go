@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/remotes"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
 )
 
@@ -51,15 +51,6 @@ copy of 'app_billing_postgres' at all yet:
 				if err != nil {
 					return err
 				}
-
-				// TODO: In future, when we add
-				// "remote tracking", we'll need to
-				// record that local volumne
-				// "cloneLocalVolume" is associated with
-				// "filesystemName" on "peer", so that
-				// future pushes/pulls of the volume
-				// can automatically go to the right
-				// place.
 
 				return nil
 			}()

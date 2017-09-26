@@ -5,11 +5,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/remotes"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
 )
 
-var pullLocalVolume string
+var pullRemoteVolume string
 
 func NewCmdPull(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
@@ -41,8 +41,8 @@ cluster 'backups':
 				}
 				transferId, err := dm.RequestTransfer(
 					"pull", peer,
-					pullLocalVolume, branchName,
 					filesystemName, branchName,
+					pullRemoteVolume, branchName,
 				)
 				if err != nil {
 					return err
@@ -60,8 +60,8 @@ cluster 'backups':
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&pullLocalVolume, "local-volume", "", "",
-		"Local volume name to pull into")
+	cmd.PersistentFlags().StringVarP(&pullRemoteVolume, "remote-volume", "", "",
+		"Remote volume name to pull from")
 
 	return cmd
 }

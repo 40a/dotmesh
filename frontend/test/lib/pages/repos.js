@@ -5,8 +5,8 @@ module.exports = {
     return this.api.launchUrl
   },
   elements: {
-    title: {
-      selector: '#volumePage #title'
+    page: {
+      selector: '#userLayout'
     }
   }
 }

@@ -81,7 +81,7 @@ items:
                   # etcd deployed by etcd operator.
                   value: "http://datamesh-etcd-cluster-client.datamesh.svc.cluster.local:2379"
                 - name: DATAMESH_DOCKER_IMAGE
-                  value: "quay.io/lukemarsden/datamesh-server:pushpull"
+                  value: "quay.io/datamesh/datamesh-server:latest"
                 - name: PATH
                   value: "/bundled-lib/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
                 - name: LD_LIBRARY_PATH
@@ -95,7 +95,7 @@ items:
                   value: "https://datamesh.io/"
                 - name: INITIAL_ADMIN_PASSWORD_FILE
                   value: /secret/datamesh-admin-password.txt
-              image: 'quay.io/lukemarsden/datamesh-server:pushpull'
+              image: 'quay.io/datamesh/datamesh-server:latest'
               imagePullPolicy: Always
               livenessProbe:
                 httpGet:

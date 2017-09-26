@@ -5,11 +5,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/lukemarsden/datamesh/cmd/dm/pkg/remotes"
+	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
 )
 
-var remoteVolume string
+var pushRemoteVolume string
 
 func NewCmdPush(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
@@ -37,7 +37,7 @@ volume 'postgres' to cluster 'backups':
 					return err
 				}
 				transferId, err := dm.RequestTransfer(
-					"push", peer, filesystemName, branchName, remoteVolume, "",
+					"push", peer, filesystemName, branchName, pushRemoteVolume, "",
 				)
 				if err != nil {
 					return err
@@ -54,7 +54,7 @@ volume 'postgres' to cluster 'backups':
 			}
 		},
 	}
-	cmd.PersistentFlags().StringVarP(&remoteVolume, "remote-volume", "", "",
+	cmd.PersistentFlags().StringVarP(&pushRemoteVolume, "remote-volume", "", "",
 		"Remote volume name to push to, including remote namespace e.g. alice/apples")
 	return cmd
 }

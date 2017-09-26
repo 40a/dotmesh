@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -20,6 +21,8 @@ import (
 	rpcjson "github.com/gorilla/rpc/v2/json2"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/openzipkin/zipkin-go-opentracing/examples/middleware"
+	stripe "github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/event"
 )
 
 // a crap web server
@@ -124,7 +127,7 @@ func (web WebServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
       </div>
       <div style="float:right;" id="top-navbar">
         <a href="{{.HomepageURL}}/docs/" class="button invisible"><span>Docs &amp; Install</span></a>
-        <a href="https://github.com/lukemarsden/datamesh/" id="view-on-github" class="padded-button button invisible"><span>GitHub</span></a>
+        <a href="https://github.com/datamesh-io/datamesh/" id="view-on-github" class="padded-button button invisible"><span>GitHub</span></a>
         <a href="http://eepurl.com/b7iEn1" class="button invisible" style="margin-left:10px;"><span>Newsletter</span></a>
 		<a href="javascript:void(0);" onclick="alert('Email support@datamesh.io to request modification to your account.')" class="button" style="margin-left:10px;"><span>Logged in as {{.UsernameHtml}}</span></a>
 		<a href="javascript:void(0);" onclick="logout();" class="button cta" style="margin-left:10px;"><span>Log out</span></a>
@@ -231,6 +234,46 @@ func (state *InMemoryState) runServer() {
 	router.HandleFunc("/",
 		func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/register", 301)
+		},
+	)
+
+	router.HandleFunc("/stripe",
+		func(w http.ResponseWriter, r *http.Request) {
+			stripe.Key = d.state.config.StripePrivateKey
+
+			// read body from r, decode into e
+			e := &stripe.Event{}
+
+			requestBody, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Error reading request body", 400)
+				return
+			}
+
+			log.Printf("[Stripe Handler] request body %+v", string(requestBody))
+
+			err = json.Unmarshal(requestBody, e)
+			if err != nil {
+				http.Error(w, "Cannot unmarshal into event", 400)
+				return
+			}
+
+			log.Printf("[Stripe Handler] before verify %+v", e)
+
+			verified, err := event.Get(e.ID, nil)
+			if err != nil {
+				http.Error(w, "Nice try", 400)
+				return
+			}
+
+			e = verified
+			log.Printf("[Stripe Handler] after verify %+v", e)
+			// Now safe to use e
+
+			// TODO: do some stuff with the event, update user object to
+			// appropriate tier (if we're being told that billing a renewal
+			// just failed, set their tier to free).
+
 		},
 	)
 

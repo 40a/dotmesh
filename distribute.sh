@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 if [ "$DATAMESH_DOCKER_IMAGE" == "" ]; then
-    DATAMESH_DOCKER_IMAGE="$(hostname).local:80/lukemarsden/datamesh-server:pushpull"
-    #DATAMESH_DOCKER_IMAGE="quay.io/lukemarsden/datamesh-server:pushpull"
+    DATAMESH_DOCKER_IMAGE="$(hostname).local:80/datamesh/datamesh-server:latest"
+    #DATAMESH_DOCKER_IMAGE="quay.io/datamesh/datamesh-server:latest"
 fi
 if [ "$1" == "" ]; then
     echo "Rebuilds and distributes datamesh on N nodes and localhost, assuming hostnames are in form <node-prefix><N>."
