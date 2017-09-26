@@ -2,18 +2,15 @@ package main
 
 import (
 	"context"
-	"crypto/md5"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"path"
-	"text/template"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -25,12 +22,6 @@ import (
 	"github.com/stripe/stripe-go/event"
 )
 
-// a crap web server
-
-type WebServer struct {
-	state *InMemoryState
-}
-
 func pathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -40,155 +31,6 @@ func pathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
-}
-
-func (s *InMemoryState) NewWebServer() http.Handler {
-	return WebServer{
-		state: s,
-	}
-}
-
-func (web WebServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	userId := r.Context().Value("authenticated-user-id").(string)
-	if userId == "" {
-		// TODO all error cases should set error code in this fn
-		fmt.Fprintf(w, "Error getting userId.")
-		return
-	}
-	u, err := GetUserById(userId)
-	if err != nil {
-		log.Printf("[WebServer] %v", err)
-		fmt.Fprintf(w, "Error getting user object.")
-		return
-	}
-	// Sending the client the username and password in plaintext is clearly a
-	// hack, and should be replaced by some proper crypto-based authn scheme.
-	usernameJson, err := json.Marshal(u.Name)
-	if err != nil {
-		log.Printf("[WebServer] %v", err)
-		fmt.Fprintf(w, "Error with username.")
-		return
-	}
-	passwordJson, err := json.Marshal(u.ApiKey)
-	if err != nil {
-		log.Printf("[WebServer] %v", err)
-		fmt.Fprintf(w, "Error with apiKey.")
-		return
-	}
-
-	h := md5.New()
-	io.WriteString(h, u.Email)
-	emailHash := fmt.Sprintf("%x", h.Sum(nil))
-
-	tmplStr := `
-<!DOCTYPE html>
-<html>
-
-<head>
-<meta charset='utf-8'>
-<meta http-equiv="X-UA-Compatible" content="chrome=1">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="shortcut icon" type="image/png" href="{{.AssetsURLPrefix}}/images/datamesh.png">
-
-<!-- CSS -->
-<link href='https://fonts.googleapis.com/css?family=Roboto:500' rel='stylesheet' type='text/css'>
-<link href='https://fonts.googleapis.com/css?family=Roboto+Condensed:300' rel='stylesheet' type='text/css'>
-<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:300' rel='stylesheet' type='text/css'>
-<link rel="stylesheet" type="text/css" href="{{.AssetsURLPrefix}}/stylesheets/stylesheet.css" media="screen" />
-<link rel="stylesheet" type="text/css" href="{{.AssetsURLPrefix}}/stylesheets/pygment_trac.css" media="screen" />
-<link rel="stylesheet" type="text/css" href="{{.AssetsURLPrefix}}/stylesheets/print.css" media="print" />
-
-<script src="{{.AssetsURLPrefix}}/scripts/clipboard.min.js"></script>
-<script src="{{.AssetsURLPrefix}}/scripts/jquery.js"></script>
-<script src="{{.AssetsURLPrefix}}/scripts/jquery.jsonrpc.js"></script>
-<script src="{{.AssetsURLPrefix}}/scripts/jquery.dataTables.min.js"></script>
-<script src="{{.AssetsURLPrefix}}/scripts/bootstrap.min.js"></script>
-<link rel="stylesheet" href="{{.AssetsURLPrefix}}/stylesheets/jquery.dataTables.min.css" type="text/css" media="screen" />
-<link rel="stylesheet" href="{{.AssetsURLPrefix}}/stylesheets/bootstrap.min.css" type="text/css" media="screen" />
-<link rel="stylesheet" href="{{.AssetsURLPrefix}}/stylesheets/bootstrap-theme.min.css" type="text/css" media="screen" />
-<script src="{{.AssetsURLPrefix}}/scripts/app.js"></script>
-
-<title>Datamesh Console</title>
-
-<script>
-	var username = {{.UsernameJson}};
-	var password = {{.PasswordJson}};
-	var postLogoutURL = "{{.HomepageURL}}"; // TODO escape this.
-	var emailHash = "{{.EmailHash}}";
-</script>
-</head>
-
-<body>
-  <div id="container">
-    <header id="top">
-      <div style="float:left;">
-        <h1 style="margin:0;"><a href="{{.HomepageURL}}"><img src="{{.AssetsURLPrefix}}/images/datamesh-on-dark.png" class="icon" /> Datamesh Console</a></h1>
-      </div>
-      <div style="float:right;" id="top-navbar">
-        <a href="{{.HomepageURL}}/docs/" class="button invisible"><span>Docs &amp; Install</span></a>
-        <a href="https://github.com/datamesh-io/datamesh/" id="view-on-github" class="padded-button button invisible"><span>GitHub</span></a>
-        <a href="http://eepurl.com/b7iEn1" class="button invisible" style="margin-left:10px;"><span>Newsletter</span></a>
-		<a href="javascript:void(0);" onclick="alert('Email support@datamesh.io to request modification to your account.')" class="button" style="margin-left:10px;"><span>Logged in as {{.UsernameHtml}}</span></a>
-		<a href="javascript:void(0);" onclick="logout();" class="button cta" style="margin-left:10px;"><span>Log out</span></a>
-      </div>
-      <div style="clear:both;"></div>
-    </header>
-
-<div class="inner-body">
-<div class="inner app">
-<section id="main_content">
-<div id="app">
-Loading, please wait... (requires JavaScript)
-</div>
-
-<p>&nbsp;</p>
-
-</section>
-</div>
-</div>
-    <header id="top" style="height:auto;" class="actually-footer">
-      <div style="float:right;">
-          <h1 style="margin:0;"><a href="{{.HomepageURL}}"><img src="{{.AssetsURLPrefix}}/images/datamesh-on-dark.png" class="icon" /> Datamesh</a></h1>
-      </div>
-      <div style="margin:15px 0; color:#eee; float:left;">&copy; 2017 Luke Marsden&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-      <div style="clear:both;"></div>
-    </header>
-  </div>
-</body>
-
-</html>
-`
-	type TemplateArgs struct {
-		UsernameJson    string
-		PasswordJson    string
-		UsernameHtml    string
-		AssetsURLPrefix string
-		HomepageURL     string
-		EmailHash       string
-	}
-	assetsURLPrefix := os.Getenv("ASSETS_URL_PREFIX")
-	homepageURL := os.Getenv("HOMEPAGE_URL")
-	t := TemplateArgs{
-		UsernameJson:    string(usernameJson),
-		PasswordJson:    string(passwordJson),
-		EmailHash:       emailHash,
-		UsernameHtml:    htmlEscape(u.Name),
-		AssetsURLPrefix: assetsURLPrefix,
-		HomepageURL:     homepageURL,
-	}
-	tmpl, err := template.New("t").Parse(tmplStr)
-	if err != nil {
-		log.Printf("[WebServer] %v", err)
-		fmt.Fprintf(w, "Error with template.")
-		return
-	}
-	err = tmpl.Execute(w, t)
-	if err != nil {
-		log.Printf("[WebServer] %v", err)
-		fmt.Fprintf(w, "Error with template.")
-		return
-	}
 }
 
 // setting up and running our http server
@@ -229,11 +71,9 @@ func (state *InMemoryState) runServer() {
 		},
 	)
 
-	router.Handle("/ux", NewAuthHandler(state.NewWebServer()))
-
 	router.HandleFunc("/",
 		func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/register", 301)
+			http.Redirect(w, r, "/ui", 301)
 		},
 	)
 
