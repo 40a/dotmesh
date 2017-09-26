@@ -6,6 +6,6 @@ ENV PATH=$PATH:/go/bin:/usr/lib/go-1.7/bin
 ENV GOPATH=/go
 RUN go get github.com/tools/godep
 RUN mkdir /target
-ADD . /go/src/github.com/lukemarsden/datamesh/cmd/dm
-WORKDIR /go/src/github.com/lukemarsden/datamesh/cmd/dm
+ADD . /go/src/github.com/datamesh-io/datamesh/cmd/dm
+WORKDIR /go/src/github.com/datamesh-io/datamesh/cmd/dm
 #GOPATH=/go GOOS=Darwin PATH=$PATH:/usr/lib/go-1.7/bin go build -o /target/dm
