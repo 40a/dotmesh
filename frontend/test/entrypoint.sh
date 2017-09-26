@@ -19,7 +19,15 @@ cat << NIGHTWATCH_JSON > /home/node/nightwatch.json
         "path": "videos"
       },
       "launch_url": "http://${LAUNCH_URL}",
-      "selenium_host": "${SELENIUM_HOST}"
+      "selenium_host": "${SELENIUM_HOST}",
+      "desiredCapabilities" : {
+        "browserName" : "chrome",
+        "javascriptEnabled" : true,
+        "acceptSslCerts" : true,
+        "chromeOptions" : {
+          "args" : ["disable-infobars"]
+        }
+      }
     }
   }
 }

@@ -64,7 +64,7 @@ class RepoList extends Component {
 
   search() {
     return (
-      <div className={ theme.searchContainer }>
+      <div className={ theme.searchContainer } id="repo-list-search">
         {
           this.props.repoCount > 0 ? (
             <SearchBox

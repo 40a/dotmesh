@@ -10,6 +10,9 @@ module.exports = {
     },
     container: {
       selector: '#repo-list-container'
+    },
+    search: {
+      selector: '#repo-list-search input[name=search]'
     }
   }
 }

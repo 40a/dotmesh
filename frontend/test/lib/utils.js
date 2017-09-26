@@ -49,6 +49,14 @@ const randomChars = (len) => {
   return text;
 }
 
+const checkElementCount = (browser, selector, expected) => {
+  browser.elements('css selector', selector, (result) => {
+    const len = result.value.length
+    console.log(`checking Element count: ${selector} = ${len} vs ${expected}`)
+    assert(len == expected, `checking Element count: ${selector} = ${len} vs ${expected}`)
+  })
+}
+
 module.exports = {
   screenshot,
   checkUrl,
@@ -56,5 +64,6 @@ module.exports = {
   switchTerminal,
   launchTerminal,
   typeTerminal,
-  randomChars
+  randomChars,
+  checkElementCount
 }

@@ -26,6 +26,12 @@ module.exports = {
     browser.pause(2000)
     home.click('@registerLink')
 
+    /*
+    
+        ALICE
+        
+    */
+
     // wait for loading and fill register form then click submit
     register.waitForElementVisible('@title', 2000)
     register.expect.element('@title').text.to.equal('Register')
@@ -51,6 +57,7 @@ module.exports = {
     repoform.click('@submitButton')
     repos.waitForElementVisible('@container', 2000)
     browser.pause(2000)
+    utils.checkElementCount(browser, '#repo-list-container #repo-list-item', 1)
   
     // open terminal
     utils.launchTerminal(browser)
@@ -79,6 +86,24 @@ module.exports = {
     repoform.click('@cancelButton')
     repos.waitForElementVisible('@container', 2000)
     browser.pause(2000)
+    utils.checkElementCount(browser, '#repo-list-container #repo-list-item', 2)
+
+    // try some searches and check the result count
+    repos.setValue('@search', `oranges`)
+    browser.pause(500)
+    utils.checkElementCount(browser, '#repo-list-container #repo-list-item', 1)
+    repos.clearValue('@search')
+    repos.setValue('@search', `oranges2`)
+    browser.pause(500)
+    utils.checkElementCount(browser, '#repo-list-container #repo-list-item', 0)
+    repos.clearValue('@search')
+    repos.setValue('@search', `apples`)
+    browser.pause(500)
+    utils.checkElementCount(browser, '#repo-list-container #repo-list-item', 1)
+    repos.clearValue('@search')
+    repos.setValue('@search', ` `)
+    browser.pause(500)
+    utils.checkElementCount(browser, '#repo-list-container #repo-list-item', 2)
 
 
     browser.end()
