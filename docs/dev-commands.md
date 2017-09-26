@@ -155,11 +155,11 @@ There can be issues with Vagrant shared folders hence this being a manual step:
 
 ```bash
 vagrant ssh
-cd $GOPATH/src/github.com/lukemarsden
+cd $GOPATH/src/github.com/datamesh-io
 # might as well keep this
 mv datamesh datamesh2
 ln -s /vagrant datamesh
-# now $GOPATH/src/github.com/lukemarsden/datamesh -> /vagrant -> this repo on your host
+# now $GOPATH/src/github.com/datamesh-io/datamesh -> /vagrant -> this repo on your host
 ```
 
 ## setup
@@ -167,8 +167,8 @@ ln -s /vagrant datamesh
 Assuming you have set your GOPATH (e.g. to `$HOME/gocode`):
 
 ```
-mkdir -p $GOPATH/src/github.com/lukemarsden
-cd $GOPATH/src/github.com/lukemarsden
+mkdir -p $GOPATH/src/github.com/datamesh-io
+cd $GOPATH/src/github.com/datamesh-io
 git clone git@neo.lukemarsden.net:root/datamesh
 ```
 
@@ -177,7 +177,7 @@ We're going to create `~/datamesh-instrumentation` and
 
 ```
 cd ~/
-git clone git@github.com:lukemarsden/datamesh-instrumentation
+git clone git@github.com:datamesh-io/datamesh-instrumentation
 cd datamesh-instrumentation
 ./up.sh secret # where secret is some local password
 ```
@@ -189,7 +189,7 @@ etcd instances.
 
 ```
 cd ~/
-git clone git@github.com:lukemarsden/discovery.datamesh.io
+git clone git@github.com:datamesh-io/discovery.datamesh.io
 cd discovery.datamesh.io
 ./start-local.sh
 ```
@@ -201,7 +201,7 @@ You have to do some one-off setup and priming of docker images before these
 tests will run:
 
 ```
-cd $GOPATH/src/github.com/lukemarsden/datamesh
+cd $GOPATH/src/github.com/datamesh-io/datamesh
 ./prime.sh
 ```
 
@@ -215,7 +215,7 @@ go get github.com/tools/godep
 To run the test suite, run:
 
 ```
-cd $GOPATH/src/github.com/lukemarsden/datamesh
+cd $GOPATH/src/github.com/datamesh-io/datamesh
 ./prep-tests.sh && ./test.sh
 ```
 
@@ -238,10 +238,16 @@ specified when you ran `up.sh` in `datamesh-instrumentation`):
 ADMIN_PW=secret ./debug-in-browser.sh
 ```
 
-The old UI, if you want to use that, depends on having the Jekyll site running on `localhost:4000`. The following is a portable way to do that:
+Note that `debug-in-browser.sh` also dumps goroutine stacks (`*.goroutines`
+files) from all running datamesh instances into the current working directory.
+This can be extremely useful for debugging deadlocks: look for suspicious
+stacks which indicate that things that are waiting on eachother.
+
+The old UI, if you want to use that, depends on having the Jekyll site running
+on `localhost:4000`. The following is a portable way to do that:
 
 ```
-git clone git@github.com:lukemarsden/datamesh-website
+git clone git@github.com:datamesh-io/datamesh-website
 cd datamesh-website
 docker run -ti --net=host -v $PWD:/srv/jekyll pwbgl/docker-jekyll-pygments jekyll serve /site
 ```
@@ -474,8 +480,8 @@ make cluster.upgrade
 
 If you have included a new godep in your code - follow these steps:
 
- * symlink the current repo into $GOPATH/src/github.com/lukemarsden/datamesh
- * cd $GOPATH/src/github.com/lukemarsden/datamesh/cmd/{datamesh-server,dm}
+ * symlink the current repo into $GOPATH/src/github.com/datamesh-io/datamesh
+ * cd $GOPATH/src/github.com/datamesh-io/datamesh/cmd/{datamesh-server,dm}
  * godep restore # only if not run already
  * go get github.com/stripe/stripe-go/customer
  * godep save ./...
@@ -535,13 +541,22 @@ You can `docker exec -ti datamesh-frontend bash` to get a CLI inside the fronten
 
 #### changing the help markdown
 
-If you change any of the `.md` files inside `frontend/help` - you will need to re-run the following command:
+If you change any of the `.md` files inside `frontend/help` - you will need to restart the frontend container.
 
-```bash
-make help
-```
+The markdown is automatically built when the frontend dev/release server is run - there is no hot-reloading on the help.
 
-This will generate the following file: `frontend/src/ui/help.json` which is used to generate the help pages in React.
+This will generate the following file: `frontend/src/ui/help.json` which is used to generate the help pages in React - this file is `.gitignored` and should be generated automatically as part of the normal dev/release commands.
+
+#### using variables in the help markdown
+
+You can use dynamic variables in the help markdown files using the following format: `${VAR_NAME}`
+
+These are populated client side and the following variables are available:
+
+ * `USER_NAME` - user name of current user
+ * `SERVER_NAME` - url of current datamesh installation
+
+These variables are defined in [frontend/src/ui/selectors.js](frontend/src/ui/selectors.js) -> `help.variables`
 
 #### building frontend production code
 
