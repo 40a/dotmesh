@@ -16,7 +16,7 @@ cd $HOME/discovery.datamesh.io
 git pull
 ./start-local.sh
 
-cd $GOPATH/src/github.com/lukemarsden/datamesh
+cd $GOPATH/src/github.com/datamesh-io/datamesh
 git pull
 if [ -z "$SKIP_K8S" ]; then
   ./prime.sh

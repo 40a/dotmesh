@@ -21,7 +21,7 @@ function fetch_zfs {
         echo "ZFS is not installed on your docker host, and unable to find a kernel module for your kernel: $KERN"
         echo "Please create a new GitHub issue, pasting this error message, and tell me which Linux distribution you are using, at:"
         echo
-        echo "    https://github.com/lukemarsden/dm/issues"
+        echo "    https://github.com/datamesh-io/datamesh/issues"
         echo
         echo "Meanwhile, you should still be able to use datamesh if you install ZFS manually on your host system by following the instructions at http://zfsonlinux.org/ and then re-run the datamesh installer."
         echo

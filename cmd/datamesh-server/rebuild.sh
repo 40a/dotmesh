@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -xe
 
-IMAGE=${IMAGE:=$(hostname).local:80/lukemarsden/datamesh-server:pushpull}
+IMAGE=${IMAGE:=$(hostname).local:80/datamesh-io/datamesh-server:pushpull}
 
 mkdir -p target
 docker build -f Dockerfile.build -t datamesh-builder .

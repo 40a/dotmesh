@@ -25,15 +25,15 @@ fi
 
 mkdir -p $GOPATH
 
-if [ ! -d "$GOPATH/src/github.com/lukemarsden/datamesh" ]; then
-  mkdir -p $GOPATH/src/github.com/lukemarsden
-  cd $GOPATH/src/github.com/lukemarsden
+if [ ! -d "$GOPATH/src/github.com/datamesh-io/datamesh" ]; then
+  mkdir -p $GOPATH/src/github.com/datamesh-io
+  cd $GOPATH/src/github.com/datamesh-io
   git clone git@neo.lukemarsden.net:root/datamesh
 fi
 
 if [ ! -d "$HOME/datamesh-instrumentation" ]; then
   cd $HOME/
-  git clone git@github.com:lukemarsden/datamesh-instrumentation
+  git clone git@github.com:datamesh-io/datamesh-instrumentation
   cd datamesh-instrumentation
 fi
 
@@ -42,13 +42,13 @@ cd $HOME/datamesh-instrumentation
 
 if [ ! -d "$HOME/discovery.datamesh.io" ]; then
   cd $HOME/
-  git clone git@github.com:lukemarsden/discovery.datamesh.io
+  git clone git@github.com:datamesh-io/discovery.datamesh.io
 fi
 
 cd $HOME/discovery.datamesh.io
 ./start-local.sh
 
-cd $GOPATH/src/github.com/lukemarsden/datamesh
+cd $GOPATH/src/github.com/datamesh-io/datamesh
 
 if [ -z "$SKIP_K8S" ]; then
   ./prime.sh
