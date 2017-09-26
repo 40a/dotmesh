@@ -10,7 +10,8 @@ sync_github:
     stage: sync
     script:
         - git log
-        - git remote add github git@github.com:datamesh-io/datamesh || true
+        - git remote rm github || true
+        - git remote add github git@github.com:datamesh-io/datamesh
         - git checkout -b $CI_BUILD_REF_NAME || true
         - pwd
         - git remote -v
