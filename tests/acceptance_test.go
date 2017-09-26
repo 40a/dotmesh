@@ -410,6 +410,7 @@ func TestFrontend(t *testing.T) {
 		startGotty(t, node1)
 		defer stopChromeDriver(t, node1)
 		defer stopGotty(t, node1)
+		defer copyMedia(node1)
 
 		runFrontendTest(t, node1, "specs/auth.js", userLogin)
 		runFrontendTest(t, node1, "specs/endtoend.js", userLogin)
