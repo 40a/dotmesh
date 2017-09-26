@@ -193,9 +193,11 @@ frontend:
     tags:
         - ubuntu-16.10
         - fast
-    script:
+    before_script:
         - mkdir frontend_artifacts
+    script:
         - ./test.sh -run TestFrontend
+    after_script:
         - tar -xf frontend_artifacts.tar -C frontend_artifacts
         - sudo rm frontend_artifacts.tar
         - ls -la frontend_artifacts
