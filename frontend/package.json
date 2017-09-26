@@ -5,10 +5,12 @@
   "description": "the frontend for the datamesh app",
   "main": "./src",
   "scripts": {
+    "buildhelp": "node scripts/buildhelp.js > src/ui/help.json",
+    "prerelease": "npm run buildhelp",
     "release": "NODE_ENV=production UV_THREADPOOL_SIZE=100 webpack --colors --profile --progress",
+    "prewatch": "npm run buildhelp",
     "watch": "NODE_ENV=development UV_THREADPOOL_SIZE=100 node --require babel-register ./server",
     "analyze": "NODE_ENV=production UV_THREADPOOL_SIZE=100 webpack  --json | webpack-bundle-size-analyzer",
-    "buildhelp": "node scripts/buildhelp.js > src/ui/help.json",
     "test": "tape -r babel-register src/**/*.test.js"
   },
   "dependencies": {
