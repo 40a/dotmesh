@@ -4,4 +4,4 @@ RUN cd /tmp && mkdir cni-plugins && cd cni-plugins && \
     tar zxfv cni-plugins-amd64-v0.6.0-rc1.tgz && \
     cp /tmp/cni-plugins/* /opt/cni/bin/
 COPY dindnet /usr/local/bin/dindnet
-COPY cni.conf /etc/cni/net.d/01-weave-hostport.conf
+COPY cni.conflist /etc/cni/net.d/01-weave-hostport.conflist
