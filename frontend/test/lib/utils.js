@@ -14,7 +14,47 @@ const checkUrl = (browser, path, message) => {
   })
 }
 
+// switch between the application (0) and the terminal (1)
+const switchWindow = (browser, windowIndex) => {
+  browser.window_handles(function(result) {
+    var handle = result.value[windowIndex]
+    browser.switchWindow(handle)
+  })
+}
+const switchApplication = (browser) => switchWindow(browser, 0)
+const switchTerminal = (browser) => switchWindow(browser, 1)
+
+// open the gotty terminal based on the env
+const launchTerminal = (browser) => {
+  browser
+    .execute(function (url) {
+      window.open(url, '_blank')
+    }, [`http://${process.env.GOTTY_HOST}`]);
+}
+
+const typeTerminal = (browser, command) => {
+  browser.keys(command)
+  browser.keys(browser.Keys.ENTER) 
+}
+
+const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+const randomChars = (len) => {
+  len = len || 5
+  let text = "";
+
+  for (var i = 0; i < len; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length))
+  }
+  return text;
+}
+
 module.exports = {
   screenshot,
-  checkUrl
+  checkUrl,
+  switchApplication,
+  switchTerminal,
+  launchTerminal,
+  typeTerminal,
+  randomChars
 }
