@@ -238,7 +238,13 @@ specified when you ran `up.sh` in `datamesh-instrumentation`):
 ADMIN_PW=secret ./debug-in-browser.sh
 ```
 
-The old UI, if you want to use that, depends on having the Jekyll site running on `localhost:4000`. The following is a portable way to do that:
+Note that `debug-in-browser.sh` also dumps goroutine stacks (`*.goroutines`
+files) from all running datamesh instances into the current working directory.
+This can be extremely useful for debugging deadlocks: look for suspicious
+stacks which indicate that things that are waiting on eachother.
+
+The old UI, if you want to use that, depends on having the Jekyll site running
+on `localhost:4000`. The following is a portable way to do that:
 
 ```
 git clone git@github.com:lukemarsden/datamesh-website
