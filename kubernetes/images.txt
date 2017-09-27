@@ -1,0 +1,17 @@
+gcr.io/google_containers/etcd-amd64:3.0.17 google_containers/etcd-amd64:3.0.17
+gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.4 google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.4
+gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.4 google_containers/k8s-dns-kube-dns-amd64:1.14.4
+gcr.io/google_containers/k8s-dns-sidecar-amd64:1.14.4 google_containers/k8s-dns-sidecar-amd64:1.14.4
+gcr.io/google_containers/kube-apiserver-amd64:v1.7.6 google_containers/kube-apiserver-amd64:v1.7.6
+gcr.io/google_containers/kube-controller-manager-amd64:v1.7.6 google_containers/kube-controller-manager-amd64:v1.7.6
+gcr.io/google_containers/kube-proxy-amd64:v1.7.6 google_containers/kube-proxy-amd64:v1.7.6
+gcr.io/google_containers/kube-scheduler-amd64:v1.7.6 google_containers/kube-scheduler-amd64:v1.7.6
+quay.io/coreos/etcd-operator:v0.5.0 coreos/etcd-operator:v0.5.0
+quay.io/datamesh/datamesh-server:latest datamesh/datamesh-server:latest
+weaveworks/weave-kube:2.0.4 weaveworks/weave-kube:2.0.4
+weaveworks/weave-npc:2.0.4 weaveworks/weave-npc:2.0.4
+gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.4 google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.4
+gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.4 google_containers/k8s-dns-kube-dns-amd64:1.14.4
+gcr.io/google_containers/k8s-dns-sidecar-amd64:1.14.4 google_containers/k8s-dns-sidecar-amd64:1.14.4
+quay.io/coreos/etcd-operator:v0.5.0 coreos/etcd-operator:v0.5.0
+quay.io/datamesh/datamesh-server:latest datamesh/datamesh-server:latest

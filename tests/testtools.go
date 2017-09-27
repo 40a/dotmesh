@@ -564,9 +564,56 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	if c.DesiredNodeCount == 0 {
 		panic("no such thing as a zero-node cluster")
 	}
+
+	images, err := ioutil.ReadFile("../kubernetes/images.txt")
+	if err != nil {
+		return err
+	}
+	cache := map[string]string{}
+	for _, x := range strings.Split(string(images), "\n") {
+		ys := strings.Split(x, " ")
+		if len(ys) == 2 {
+			cache[ys[0]] = ys[1]
+		}
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+
+	// pre-pull all the container images Kubernetes needs to use, tag them to
+	// trick it into not downloading anything.
+	finishing := make(chan bool)
+	for j := 0; j < c.DesiredNodeCount; j++ {
+		go func(j int) {
+			for fqImage, localName := range cache {
+				st, err := docker(
+					nodeName(now, i, j),
+					/*
+					   docker pull $local_name
+					   docker tag $local_name $fq_image
+					*/
+					fmt.Sprintf(
+						"docker pull %s.local:80/%s && "+
+							"docker tag %s.local:80/%s %s",
+						hostname, localName, hostname, localName, fqImage,
+					),
+				)
+				if err != nil {
+					panic(st)
+				}
+				finishing <- true
+			}
+		}(j)
+	}
+	for j := 0; j < c.DesiredNodeCount; j++ {
+		_ = <-finishing
+	}
+
 	// TODO regex the following yamels to refer to the newly pushed
 	// datamesh container image, rather than the latest stable
-	err := system("bash", "-c",
+	err = system("bash", "-c",
 		fmt.Sprintf(
 			`MASTER=%s
 			docker exec $MASTER mkdir /datamesh-kube-yaml
