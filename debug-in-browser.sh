@@ -53,7 +53,7 @@ for node in $nodes; do
             -e ETCDCTL_CA_FILE=/root/.datamesh/pki/ca.pem \
             -e ETCDCTL_KEY_FILE=/root/.datamesh/pki/apiserver-key.pem \
             -e ETCDCTL_CERT_FILE=/root/.datamesh/pki/apiserver.pem \
-            -t -i $(hostname).local:80/datamesh-io/etcd-browser:v1 nodejs server.js \
+            -t -i $(hostname).local:80/datamesh/etcd-browser:v1 nodejs server.js \
                 > /dev/null 2>/dev/null &
 done
 
