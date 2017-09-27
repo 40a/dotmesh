@@ -581,7 +581,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		nodeName(now, i, 0),
 		"rm /etc/machine-id && systemd-machine-id-setup && "+
 			"systemctl start kubelet && "+
-			"kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks && "+
+			"kubeadm init --kubernetes-version=v1.7.6 --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks && "+
 			"mkdir /root/.kube && cp /etc/kubernetes/admin.conf /root/.kube/config && "+
 			// Make kube-dns faster; trick copied from dind-cluster-v1.7.sh
 			"kubectl get deployment kube-dns -n kube-system -o json | jq '.spec.template.spec.containers[0].readinessProbe.initialDelaySeconds = 3|.spec.template.spec.containers[0].readinessProbe.periodSeconds = 3' | kubectl apply --force -f -",
