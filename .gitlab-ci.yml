@@ -196,6 +196,7 @@ frontend:
     script:
         - mkdir frontend_artifacts
         - ./test.sh -run TestFrontend
+    after_script:
         - tar -xf frontend_artifacts.tar -C frontend_artifacts
         - sudo rm frontend_artifacts.tar
         - ls -la frontend_artifacts

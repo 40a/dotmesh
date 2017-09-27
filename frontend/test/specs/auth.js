@@ -3,6 +3,8 @@
 const assert = require('assert')
 const utils = require('../lib/utils')
 
+const TIMESTAMP = utils.randomChars()
+
 module.exports = {
   loadHomepage: (browser) => {
     const home = browser.page.home().navigate()
@@ -39,9 +41,9 @@ module.exports = {
   },
   correctRegisterValues: (browser) => {
     const register = browser.page.register()
-    register.setValue('@email', process.env.TEST_EMAIL)
-    register.setValue('@username', process.env.TEST_USER)
-    register.setValue('@password', process.env.TEST_PASSWORD)
+    register.setValue('@email', `user${TIMESTAMP}@user.com`)
+    register.setValue('@username', `user${TIMESTAMP}`)
+    register.setValue('@password', `password`)
     browser.pause(300)
     register.expect.element('@emailError').to.not.be.present
     register.expect.element('@usernameError').to.not.be.present
@@ -50,9 +52,9 @@ module.exports = {
   },
   submitRegisterForm: (browser) => {
     const register = browser.page.register()
-    const repos = browser.page.repos()
+    const userlayout = browser.page.userlayout()
     register.click('@submitButton')
-    repos.waitForElementVisible('@page', 2000)
+    userlayout.waitForElementVisible('@gravatar', 2000)
     utils.checkUrl(browser, '/dashboard', 'the page is now on dashboard and logged in')
     utils.screenshot(browser, '/postRegisterDashboard.png')
   },
@@ -84,20 +86,27 @@ module.exports = {
   },
   correctLoginValues: (browser) => {
     const login = browser.page.login()
-    login.setValue('@username', process.env.TEST_USER)
-    login.setValue('@password', process.env.TEST_PASSWORD)
+    login.setValue('@username', `user${TIMESTAMP}`)
+    login.setValue('@password', `password`)
     browser.pause(300)
     login.expect.element('@usernameError').to.not.be.present
     login.expect.element('@passwordError').to.not.be.present
     utils.screenshot(browser, '/loginPageValid.png')
   },
   submitLoginForm: (browser) => {
-    const login = browser.page.login()
-    const repos = browser.page.repos()
+    const login = browser.page.login()    
+    const userlayout = browser.page.userlayout()
     login.click('@submitButton')
-    repos.waitForElementVisible('@page', 2000)
+    userlayout.waitForElementVisible('@gravatar', 2000)
     utils.checkUrl(browser, '/dashboard', 'the page is now on dashboard and logged in')
     utils.screenshot(browser, '/postLoginDashboard.png')
+  },
+  refresh: (browser) => {
+     browser
+        .refresh()
+    browser.pause(3000)
+    utils.checkUrl(browser, '/dashboard', 'the page is now on dashboard and logged in')
+    browser.pause(1000)
     browser.end()
   }
 }

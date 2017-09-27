@@ -11,10 +11,10 @@ class RepoListItem extends Component {
     const repo = this.props.repo || []
     const serverStatuses = selectors.repo.serverStatuses(repo)
     return (
-      <div className={ theme.listItem }>
+      <div className={ theme.listItem } id="repo-list-item">
         <div className={ theme.repoInfo }>
           <div>
-            <div className={ theme.repoName + ' ' + colors.bluelink + ' ' + theme.link } onClick={ () => this.props.clickRepo(repo) }>
+            <div id="repo-list-item-link" className={ theme.repoName + ' ' + colors.bluelink + ' ' + theme.link } onClick={ () => this.props.clickRepo(repo) }>
               { selectors.repo.title(repo) }
             </div>
             {

@@ -69,6 +69,12 @@ chromedriver.start.prod: ; bash dev.sh chromedriver-start-prod
 .PHONY: chromedriver.stop
 chromedriver.stop: ; bash dev.sh chromedriver-stop
 
+.PHONY: gotty.start
+gotty.start: ; bash dev.sh gotty-start
+
+.PHONY: gotty.stop
+gotty.stop: ; bash dev.sh gotty-stop
+
 .PHONY: prod
 prod:
 	make frontend.build
