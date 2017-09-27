@@ -14,4 +14,4 @@ gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.4 google_containers/k8
 gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.4 google_containers/k8s-dns-kube-dns-amd64:1.14.4
 gcr.io/google_containers/k8s-dns-sidecar-amd64:1.14.4 google_containers/k8s-dns-sidecar-amd64:1.14.4
 quay.io/coreos/etcd-operator:v0.5.0 coreos/etcd-operator:v0.5.0
-quay.io/datamesh/datamesh-server:latest datamesh/datamesh-server:latest
+gcr.io/google_containers/pause-amd64:3.0 google_containers/pause-amd64:3.0

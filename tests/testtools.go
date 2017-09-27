@@ -587,6 +587,20 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	finishing := make(chan bool)
 	for j := 0; j < c.DesiredNodeCount; j++ {
 		go func(j int) {
+			// Use the locally build datamesh server image as the "latest" image in
+			// the test containers.
+			st, err := docker(
+				nodeName(now, i, j),
+				fmt.Sprintf(
+					"docker pull %s.local:80/datamesh/datamesh-server:latest && "+
+						"docker tag %s.local:80/datamesh/datamesh-server:latest "+
+						"quay.io/datamesh/datamesh-server:latest",
+					hostname, hostname,
+				),
+			)
+			if err != nil {
+				panic(st)
+			}
 			for fqImage, localName := range cache {
 				st, err := docker(
 					nodeName(now, i, j),
@@ -603,8 +617,8 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 				if err != nil {
 					panic(st)
 				}
-				finishing <- true
 			}
+			finishing <- true
 		}(j)
 	}
 	for j := 0; j < c.DesiredNodeCount; j++ {
