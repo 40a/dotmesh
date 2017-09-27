@@ -688,7 +688,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	// now install datamesh yaml (setting initial admin pw)
 	st, err = docker(
 		nodeName(now, i, 0),
-		"kubectl apply -f https://git.io/weave-kube-1.6 && "+
+		"kubectl apply -f /datamesh-kube-yaml/weave-net.yaml && "+
 			"kubectl create namespace datamesh && "+
 			"echo 'secret123' > datamesh-admin-password.txt && "+
 			"kubectl create secret generic datamesh "+
