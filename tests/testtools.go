@@ -631,8 +631,15 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		fmt.Sprintf(
 			`MASTER=%s
 			docker exec $MASTER mkdir /datamesh-kube-yaml
-			for X in ../kubernetes/*.yaml; do docker cp $X $MASTER:/datamesh-kube-yaml/; done`,
+			for X in ../kubernetes/*.yaml; do docker cp $X $MASTER:/datamesh-kube-yaml/; done
+			docker exec $MASTER sed -i 's/quay.io\/datamesh\/datamesh-server:latest/'$(hostname)'.local:80\/datamesh\/datamesh-server:latest/' /datamesh-kube-yaml/datamesh-ds.yaml
+			docker exec $MASTER sed -i 's/pool/%s/' /datamesh-kube-yaml/datamesh-ds.yaml
+			docker exec $MASTER sed -i 's/\/var\/lib\/docker\/datamesh/%s/' /datamesh-kube-yaml/datamesh-ds.yaml
+			`,
 			nodeName(now, i, 0),
+			// XXX need to somehow number the instances...
+			poolId(now, i, 0),
+			"\\/datamesh-test-pools\\/"+poolId(now, i, 0),
 		),
 	)
 	if err != nil {

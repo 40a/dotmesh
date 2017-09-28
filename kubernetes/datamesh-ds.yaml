@@ -95,6 +95,10 @@ items:
                   value: "https://datamesh.io/"
                 - name: INITIAL_ADMIN_PASSWORD_FILE
                   value: /secret/datamesh-admin-password.txt
+                - name: USE_POOL_NAME
+                  value: pool
+                - name: USE_POOL_DIR
+                  value: /var/lib/docker/datamesh
               image: 'quay.io/datamesh/datamesh-server:latest'
               imagePullPolicy: Always
               livenessProbe:
