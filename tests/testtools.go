@@ -94,11 +94,6 @@ func testSetup(f Federation, stamp int64) error {
 		# both from ZFS's perspective and that of the inner container.
 		# (Bind-mounts all the way down.)
 		mkdir -p /datamesh-test-pools
-		# tmpfs makes etcd not completely rinse your IOPS (which it can do
-		# otherwise); create if doesn't exist
-		if [ $(mount |grep "/tmpfs " |wc -l) -eq 0 ]; then
-			mkdir -p /tmpfs && mount -t tmpfs -o size=4g tmpfs /tmpfs
-		fi
 	`)
 	if err != nil {
 		return err
@@ -637,7 +632,9 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 			docker exec $MASTER sed -i 's/\/var\/lib\/docker\/datamesh/%s/' /datamesh-kube-yaml/datamesh-ds.yaml
 			`,
 			nodeName(now, i, 0),
-			// XXX need to somehow number the instances...
+			// need to somehow number the instances, did this by modifying
+			// require_zfs.sh to include the hostname in the pool name to make
+			// them unique... TODO: make sure we clear these up
 			poolId(now, i, 0),
 			"\\/datamesh-test-pools\\/"+poolId(now, i, 0),
 		),
