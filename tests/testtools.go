@@ -94,6 +94,11 @@ func testSetup(f Federation, stamp int64) error {
 		# both from ZFS's perspective and that of the inner container.
 		# (Bind-mounts all the way down.)
 		mkdir -p /datamesh-test-pools
+		# tmpfs makes etcd not completely rinse your IOPS (which it can do
+		# otherwise); create if doesn't exist
+		if [ $(mount |grep "/tmpfs " |wc -l) -eq 0 ]; then
+		        mkdir -p /tmpfs && mount -t tmpfs -o size=4g tmpfs /tmpfs
+		fi
 	`)
 	if err != nil {
 		return err
