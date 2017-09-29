@@ -27,7 +27,7 @@ class RepoList extends Component {
   dataList() {
     const data = this.props.data || []
     return (
-      <div className={ theme.listContainer }>
+      <div id="repo-list-container" className={ theme.listContainer }>
         {
           data.map((repo, i) => {
             return (
@@ -64,7 +64,7 @@ class RepoList extends Component {
 
   search() {
     return (
-      <div className={ theme.searchContainer }>
+      <div className={ theme.searchContainer } id="repo-list-search">
         {
           this.props.repoCount > 0 ? (
             <SearchBox
@@ -83,10 +83,10 @@ class RepoList extends Component {
 
   buttons() {
     const actions = [
-      { label: 'New', accent: true, raised: true, icon: config.icons.add, onClick: () => this.props.clickNew() }
+      { id: 'new', label: 'New', accent: true, raised: true, icon: config.icons.add, onClick: () => this.props.clickNew() }
     ]
     return (
-      <div className={ theme.buttonsContainer }>
+      <div className={ theme.buttonsContainer } id="repo-list-buttons">
         <Navigation type='horizontal' actions={actions} />
       </div>
     )

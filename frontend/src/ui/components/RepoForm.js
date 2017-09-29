@@ -23,7 +23,7 @@ class RepoForm extends Component {
 
   render() {
     return (
-      <div>
+      <div id="repo-form">
         <FormWrapper
           title={ this.props.title }
           submitTitle='Submit'

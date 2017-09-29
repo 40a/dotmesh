@@ -21,6 +21,11 @@ var lastTiming int64
 
 const HOST_IP_FROM_CONTAINER = "10.192.0.1"
 
+// this is the docker bridge
+// we run gotty on the host and bind to all interfaces
+// this lets us speak to that from inside a container
+const GOTTY_HOST = "172.17.0.1:8081"
+
 func startTiming() {
 	lastTiming = time.Now().UnixNano()
 	timings = make(map[string]float64)
@@ -214,7 +219,7 @@ func teardownFinishedTestRuns() {
 					}
 				}
 
-				err = system("docker", "rm", "-f", node)
+				err = system("docker", "rm", "-f", "-v", node)
 				if err != nil {
 					fmt.Printf("erk during teardown %s\n", err)
 				}
@@ -339,6 +344,14 @@ func localChromeDriverImage() string {
 		panic(err)
 	}
 	return fmt.Sprintf("%s.local:80/datamesh/datamesh-chromedriver:latest", hostname)
+}
+
+func localGottyImage() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.local:80/datamesh/datamesh-gotty:latest", hostname)
 }
 
 func localEtcdImage() string {
@@ -799,6 +812,7 @@ func (c *Cluster) Start(t *testing.T, now int64, i int) error {
 }
 
 func startChromeDriver(t *testing.T, node string) {
+	fmt.Printf("Starting Chromedriver server on %s", node)
 	chromeDriverImage := localChromeDriverImage()
 	d(t, node, fmt.Sprintf(`
 		docker run -d \
@@ -810,8 +824,31 @@ func startChromeDriver(t *testing.T, node string) {
 	`, chromeDriverImage))
 }
 
+func startGotty(t *testing.T, node string) {
+	fmt.Printf("Starting Gotty server on %s", node)
+	gottyImage := localGottyImage()
+	// this installs the gotty binary onto the host
+	d(t, node, fmt.Sprintf(`
+		docker run --rm \
+			--name datamesh-gotty-installer \
+			-v /usr/local/bin:/mounted_bin \
+			%s
+	`, gottyImage))
+	go func() {
+		// this runs the gotty binary on the host
+		// it means we can run 'dm' commands from the browser
+		d(t, node, fmt.Sprintf(`
+			gotty --port 8081 -w bash &
+		`))
+	}()
+}
+
 func stopChromeDriver(t *testing.T, node string) {
 	d(t, node, "docker rm -f datamesh-chromedriver || true")
+}
+
+func stopGotty(t *testing.T, node string) {
+	d(t, node, "kill -9 $(pgrep gotty) || true")
 }
 
 type UserLogin struct {
@@ -841,19 +878,16 @@ func runFrontendTest(t *testing.T, node string, testName string, login UserLogin
 	    --link "datamesh-chromedriver:chromedriver" \
 	    -e "LAUNCH_URL=server:6969/ui" \
 	    -e "SELENIUM_HOST=chromedriver" \
-	    -e "WAIT_FOR_HOSTS=server:6969 chromedriver:4444 chromedriver:6060" \
-	    -e "TEST_USER=%s" \
-	    -e "TEST_EMAIL=%s" \
-	    -e "TEST_PASSWORD=%s" \
+	    -e "WAIT_FOR_HOSTS=server:6969 chromedriver:4444 chromedriver:6060 %s" \
+	    -e "GOTTY_HOST=%s" \
 	    -v /test_media/screenshots:/home/node/screenshots \
 	    -v /test_media/videos:/home/node/videos \
 	    %s %s
 	  ls -la /test_media/screenshots
 	  ls -la /test_media/videos
 	`,
-		login.Username,
-		login.Email,
-		login.Password,
+		GOTTY_HOST,
+		GOTTY_HOST,
 		runnerImage,
 		testName,
 	))

@@ -15,7 +15,7 @@ class RepoPageSettingsCollaborators extends Component {
 
   search() {
     return (
-      <div className={ theme.searchContainer }>
+      <div className={ theme.searchContainer } id="collaborator-search">
         <SearchBox
           label={ 'Find User...' }
           value={ this.props.addCollaboratorName || ''}
@@ -28,7 +28,7 @@ class RepoPageSettingsCollaborators extends Component {
   dataList() {
     const data = this.props.collaborators || []
     return (
-      <div className={ theme.listContainer }>
+      <div className={ theme.listContainer } id="collaborator-list">
         {
           data.map((collaborator, i) => {
             return (
@@ -48,6 +48,7 @@ class RepoPageSettingsCollaborators extends Component {
     const addValue = this.props.addCollaboratorName || ''
     const actions = [
       { 
+        id: 'add',
         label: 'Add',
         accent: addValue.length > 0,
         raised: addValue.length > 0,
@@ -56,7 +57,7 @@ class RepoPageSettingsCollaborators extends Component {
         onClick: () => this.props.addCollaboratorClick() }
     ]
     return (
-      <div className={ theme.buttonsContainer }>
+      <div className={ theme.buttonsContainer } id="collaborator-buttons">
         <Navigation type='horizontal' actions={actions} />
       </div>
     )

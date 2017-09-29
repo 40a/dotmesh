@@ -1,0 +1,9 @@
+FROM ubuntu:yakkety
+MAINTAINER kaiyadavenport@gmail.com
+ENV SECURITY_UPDATES 2017-01-19
+RUN apt-get -y update && apt-get -y install curl
+RUN curl -L https://github.com/yudai/gotty/releases/download/pre-release/gotty_2.0.0-alpha.2_linux_amd64.tar.gz -o /gotty.tar.gz
+RUN cd / && gzip -dc /gotty.tar.gz | tar -xof -
+ADD ./gotty_entrypoint.sh /gotty_entrypoint.sh
+WORKDIR /
+ENTRYPOINT ["bash", "/gotty_entrypoint.sh"]

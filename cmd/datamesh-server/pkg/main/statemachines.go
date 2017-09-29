@@ -814,7 +814,7 @@ func activeState(f *fsMachine) stateFn {
 				Name: "unhandled",
 				Args: &EventArgs{"current-state": f.currentState, "event": e},
 			}
-			log.Printf("unhandled event %s while in missingState", e)
+			log.Printf("unhandled event %s while in activeState", e)
 		}
 	}
 	// something unknown happened, go and check the state of the system after a

@@ -594,8 +594,6 @@ The difference in this mode is you need to hit `localhost:6969` to see it in the
 
 ## running frontend tests
 
-TODO: the frontend tests require interaction between `dm`
-
 It is useful to run the frontend tests against a running hot-reloading development env.
 
 First - startup chromedriver and build the test image.
@@ -605,10 +603,32 @@ make frontend.test.build # only needed once
 make chromedriver.start
 ```
 
+Then install [gotty](https://github.com/yudai/gotty) - this is used to run `dm` commands from the browser.
+
+Run the gotty server:
+
+```bash
+$ make gotty
+```
+
+Export `GOTTY_HOST` to be an IP address that Docker containers can speak to.
+
+If on Linux you can use the docker bridge - if on OSX - use the local ip:
+
+```bash
+$ export GOTTY_HOST=$(ipconfig getifaddr en0)
+```
+
 Then - as the frontend is rebuilding as you make changes - you can re-run the test suite:
 
 ```bash
-make frontend.test
+$ make frontend.test
+```
+
+If you want to run a single test - export `TEST_NAME`:
+
+```bash
+$ export TEST_NAME=specs/endtoend.js
 ```
 
 Videos & screenshots are produced after each test run - they live in `frontend/.media`

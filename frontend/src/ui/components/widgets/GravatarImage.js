@@ -12,7 +12,7 @@ class GravatarImage extends Component {
 
   render() {
     return (
-      <img src={ this.getURL() } className={ this.props.className } />
+      <img id="gravatar-img" src={ this.getURL() } className={ this.props.className } />
     )
   }
 }

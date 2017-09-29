@@ -5,8 +5,14 @@ module.exports = {
     return this.api.launchUrl
   },
   elements: {
-    page: {
-      selector: '#userLayout'
+    newbutton: {
+      selector: '#repo-list-buttons button#new'
+    },
+    container: {
+      selector: '#repo-list-container'
+    },
+    search: {
+      selector: '#repo-list-search input[name=search]'
     }
   }
 }
