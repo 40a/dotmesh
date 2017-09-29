@@ -110,6 +110,7 @@ func testSetup(f Federation, stamp int64) error {
 			fmt.Printf(">>> Using RunArgs %s\n", c.RunArgs(j))
 			// XXX the following only works if overlay is working
 			err := system("bash", "-c", fmt.Sprintf(`
+			set -x
 			mkdir -p /datamesh-test-pools
 			MOUNTPOINT=/datamesh-test-pools
 			NODE=%s
