@@ -216,7 +216,7 @@ func teardownFinishedTestRuns() {
 					}
 				}
 
-				err = system("docker", "rm", "-f", node)
+				err = system("docker", "rm", "-f", "-v", node)
 				if err != nil {
 					fmt.Printf("erk during teardown %s\n", err)
 				}
