@@ -147,6 +147,18 @@ func TestTwoNodesSameCluster(t *testing.T) {
 			t.Error(fmt.Sprintf("Unable to find world in transported data capsule, got '%s'", st))
 		}
 	})
+
+	t.Run("Delete", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		d(t, node1, "dm volume delete "+fsname)
+		time.Sleep(5 * time.Second)
+		d(t, node1, dockerRun(fsname+"2")+" sh -c 'echo WORLD > /foo/HELLO'")
+		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO")
+		if strings.Contains(st, "WORLD") {
+			t.Error(fmt.Sprintf("The container didn't get deleted..."))
+		}
+	})
 }
 
 func TestTwoSingleNodeClusters(t *testing.T) {

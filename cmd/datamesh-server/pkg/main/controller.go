@@ -428,6 +428,7 @@ func (s *InMemoryState) masterFor(filesystem string) string {
 
 func (s *InMemoryState) initFilesystemMachine(filesystemId string) *fsMachine {
 	log.Printf("[initFilesystemMachine] starting: %s", filesystemId)
+
 	s.filesystemsLock.Lock()
 	defer s.filesystemsLock.Unlock()
 	log.Printf("[initFilesystemMachine] acquired lock: %s", filesystemId)

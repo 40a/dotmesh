@@ -46,6 +46,21 @@ func NewCmdVolumeShow(out io.Writer) *cobra.Command {
 	return cmd
 }
 
+func NewCmdVolumeDelete(out io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "delete",
+		Short: "Delete a volume",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := volumeDelete(cmd, args, out)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+		},
+	}
+	return cmd
+}
+
 func NewCmdVolume(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "volume",
@@ -63,6 +78,7 @@ is used.`,
 
 	cmd.AddCommand(NewCmdVolumeSetUpstream(os.Stdout))
 	cmd.AddCommand(NewCmdVolumeShow(os.Stdout))
+	cmd.AddCommand(NewCmdVolumeDelete(os.Stdout))
 
 	return cmd
 }
@@ -108,6 +124,27 @@ func volumeSetUpstream(cmd *cobra.Command, args []string, out io.Writer) error {
 	}
 
 	dm.Configuration.SetDefaultRemoteVolumeFor(peer, localNamespace, localVolume, remoteNamespace, remoteVolume)
+	return nil
+}
+
+func volumeDelete(cmd *cobra.Command, args []string, out io.Writer) error {
+	dm, err := remotes.NewDatameshAPI(configPath)
+	if err != nil {
+		return err
+	}
+
+	var volume string
+	if len(args) == 1 {
+		volume = args[0]
+	} else {
+		volume, err = dm.CurrentVolume()
+		if err != nil {
+			return err
+		}
+	}
+
+	err = dm.DeleteVolume(volume)
+
 	return nil
 }
 

@@ -227,6 +227,23 @@ func (dm *DatameshAPI) VolumeExists(volumeName string) (bool, error) {
 	return ok, nil
 }
 
+func (dm *DatameshAPI) DeleteVolume(volumeName string) error {
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return err
+	}
+
+	var result bool
+	err = dm.client.CallRemote(
+		context.Background(), "DatameshRPC.DeleteVolume", VolumeName{namespace, name}, &result,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (dm *DatameshAPI) SwitchVolume(volumeName string) error {
 	return dm.setCurrentVolume(volumeName)
 }

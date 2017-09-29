@@ -126,6 +126,18 @@ func findFilesystemIdsOnSystem() []string {
 	return newLines
 }
 
+func deleteFilesystem(fs string) error {
+	code, err := returnCode(ZFS, "destroy", "-r", fq(fs))
+	if err != nil {
+		return err
+	}
+	if code != 0 {
+		// ABS FIXME: Capture error output from zfs and return it in err.
+		return fmt.Errorf("ZFS destroy returned %d", code)
+	}
+	return nil
+}
+
 func discoverSystem(fs string) (*filesystem, error) {
 	// TODO sanitize fs
 	// does filesystem exist? (early exit if not)

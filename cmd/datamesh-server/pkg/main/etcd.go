@@ -156,6 +156,61 @@ func (state *InMemoryState) updateAddressesInEtcd() error {
 	return nil
 }
 
+func isFilesystemDeletedInEtcd(topLevelFilesystemId string) (bool, error) {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return false, err
+	}
+
+	result, err := kapi.Get(
+		context.Background(),
+		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, topLevelFilesystemId),
+		nil,
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	if result != nil {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func (state *InMemoryState) markFilesystemAsDeletedInEtcd(topLevelFilesystemId, username string, name VolumeName) error {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+
+	// FIXME: Suggest additional useful thinsg to put in the deletion audit trail
+	auditTrail, err := json.Marshal(struct {
+		Server    string
+		Username  string
+		Name      VolumeName
+		DeletedAt time.Time
+	}{state.myNodeId,
+		username,
+		name,
+		time.Now()})
+	if err != nil {
+		return err
+	}
+
+	_, err = kapi.Set(
+		context.Background(),
+		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, topLevelFilesystemId),
+		string(auditTrail),
+		&client.SetOptions{PrevExist: client.PrevNoExist},
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // shortcut for dispatching an event to a filesystem's fsMachine's event
 // stream, returning the event stream for convenience so the caller can listen
 // for a response
@@ -177,13 +232,6 @@ func (s *InMemoryState) dispatchEvent(
 		e.Args = &EventArgs{}
 	}
 	(*e.Args)["RequestId"] = requestId
-	// Don't block the entire etcd event-loop just because one fsMachine isn't
-	// ready to receive an event. Our response is a chan anyway, so consumers
-	// can synchronize on reading from that as they wish (for example, in
-	// another goroutine).
-	go func() {
-		fs.requests <- e
-	}()
 	fs.responsesLock.Lock()
 	defer fs.responsesLock.Unlock()
 	rc, ok := fs.responses[requestId]
@@ -192,6 +240,17 @@ func (s *InMemoryState) dispatchEvent(
 		fs.responses[requestId] = responseChan
 		rc = responseChan
 	}
+
+	// Now we have a response channel set up, it's safe to send the request.
+
+	// Don't block the entire etcd event-loop just because one fsMachine isn't
+	// ready to receive an event. Our response is a chan anyway, so consumers
+	// can synchronize on reading from that as they wish (for example, in
+	// another goroutine).
+	go func() {
+		fs.requests <- e
+	}()
+
 	return rc, nil
 }
 
@@ -214,6 +273,22 @@ func (s *InMemoryState) handleOneFilesystemMaster(node *client.Node) error {
 		if err != nil {
 			return err
 		}
+	}
+	_ = <-responseChan
+	return nil
+}
+
+func (s *InMemoryState) handleOneFilesystemDeletion(node *client.Node) error {
+	pieces := strings.Split(node.Key, "/")
+	fs := pieces[len(pieces)-1]
+	s.initFilesystemMachine(fs)
+	var responseChan chan *Event
+	var err error
+	requestId := pieces[len(pieces)-1]
+	log.Printf("DELETING: %s=%s", fs, node.Value)
+	responseChan, err = s.dispatchEvent(fs, &Event{Name: "delete"}, requestId)
+	if err != nil {
+		return err
 	}
 	_ = <-responseChan
 	return nil
@@ -859,6 +934,10 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		if variant == "filesystems/masters" {
 			updateMine(node.Node)
 			if err = s.handleOneFilesystemMaster(node.Node); err != nil {
+				return err
+			}
+		} else if variant == "filesystems/deleted" {
+			if err = s.handleOneFilesystemDeletion(node.Node); err != nil {
 				return err
 			}
 		} else if variant == "filesystems/requests" {

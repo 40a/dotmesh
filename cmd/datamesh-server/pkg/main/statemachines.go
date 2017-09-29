@@ -74,15 +74,26 @@ func (f *fsMachine) run() {
 			state = state(f)
 		}
 		log.Printf("[run:%s] got nil state, closing up shop", f.filesystemId)
-		close(f.requests) // no more events will come out if we reach the nil state
-		close(f.innerRequests)
+
+		// Senders close channels, receivers check for closedness.
+
+		// close(f.requests) // no more events will come out if we reach the nil state
+		// close(f.innerRequests)
 		close(f.innerResponses)
-		f.responsesLock.Lock()
-		for _, c := range f.responses {
-			close(c)
-		}
-		f.responsesLock.Unlock()
-		close(f.snapshotsModified)
+		/*
+			f.responsesLock.Lock()
+			for _, c := range f.responses {
+				close(c)
+			}
+			f.responsesLock.Unlock()
+			close(f.snapshotsModified)
+		*/
+		// Remove ourself from the filesystems map
+		f.state.filesystemsLock.Lock()
+		defer f.state.filesystemsLock.Unlock()
+		delete(*(f.state.filesystems), f.filesystemId)
+
+		log.Printf("[run:%s] terminated", f.filesystemId)
 	}()
 	// proxy requests and responses, enforcing an ordering, to avoid accepting
 	// a new request before a response comes back, ie to serialize requests &
@@ -94,7 +105,11 @@ func (f *fsMachine) run() {
 		log.Printf("[run:%s] writing to internal requests", f.filesystemId)
 		f.innerRequests <- req
 		log.Printf("[run:%s] reading from internal responses", f.filesystemId)
-		resp := <-f.innerResponses
+		resp, more := <-f.innerResponses
+		if !more {
+			log.Printf("[run:%s] statemachine is finished", f.filesystemId)
+			resp = &Event{"filesystem-gone", &EventArgs{}}
+		}
 		log.Printf("[run:%s] got resp: %s", f.filesystemId, resp)
 		log.Printf("[run:%s] writing to external responses", f.filesystemId)
 		f.responsesLock.Lock()
@@ -407,6 +422,7 @@ waitingForSlaveSnapshot:
 		for !gotSnaps {
 			select {
 			case e := <-f.innerRequests:
+				// ABS FIXME: What if a deletion message comes in here?
 				log.Printf("rejecting all %s", e)
 				f.innerResponses <- &Event{"busy-handoff", &EventArgs{}}
 			case _ = <-newSnapsChan:
@@ -543,7 +559,20 @@ func activeState(f *fsMachine) stateFn {
 	log.Printf("entering active state for %s", f.filesystemId)
 	select {
 	case e := <-f.innerRequests:
-		if e.Name == "transfer" {
+		if e.Name == "delete" {
+			err := deleteFilesystem(f.filesystemId)
+			if err != nil {
+				f.innerResponses <- &Event{
+					Name: "cant-delete",
+					Args: &EventArgs{"err": err},
+				}
+			} else {
+				f.innerResponses <- &Event{
+					Name: "deleted",
+				}
+			}
+			return nil
+		} else if e.Name == "transfer" {
 
 			// TODO dedupe
 			transferRequest, err := transferRequestify((*e.Args)["Transfer"])
@@ -867,7 +896,20 @@ func inactiveState(f *fsMachine) stateFn {
 	log.Printf("entering inactive state for %s", f.filesystemId)
 
 	handleEvent := func(e *Event) (bool, stateFn) {
-		if e.Name == "mount" {
+		if e.Name == "delete" {
+			err := deleteFilesystem(f.filesystemId)
+			if err != nil {
+				f.innerResponses <- &Event{
+					Name: "cant-delete",
+					Args: &EventArgs{"err": err},
+				}
+			} else {
+				f.innerResponses <- &Event{
+					Name: "deleted",
+				}
+			}
+			return true, nil
+		} else if e.Name == "mount" {
 			f.transitionedTo("inactive", "mounting")
 			event, nextState := f.mount()
 			f.innerResponses <- event
@@ -1003,7 +1045,12 @@ func missingState(f *fsMachine) stateFn {
 	case _ = <-newSnapsOnMaster:
 		return receivingState
 	case e := <-f.innerRequests:
-		if e.Name == "transfer" {
+		if e.Name == "delete" {
+			f.innerResponses <- &Event{
+				Name: "deleted",
+			}
+			return nil
+		} else if e.Name == "transfer" {
 			log.Printf("GOT TRANSFER REQUEST (while missing) %+v", e.Args)
 
 			// TODO dedupe

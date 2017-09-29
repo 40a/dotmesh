@@ -245,6 +245,27 @@ func (r *Registry) RegisterFilesystem(ctx context.Context, name VolumeName, file
 	return r.UpdateFilesystemFromEtcd(name, rf)
 }
 
+// Remove a filesystem from the registry
+func (r *Registry) UnregisterFilesystem(name VolumeName) error {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+	_, err = kapi.Delete(
+		context.Background(),
+		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<namespace>/(5)<name> =>
+		//     {"Uuid": "<fs-uuid>"}
+		fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, name.Namespace, name.Name),
+		// we support updates in UpdateCollaborators, below.
+		&client.DeleteOptions{},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *Registry) UpdateCollaborators(
 	ctx context.Context, tlf TopLevelFilesystem, newCollaborators []SafeUser,
 ) error {

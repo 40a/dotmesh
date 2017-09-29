@@ -1081,3 +1081,53 @@ func (d *DatameshRPC) PredictSize(
 	*result = size
 	return nil
 }
+
+// Containers that were recently known to be running on a given filesystem.
+func (d *DatameshRPC) DeleteVolume(
+	r *http.Request,
+	args *VolumeName,
+	result *bool,
+) error {
+	*result = false
+
+	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
+
+	// This will error if the filesystem name isn't registered.
+	filesystem, err := d.state.registry.LookupFilesystem(*args)
+	if err != nil {
+		return err
+	}
+
+	// ABS FIXME: At this point, check the filesystem has no containers
+	// using it and error if so, for usability. This does not mean the
+	// filesystem is unused from here onwards, as it could come into
+	// use at any point.
+
+	// ABS FIXME: Also try and put some "Is this filesystem marked as
+	// deleted? If so, give up now" checks in useful places elsewhere
+	// in the code, for usability, to ensure faster failure. Don't let
+	// a deleted filesystem be mounted by a container.
+
+	// This will error if the filesystem is already marked as deleted.
+	err = d.state.markFilesystemAsDeletedInEtcd(filesystem.TopLevelVolume.Id, user.Name, *args)
+	if err != nil {
+		return err
+	}
+
+	// At this point, we have an inconsistent system state: the
+	// filesystem is marked for deletion, but its name is still
+	// registered in the registry. If we crash here, the name is taken
+	// by a nonexistant filesystem.
+
+	// FIXME: In order to prevent this lingering fate, we must
+	// periodically check the registry for deleted filesystems, and
+	// kill them off.
+
+	err = d.state.registry.UnregisterFilesystem(*args)
+	if err != nil {
+		return err
+	}
+
+	*result = true
+	return nil
+}
