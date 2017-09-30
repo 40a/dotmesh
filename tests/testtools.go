@@ -647,8 +647,8 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 			docker exec $MASTER mkdir /datamesh-kube-yaml
 			for X in ../kubernetes/*.yaml; do docker cp $X $MASTER:/datamesh-kube-yaml/; done
 			docker exec $MASTER sed -i 's/quay.io\/datamesh\/datamesh-server:latest/'$(hostname)'.local:80\/datamesh\/datamesh-server:latest/' /datamesh-kube-yaml/datamesh-ds.yaml
-			docker exec $MASTER sed -i 's/pool/%s/' /datamesh-kube-yaml/datamesh-ds.yaml
-			docker exec $MASTER sed -i 's/\/var\/lib\/docker\/datamesh/%s/' /datamesh-kube-yaml/datamesh-ds.yaml
+			docker exec $MASTER sed -i 's/value: pool/value: %s/' /datamesh-kube-yaml/datamesh-ds.yaml
+			docker exec $MASTER sed -i 's/value: \/var\/lib\/docker\/datamesh/value: %s/' /datamesh-kube-yaml/datamesh-ds.yaml
 			`,
 			nodeName(now, i, 0),
 			// need to somehow number the instances, did this by modifying

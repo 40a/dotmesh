@@ -126,6 +126,8 @@ items:
                   mountPath: /bundled-lib
                 - name: datamesh-secret
                   mountPath: /secret
+                - name: test-pools-dir
+                  mountPath: /datamesh-test-pools
           #hostNetwork: true
           #hostPID: true
           restartPolicy: Always
@@ -139,6 +141,9 @@ items:
             #- name: foo
             #  hostPath:
             #    path: /bar
+            - name: test-pools-dir
+              hostPath:
+                path: /datamesh-test-pools
             - name: docker-sock
               hostPath:
                 path: /var/run/docker.sock
