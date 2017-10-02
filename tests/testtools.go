@@ -314,6 +314,33 @@ func d(t *testing.T, node string, cmd string) {
 	}
 }
 
+// e.g. kubectlApply(t, node1, `yaml...`)
+func kubectlApply(t *testing.T, node string, input string) {
+	c := exec.Command("docker", "exec", "-i", node, "kubectl", "apply", "-f", "-")
+
+	var b bytes.Buffer
+
+	o := io.MultiWriter(&b, os.Stdout)
+	e := io.MultiWriter(&b, os.Stderr)
+
+	c.Stdout = o
+	c.Stderr = e
+
+	stdin, err := c.StdinPipe()
+	if err != nil {
+		panic(err)
+	}
+	go func() {
+		stdin.Write([]byte(input))
+		stdin.Close()
+	}()
+
+	err = c.Run()
+	if err != nil {
+		t.Error(fmt.Errorf("%s while applying the following manifest on %s: %s\n%s", err, node, string(b.Bytes()), input))
+	}
+}
+
 func s(t *testing.T, node string, cmd string) string {
 	s, err := docker(node, cmd)
 	if err != nil {
