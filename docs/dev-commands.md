@@ -124,12 +124,6 @@ go get github.com/tools/godep
 
 NOTE: you must exit and re-ssh to get the GOPATH to work
 
-If you want to skip compiling Kubernetes (for example if you are only running the frontend tests):
-
-```bash
-SKIP_K8S=1 bash /vagrant/scripts/prepare_vagrant.sh
-```
-
 Now you can skip directly to ["running tests"](#running-tests).
 
 #### reset vagrant
@@ -139,12 +133,6 @@ To reset and bring the vagrant setup up to date:
 ```bash
 vagrant ssh
 bash /vagrant/scripts/reset_vagrant.sh
-```
-
-If you want to skip recompiling Kubernetes for this step:
-
-```bash
-SKIP_K8S=1 bash /vagrant/scripts/reset_vagrant.sh
 ```
 
 #### symlink code
