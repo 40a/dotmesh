@@ -670,12 +670,12 @@ spec:
       - name: apple-storage
         persistentVolumeClaim:
          claimName: admin-apples-pvc
-        containers:
-        - name: apple-server
-          image: nginx:1.12.1
-          volumeMounts:
-          - mountPath: "/usr/share/nginx/html"
-            name: apple-storage
+      containers:
+      - name: apple-server
+        image: nginx:1.12.1
+        volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: apple-storage
 `)
 
 		kubectlApply(t, node1, `
