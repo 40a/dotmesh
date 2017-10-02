@@ -112,7 +112,7 @@ func testSetup(f Federation, stamp int64) error {
 	for i, c := range f {
 		for j := 0; j < c.GetDesiredNodeCount(); j++ {
 			node := nodeName(stamp, i, j)
-			fmt.Printf(">>> Using RunArgs %s\n", c.RunArgs(j))
+			fmt.Printf(">>> Using RunArgs %s\n", c.RunArgs(i, j))
 			// XXX the following only works if overlay is working
 			err := system("bash", "-c", fmt.Sprintf(`
 			set -x
@@ -139,7 +139,7 @@ func testSetup(f Federation, stamp int64) error {
 				systemctl restart docker
 			'
 			docker cp ../binaries/Linux/dm $NODE:/usr/local/bin/dm
-			`, node, c.RunArgs(j), HOST_IP_FROM_CONTAINER))
+			`, node, c.RunArgs(i, j), HOST_IP_FROM_CONTAINER))
 			if err != nil {
 				return err
 			}
@@ -547,19 +547,15 @@ type Startable interface {
 	GetNodes() []Node
 	GetDesiredNodeCount() int
 	Start(*testing.T, int64, int) error
-	RunArgs(int) string
+	RunArgs(int, int) string
 }
 
 ///////////// Kubernetes
 
-func (c *Kubernetes) RunArgs(i int) string {
+func (c *Kubernetes) RunArgs(i, j int) string {
 	// special args for starting Kube clusters, copying observed behaviour of
 	// dind::up
-	if i == 0 {
-		return fmt.Sprintf("10.192.0.%d %d 127.0.0.1:8080:8080", i+2, i+1)
-	} else {
-		return fmt.Sprintf("10.192.0.%d %d ''", i+2, i+1)
-	}
+	return fmt.Sprintf("10.192.%d.%d %d ''", i, j+2, j+1)
 }
 
 func (c *Kubernetes) GetNode(i int) Node {
@@ -742,7 +738,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 
 ///////////// Cluster (plain Datamesh cluster, no orchestrator)
 
-func (c *Cluster) RunArgs(i int) string {
+func (c *Cluster) RunArgs(i, j int) string {
 	// No special args required for dind with plain Datamesh.
 	return ""
 }
