@@ -582,7 +582,7 @@ type Startable interface {
 func (c *Kubernetes) RunArgs(i, j int) string {
 	// special args for starting Kube clusters, copying observed behaviour of
 	// dind::up
-	return fmt.Sprintf("10.192.%d.%d %d ''", i, j+2, j+1)
+	return fmt.Sprintf("10.192.%d.%d %d ''", i+1, j+2, j+1)
 }
 
 func (c *Kubernetes) GetNode(i int) Node {

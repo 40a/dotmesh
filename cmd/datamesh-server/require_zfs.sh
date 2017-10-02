@@ -37,7 +37,6 @@ function fetch_zfs {
 # Put the data file inside /var/lib/docker so that we end up on the big
 # partition if we're in a boot2docker env
 DIR=${USE_POOL_DIR:-/var/lib/docker/datamesh}-$(hostname)
-echo ">>> using DIR=$DIR <<<"
 FILE=${DIR}/datamesh_data
 POOL=${USE_POOL_NAME:-pool}-$(hostname)
 MOUNTPOINT=${MOUNTPOINT:-$DIR/mnt}
@@ -55,7 +54,6 @@ SYSTEM_LIB=/system-lib
 nsenter -t 1 -m -u -n -i sh -c \
     'set -xe
     . /etc/profile
-    echo ">>> checking if '$MOUNTPOINT' exists"
     if [ $(mount |grep '$MOUNTPOINT' |wc -l) -eq 0 ]; then
         echo "Creating and bind-mounting shared '$MOUNTPOINT'"
         mkdir -p '$MOUNTPOINT' && \
@@ -69,16 +67,7 @@ if [ ! -e /sys ]; then
     mount -t sysfs sys sys/
 fi
 
-echo ">>> mount:"
-mount
-echo ">>>"
-
-echo ">>> ls -alh /datamesh-test-pools:"
-ls -alh /datamesh-test-pools
-echo ">>>"
-
 if [ ! -d $DIR ]; then
-    echo ">>> mkdir -p $DIR <<<"
     mkdir -p $DIR
 fi
 
