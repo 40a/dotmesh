@@ -609,7 +609,7 @@ func TestKubernetes(t *testing.T) {
 		// dm list should succeed in connecting to the datamesh cluster
 		d(t, node1, "dm list")
 		// init a datamesh volume and put some data in it
-		d(t, node1, "docker run --rm -i apples:/foo busybox touch /foo/on-the-tree")
+		d(t, node1, "docker run --rm -i -v apples:/foo --volume-driver dm busybox touch /foo/on-the-tree")
 
 		// TODO implementation needs to move driver to
 		// /usr/libexec/kubernetes/kubelet-plugins/volume/exec/datamesh.io~dm/dm
