@@ -36,9 +36,11 @@ function fetch_zfs {
 
 # Put the data file inside /var/lib/docker so that we end up on the big
 # partition if we're in a boot2docker env
-DIR=${USE_POOL_DIR:-/var/lib/docker/datamesh}-$(hostname)
+DIR=${USE_POOL_DIR:-/var/lib/docker/datamesh}
+DIR=$(echo $DIR |sed s/\#HOSTNAME\#/$(hostname)/)
 FILE=${DIR}/datamesh_data
-POOL=${USE_POOL_NAME:-pool}-$(hostname)
+POOL=${USE_POOL_NAME:-pool}
+POOL=$(echo $POOL |sed s/\#HOSTNAME\#/$(hostname)/)
 MOUNTPOINT=${MOUNTPOINT:-$DIR/mnt}
 
 echo "=== Using mountpoint $MOUNTPOINT"
