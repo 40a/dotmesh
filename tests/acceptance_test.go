@@ -605,11 +605,95 @@ func TestKubernetes(t *testing.T) {
 	}
 	node1 := f[0].GetNode(0).Container
 
-	t.Run("ListEmpty", func(t *testing.T) {
-		// TODO: maybe need to grab the password created by NewKubernetes and
-		// write it to dm config
-		//
+	t.Run("FlexVolume", func(t *testing.T) {
 		// dm list should succeed in connecting to the datamesh cluster
 		d(t, node1, "dm list")
+		// init a datamesh volume and put some data in it
+		d(t, node1, "docker run --rm -i apples:/foo busybox touch /foo/on-the-tree")
+
+		// TODO implementation needs to move driver to
+		// /usr/libexec/kubernetes/kubelet-plugins/volume/exec/datamesh.io~dm/dm
+
+		// create a PV referencing the data
+		kubectlApply(t, node1, `
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: admin-apples
+  labels:
+    apples: tree
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  flexVolume:
+    driver: datamesh.io/dm
+    options:
+      namespace: admin
+      name: apples
+`)
+		// TODO run a pod with a PVC which lists the data (web server)
+		// TODO check that the output of querying the pod is that we can see
+		// that the apples are on the tree
+		kubectlApply(t, node1, `
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: admin-apples-pvc
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      apples: tree
+`)
+
+		kubectlApply(t, node1, `
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: apple-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: apple-server
+    spec:
+      volumes:
+      - name: apple-storage
+        persistentVolumeClaim:
+         claimName: admin-apples-pvc
+        containers:
+        - name: apple-server
+          image: nginx:1.12.1
+          volumeMounts:
+          - mountPath: "/usr/share/nginx/html"
+            name: apple-storage
+`)
+
+		kubectlApply(t, node1, `
+apiVersion: v1
+kind: Service
+metadata:
+   name: apple-service
+spec:
+   type: NodePort
+   selector:
+       app: apple-server
+   ports:
+     - port: 8080
+       targetPort: 8080
+       nodePort: 30003
+`)
 	})
+
+	// TODO FlexVolume test that tests moving the volume between hosts
+	// TODO write a test for dynamic provisioning
 }
