@@ -169,7 +169,11 @@ func isFilesystemDeletedInEtcd(topLevelFilesystemId string) (bool, error) {
 	)
 
 	if err != nil {
-		return false, err
+		if client.IsKeyNotFound(err) {
+			return false, nil
+		} else {
+			return false, err
+		}
 	}
 
 	if result != nil {
@@ -185,7 +189,7 @@ func (state *InMemoryState) markFilesystemAsDeletedInEtcd(topLevelFilesystemId, 
 		return err
 	}
 
-	// FIXME: Suggest additional useful thinsg to put in the deletion audit trail
+	// FIXME: Suggest additional useful things to put in the deletion audit trail
 	auditTrail, err := json.Marshal(struct {
 		Server    string
 		Username  string
@@ -204,6 +208,26 @@ func (state *InMemoryState) markFilesystemAsDeletedInEtcd(topLevelFilesystemId, 
 		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, topLevelFilesystemId),
 		string(auditTrail),
 		&client.SetOptions{PrevExist: client.PrevNoExist},
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (state *InMemoryState) markFilesystemAsLiveInEtcd(topLevelFilesystemId string) error {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+
+	_, err = kapi.Set(
+		context.Background(),
+		fmt.Sprintf("%s/filesystems/live/%s", ETCD_PREFIX, topLevelFilesystemId),
+		state.myNodeId,
+		// The 600 second TTL should be safely larger then the keepalive
+		// interval in statemachines.go; see "func (f *fsMachine) run"
+		&client.SetOptions{TTL: 600 * time.Second},
 	)
 	if err != nil {
 		return err
@@ -279,6 +303,9 @@ func (s *InMemoryState) handleOneFilesystemMaster(node *client.Node) error {
 }
 
 func (s *InMemoryState) handleOneFilesystemDeletion(node *client.Node) error {
+	// This is where each node is notified of a filesystem being
+	// deleted.  We must inform the fsmachine.
+
 	pieces := strings.Split(node.Key, "/")
 	fs := pieces[len(pieces)-1]
 	s.initFilesystemMachine(fs)
@@ -493,6 +520,15 @@ func (s *InMemoryState) deserializeDispatchAndRespond(fs string, node *client.No
 func (s *InMemoryState) updateSnapshotsFromKnownState(
 	server, filesystem string, snapshots *[]snapshot,
 ) error {
+	deleted, err := isFilesystemDeletedInEtcd(filesystem)
+	if err != nil {
+		return err
+	}
+	if deleted {
+		// Filesystem is being deleted, so ignore it.
+		return nil
+	}
+
 	s.globalSnapshotCacheLock.Lock()
 	if _, ok := (*s.globalSnapshotCache)[server]; !ok {
 		(*s.globalSnapshotCache)[server] = map[string][]snapshot{}
@@ -567,6 +603,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 	// thread-local map to remember whether to act on events for a master or
 	// not (currently we never act on events for non-masters, one day we'll
 	// want to for e.g. deletions, rollbacks and the like)
+	// ABS FIXME: Remove filesystems from this map when deleted!
 	filesystemBelongsToMe := map[string]bool{}
 
 	// handy inline funcs to avoid duplication
@@ -667,11 +704,16 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		pieces := strings.Split(node.Key, "/")
 		name := VolumeName{pieces[4], pieces[5]}
 		rf := registryFilesystem{}
-		err := json.Unmarshal([]byte(node.Value), &rf)
-		if err != nil {
-			return err
+		if node.Value == "" {
+			// Deletion: the empty registryFilesystem will indicate that.
+			return s.registry.UpdateFilesystemFromEtcd(name, rf)
+		} else {
+			err := json.Unmarshal([]byte(node.Value), &rf)
+			if err != nil {
+				return err
+			}
+			return s.registry.UpdateFilesystemFromEtcd(name, rf)
 		}
-		return s.registry.UpdateFilesystemFromEtcd(name, rf)
 	}
 	/*
 		   (0)/(1)datamesh.io/(2)registry/(3)clones/(4)<fs-uuid-of-filesystem>/(5)<name> =>
@@ -931,6 +973,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 			return err
 		}
 		variant := getVariant(node.Node)
+		log.Printf("ABS TEST: etcd update: %s %#v", variant, node.Node)
 		if variant == "filesystems/masters" {
 			updateMine(node.Node)
 			if err = s.handleOneFilesystemMaster(node.Node); err != nil {

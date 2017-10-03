@@ -126,7 +126,7 @@ func findFilesystemIdsOnSystem() []string {
 	return newLines
 }
 
-func deleteFilesystem(fs string) error {
+func deleteFilesystemInZFS(fs string) error {
 	code, err := returnCode(ZFS, "destroy", "-r", fq(fs))
 	if err != nil {
 		return err

@@ -57,15 +57,27 @@ func newFilesystemMachine(filesystemId string, s *InMemoryState) *fsMachine {
 func (f *fsMachine) run() {
 	// TODO cancel this when we eventually support deletion
 	log.Printf("[run:%s] INIT", f.filesystemId)
-	go runForever(
+	go runWhileFilesystemLives(
+		f.markFilesystemAsLive,
+		"markFilesystemAsLive",
+		f.filesystemId,
+		// The sleep interval should be safely smaller
+		// than the TTL set in
+		// markFilesystemAsLiveInEtcd in etcd.go
+		60*time.Second,
+		60*time.Second,
+	)
+	go runWhileFilesystemLives(
 		f.updateEtcdAboutSnapshots,
 		"updateEtcdAboutSnapshots",
+		f.filesystemId,
 		1*time.Second,
 		1*time.Second,
 	)
-	go runForever(
+	go runWhileFilesystemLives(
 		f.pollDirty,
 		"pollDirty",
+		f.filesystemId,
 		1*time.Second,
 		1*time.Second,
 	)
@@ -73,7 +85,10 @@ func (f *fsMachine) run() {
 		for state := discoveringState; state != nil; {
 			state = state(f)
 		}
-		log.Printf("[run:%s] got nil state, closing up shop", f.filesystemId)
+
+		f.transitionedTo("gone", "")
+
+		terminateRunnersWhileFilesystemLived(f.filesystemId)
 
 		// Senders close channels, receivers check for closedness.
 
@@ -189,6 +204,10 @@ func (f *fsMachine) getResponseChan(reqId string, e *Event) (chan *Event, error)
 		return nil, fmt.Errorf("No such request id response channel %s", reqId)
 	}
 	return respChan, nil
+}
+
+func (f *fsMachine) markFilesystemAsLive() error {
+	return f.state.markFilesystemAsLiveInEtcd(f.filesystemId)
 }
 
 func (f *fsMachine) updateEtcdAboutSnapshots() error {
@@ -559,8 +578,9 @@ func activeState(f *fsMachine) stateFn {
 	log.Printf("entering active state for %s", f.filesystemId)
 	select {
 	case e := <-f.innerRequests:
+		log.Printf("ABS TEST: activeState %s <- %#v", f.filesystemId, e)
 		if e.Name == "delete" {
-			err := deleteFilesystem(f.filesystemId)
+			err := f.state.deleteFilesystem(f.filesystemId)
 			if err != nil {
 				f.innerResponses <- &Event{
 					Name: "cant-delete",
@@ -897,7 +917,7 @@ func inactiveState(f *fsMachine) stateFn {
 
 	handleEvent := func(e *Event) (bool, stateFn) {
 		if e.Name == "delete" {
-			err := deleteFilesystem(f.filesystemId)
+			err := f.state.deleteFilesystem(f.filesystemId)
 			if err != nil {
 				f.innerResponses <- &Event{
 					Name: "cant-delete",

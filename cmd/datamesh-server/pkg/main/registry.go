@@ -347,39 +347,46 @@ func (r *Registry) UpdateFilesystemFromEtcd(
 	r.TopLevelFilesystemsLock.Lock()
 	defer r.TopLevelFilesystemsLock.Unlock()
 
-	us, err := AllUsers()
-	if err != nil {
-		return err
-	}
-	umap := map[string]User{}
-	for _, u := range us {
-		umap[u.Id] = u
-	}
-
-	owner, ok := umap[rf.OwnerId]
-	if !ok {
-		return fmt.Errorf("Unable to locate owner %v.", rf.OwnerId)
-	}
-
-	collaborators := []SafeUser{}
-	for _, c := range rf.CollaboratorIds {
-		user, ok := umap[c]
-		if !ok {
-			return fmt.Errorf("Unable to locate collaborator.")
+	if rf.Id == "" {
+		// Deletion
+		log.Printf("[UpdateFilesystemFromEtcd] %s => GONE", name)
+		delete(r.TopLevelFilesystems, name)
+	} else {
+		// Creation or Update
+		us, err := AllUsers()
+		if err != nil {
+			return err
 		}
-		collaborators = append(collaborators, safeUser(user))
-	}
+		umap := map[string]User{}
+		for _, u := range us {
+			umap[u.Id] = u
+		}
 
-	log.Printf("[UpdateFilesystemFromEtcd] %s => %s", name, rf.Id)
-	r.TopLevelFilesystems[name] = TopLevelFilesystem{
-		// XXX: Hmm, I wonder if it's OK to just put minimal information here.
-		// Probably not! We should construct a real TopLevelFilesystem object
-		// if that's even the right level of abstraction. At time of writing,
-		// the only thing that seems to reasonably construct a
-		// TopLevelFilesystem is rpc's AllVolumesAndClones.
-		TopLevelVolume: DatameshVolume{Id: rf.Id, Name: name},
-		Owner:          safeUser(owner),
-		Collaborators:  collaborators,
+		owner, ok := umap[rf.OwnerId]
+		if !ok {
+			return fmt.Errorf("Unable to locate owner %v.", rf.OwnerId)
+		}
+
+		collaborators := []SafeUser{}
+		for _, c := range rf.CollaboratorIds {
+			user, ok := umap[c]
+			if !ok {
+				return fmt.Errorf("Unable to locate collaborator.")
+			}
+			collaborators = append(collaborators, safeUser(user))
+		}
+
+		log.Printf("[UpdateFilesystemFromEtcd] %s => %s", name, rf.Id)
+		r.TopLevelFilesystems[name] = TopLevelFilesystem{
+			// XXX: Hmm, I wonder if it's OK to just put minimal information here.
+			// Probably not! We should construct a real TopLevelFilesystem object
+			// if that's even the right level of abstraction. At time of writing,
+			// the only thing that seems to reasonably construct a
+			// TopLevelFilesystem is rpc's AllVolumesAndClones.
+			TopLevelVolume: DatameshVolume{Id: rf.Id, Name: name},
+			Owner:          safeUser(owner),
+			Collaborators:  collaborators,
+		}
 	}
 	return nil
 }

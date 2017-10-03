@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -84,6 +83,18 @@ func (o *Observer) UnsubscribeAll(event string) error {
 	return nil
 }
 
+/*
+  A note about the semantics of Publish:
+
+  As it creates a goroutine to send to each subscriber (to avoid the
+  loop being blocked if subscribers don't receive from their
+  unbuffered channels in a timely manner), it doesn't guarantee that
+  messages Publish()ed actually arrive at the subscribers in the order
+  they were sent.
+
+  So: Make no assumption about the order messages arrive in.
+*/
+
 func (o *Observer) Publish(event string, data interface{}) error {
 	o.rwMutex.Lock()
 	defer o.rwMutex.Unlock()
@@ -101,10 +112,9 @@ func (o *Observer) Publish(event string, data interface{}) error {
 	for _, outputChan := range outChans {
 		go func() {
 			defer func() {
-				// recover from panic caused by writing to a closed channel
+				// recover from panic caused by writing to a closed channel, caused by Unsubscribe racing with Publish
+				// (see issue https://github.com/datamesh-io/datamesh/issues/53 )
 				if r := recover(); r != nil {
-					err := fmt.Errorf("%v", r)
-					log.Printf("[Publish] recovered panic: error writing %s on channel: %v", data, err)
 					return
 				}
 			}()

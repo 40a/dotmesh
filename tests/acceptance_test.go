@@ -148,13 +148,30 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("DeleteHappyPath", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		d(t, node1, "dm volume delete "+fsname)
+
+		// Ensure the delete has happened completely
 		time.Sleep(5 * time.Second)
-		d(t, node1, dockerRun(fsname+"2")+" sh -c 'echo WORLD > /foo/HELLO'")
-		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO")
+
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		if strings.Contains(st, "WORLD") {
+			t.Error(fmt.Sprintf("The container didn't get deleted..."))
+		}
+	})
+
+	t.Run("DeleteQuickly", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		d(t, node1, "dm volume delete "+fsname)
+
+		// Try to re-use the name IMMEDIATELY, while the delete is still replicating.
+
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
 			t.Error(fmt.Sprintf("The container didn't get deleted..."))
 		}
