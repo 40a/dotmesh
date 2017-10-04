@@ -134,151 +134,6 @@ func (state *InMemoryState) runPlugin() {
 		log.Printf("=> %s", string(responseJSON))
 		w.Write(responseJSON)
 	})
-	reallyProcureFilesystem := func(name VolumeName) (string, error) {
-		// move filesystem here if it's not here already (coordinate the move
-		// with the current master via etcd), also (TODO check this) DON'T
-		// ALLOW PATH TO BE PASSED TO DOCKER IF IT IS NOT ACTUALLY MOUNTED
-		// (otherwise databases will show up as empty)
-
-		// If the filesystem exists anywhere in the cluster, and a small amount
-		// of time has passed, we should have an inactive filesystem state
-		// machine.
-
-		cloneName := ""
-		if strings.Contains(name.Name, "@") {
-			shrapnel := strings.Split(name.Name, "@")
-			name.Name = shrapnel[0]
-			cloneName = shrapnel[1]
-			if cloneName == DEFAULT_BRANCH {
-				cloneName = ""
-			}
-		}
-
-		log.Printf(
-			"*** Attempting to procure filesystem name %s and clone name %s",
-			name, cloneName,
-		)
-
-		filesystemId, err := state.registry.MaybeCloneFilesystemId(name, cloneName)
-		if err == nil {
-			// TODO can we synchronize with the state machine somehow, to
-			// ensure that we're not currently on a master in the process of
-			// doing a handoff?
-			if state.masterFor(filesystemId) == state.myNodeId {
-				log.Printf("Volume already here, we are done %s", filesystemId)
-				return filesystemId, nil
-			} else {
-				// put in a request for the current master of the filesystem to
-				// move it to me
-				responseChan, err := state.globalFsRequest(
-					filesystemId,
-					&Event{
-						Name: "move",
-						Args: &EventArgs{"target": state.myNodeId},
-					},
-				)
-				if err != nil {
-					return "", err
-				}
-				log.Printf(
-					"Attempting to move %s from %s to me (%s)",
-					filesystemId,
-					state.masterFor(filesystemId),
-					state.myNodeId,
-				)
-				var e *Event
-				select {
-				case <-time.After(30 * time.Second):
-					// something needs to read the response from the
-					// response chan
-					go func() { _ = <-responseChan }()
-					// TODO implement some kind of liveness check to avoid
-					// timing out too early on slow transfers.
-					return "", fmt.Errorf(
-						"timed out trying to procure %s, please try again", filesystemId,
-					)
-				case e = <-responseChan:
-					// tally ho!
-				}
-				log.Printf(
-					"Attempting to move %s from %s to me (%s)",
-					filesystemId, state.masterFor(filesystemId), state.myNodeId,
-				)
-				if e.Name != "moved" {
-					return "", fmt.Errorf(
-						"failed to move %s from %s to %s: %s",
-						filesystemId, state.masterFor(filesystemId), state.myNodeId, e,
-					)
-				}
-				// great - the current master thinks it's handed off to us.
-				// doesn't mean we've actually mounted the filesystem yet
-				// though, so wait on that here.
-
-				state.filesystemsLock.Lock()
-				if (*state.filesystems)[filesystemId].currentState == "active" {
-					// great - we're already active
-					log.Printf("Found %s was already active, giving it to Docker", filesystemId)
-					state.filesystemsLock.Unlock()
-				} else {
-					for (*state.filesystems)[filesystemId].currentState != "active" {
-						log.Printf(
-							"%s was %s, waiting for it to change to active...",
-							filesystemId, (*state.filesystems)[filesystemId].currentState,
-						)
-						// wait for state change
-						stateChangeChan := make(chan interface{})
-						(*state.filesystems)[filesystemId].transitionObserver.Subscribe(
-							"transitions", stateChangeChan,
-						)
-						state.filesystemsLock.Unlock()
-						_ = <-stateChangeChan
-						state.filesystemsLock.Lock()
-						(*state.filesystems)[filesystemId].transitionObserver.Unsubscribe(
-							"transitions", stateChangeChan,
-						)
-					}
-					log.Printf("%s finally changed to active, proceeding!", filesystemId)
-					state.filesystemsLock.Unlock()
-				}
-			}
-		} else {
-			fsMachine, ch, err := state.CreateFilesystem(ctx, &name)
-			if err != nil {
-				return "", err
-			}
-			filesystemId = fsMachine.filesystemId
-			if cloneName != "" {
-				return "", fmt.Errorf("Cannot use branch-pinning syntax (docker run -v volume@branch:/path) to create a non-existent volume with a non-master branch")
-			}
-			log.Printf("WAITING FOR CREATE %s", name)
-			e := <-ch
-			if e.Name != "created" {
-				return "", fmt.Errorf("Could not create volume %s: unexpected response %s - %s", name, e.Name, e.Args)
-			}
-			log.Printf("DONE CREATE %s", name)
-		}
-		return filesystemId, nil
-	}
-	procureFilesystem := func(name VolumeName) (string, error) {
-		s, err := reallyProcureFilesystem(name)
-		if err != nil {
-			// retry once, to handle the case where we race with another node
-			// to claim a name, and etcd protects us; it's possible we want to
-			// move the filesystem instead. delay is needed because we're
-			// waiting with a watch to fire with our updated knowledge, if we
-			// retry immediately, we're likely to just consult our stale cache
-			// again.
-			log.Printf(
-				"[procureFilesystem] Retrying reallyProcureFilesystem(%s) because of %s in 5s",
-				name, err,
-			)
-			time.Sleep(5 * time.Second)
-			log.Printf("[procureFilesystem] Retrying reallyProcureFilesystem(%s) now", name, err)
-			return reallyProcureFilesystem(name)
-		}
-		return s, err
-	}
-
 	http.HandleFunc("/VolumeDriver.Create", func(w http.ResponseWriter, r *http.Request) {
 		log.Print("<= /VolumeDriver.Create")
 		requestJSON, err := ioutil.ReadAll(r.Body)
@@ -303,7 +158,7 @@ func (state *InMemoryState) runPlugin() {
 		// for now, just name the volumes as requested by the user. later,
 		// adding ids and per-fs metadata may be useful.
 
-		if _, err := procureFilesystem(name); err != nil {
+		if _, err := state.procureFilesystem(name); err != nil {
 			writeResponseErr(err, w)
 			return
 		}
@@ -382,7 +237,7 @@ func (state *InMemoryState) runPlugin() {
 
 		name := VolumeName{namespace, localName}
 
-		filesystemId, err := procureFilesystem(name)
+		filesystemId, err := state.procureFilesystem(name)
 		if err != nil {
 			writeResponseErr(err, w)
 			return

@@ -402,3 +402,47 @@ func (v VolumeName) String() string {
 	// the server, it's clearer to always show full namespaces and not elide admin/.
 	return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
 }
+
+func Copy(src, dst string, fileMode os.FileMode) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	err = out.Chmod(fileMode)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+// TODO dedupe this wrt testtools
+func tryUntilSucceeds(f func() error, desc string) error {
+	attempt := 0
+	for {
+		err := f()
+		if err != nil {
+			if attempt > 5 {
+				return err
+			} else {
+				fmt.Printf("Error %s: %v, pausing and trying again...\n", desc, err)
+				time.Sleep(time.Duration(attempt) * time.Second)
+			}
+		} else {
+			return nil
+		}
+		attempt++
+	}
+}

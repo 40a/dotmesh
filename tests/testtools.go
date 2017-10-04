@@ -672,6 +672,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 			docker exec $MASTER sed -i 's/quay.io\/datamesh\/datamesh-server:latest/'$(hostname)'.local:80\/datamesh\/datamesh-server:latest/' /datamesh-kube-yaml/datamesh-ds.yaml
 			docker exec $MASTER sed -i 's/value: pool/value: %s-\#HOSTNAME\#/' /datamesh-kube-yaml/datamesh-ds.yaml
 			docker exec $MASTER sed -i 's/value: \/var\/lib\/docker\/datamesh/value: %s-\#HOSTNAME\#/' /datamesh-kube-yaml/datamesh-ds.yaml
+			docker exec $MASTER sed -i 's/"" \# LOG_ADDR/%s/' /datamesh-kube-yaml/datamesh-ds.yaml
 			`,
 			nodeName(now, i, 0),
 			// need to somehow number the instances, did this by modifying
@@ -679,6 +680,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 			// them unique... TODO: make sure we clear these up
 			poolId(now, i, 0),
 			"\\/datamesh-test-pools\\/"+poolId(now, i, 0),
+			HOST_IP_FROM_CONTAINER,
 		),
 	)
 	if err != nil {
@@ -686,7 +688,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	}
 	st, err := docker(
 		nodeName(now, i, 0),
-		"rm /etc/machine-id && systemd-machine-id-setup && "+
+		"rm /etc/machine-id && systemd-machine-id-setup && touch /dind/flexvolume_driver && "+
 			"systemctl start kubelet && "+
 			"kubeadm init --kubernetes-version=v1.7.6 --pod-network-cidr=10.244.0.0/16 --skip-preflight-checks && "+
 			"mkdir /root/.kube && cp /etc/kubernetes/admin.conf /root/.kube/config && "+
@@ -721,7 +723,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
 		// node).
 		_, err = docker(nodeName(now, i, j), fmt.Sprintf(
-			"rm /etc/machine-id && systemd-machine-id-setup && "+
+			"rm /etc/machine-id && systemd-machine-id-setup && touch /dind/flexvolume_driver && "+
 				"systemctl start kubelet && "+
 				"kubeadm join --skip-preflight-checks %s",
 			joinArgs,
@@ -752,8 +754,15 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	for j := 0; j < c.DesiredNodeCount; j++ {
 		st, err = docker(
 			nodeName(now, i, j),
-			"while ! (echo secret123 | dm remote add local admin@127.0.0.1); "+
-				"    do echo 'retrying...' && sleep 1; done",
+			// Restart kubelet so that datamesh-installed flexvolume driver
+			// gets activated.  This won't be necessary after Kubernetes 1.8.
+			// https://github.com/Mirantis/kubeadm-dind-cluster/issues/40
+			`while ! (
+					echo secret123 | dm remote add local admin@127.0.0.1 &&
+					systemctl restart kubelet
+				); do
+				echo 'retrying...' && sleep 1
+			done`,
 		)
 		if err != nil {
 			return err

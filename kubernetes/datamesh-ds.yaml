@@ -89,16 +89,14 @@ items:
                 - name: ALLOW_PUBLIC_REGISTRATION
                   value: "1"
                 # XXX some duplication here wrt datamesh/cmd/dm/pkg/commands/cluster.go
-                - name: ASSETS_URL_PREFIX
-                  value: "https://get.datamesh.io/assets/datamesh-website/_site"
-                - name: HOMEPAGE_URL
-                  value: "https://datamesh.io/"
                 - name: INITIAL_ADMIN_PASSWORD_FILE
                   value: /secret/datamesh-admin-password.txt
                 - name: USE_POOL_NAME
                   value: pool
                 - name: USE_POOL_DIR
                   value: /var/lib/docker/datamesh
+                - name: LOG_ADDR
+                  value: "" # LOG_ADDR
               image: 'quay.io/datamesh/datamesh-server:latest'
               imagePullPolicy: Always
               livenessProbe:

@@ -28,6 +28,13 @@ func NewDatameshRPC(state *InMemoryState) *DatameshRPC {
 	return &DatameshRPC{state: state}
 }
 
+func (d *DatameshRPC) Procure(
+	r *http.Request, args *VolumeName, result *string) error {
+	res, err := d.state.procureFilesystem(args)
+	*result = res
+	return err
+}
+
 func safeConfig(c Config) SafeConfig {
 	safe := SafeConfig{
 		Plans:           c.Plans,

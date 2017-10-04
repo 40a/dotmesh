@@ -105,15 +105,20 @@ rm -f /run/docker/plugins/dm.sock
 # go looking for the dm plugin. So, we need to start up a fake dm plugin which
 # just responds immediately with errors to everything. It will create a socket
 # file which will hopefully get clobbered by the real thing.
-datamesh-server --temporary-error-plugin &
+
+# TODO XXX find out why the '###' commented-out bits below have to be disabled
+# when running the Kubernetes tests... maybe the daemonset restarts us multiple
+# times? maybe there's some leakage between dind hosts??
+
+###datamesh-server --temporary-error-plugin &
 
 # Attempt to avoid the race between `temporary-error-plugin` and the real
 # datamesh-server. If `--temporary-error-plugin` loses the race, the
 # plugin is broken forever.
-while [ ! -e /run/docker/plugins/dm.sock ]; do
-    echo "Waiting for /run/docker/plugins/dm.sock to exist due to temporary-error-plugin..."
-    sleep 0.1
-done
+###while [ ! -e /run/docker/plugins/dm.sock ]; do
+###    echo "Waiting for /run/docker/plugins/dm.sock to exist due to temporary-error-plugin..."
+###    sleep 0.1
+###done
 
 # Clear away old running server if running
 docker rm -f datamesh-server-inner || true
@@ -132,7 +137,7 @@ fi
 # anyway; multi-node clusters work only on Linux because we can't discover the
 # Mac's IP from a container).  So to work with both we do that in the host
 # network namespace (via docker) and pass it in.
-YOUR_IPV4_ADDRS="$(docker run -i --net=host $DATAMESH_DOCKER_IMAGE datamesh-server --guess-ipv4-addresses)"
+YOUR_IPV4_ADDRS="$(docker run --rm -i --net=host $DATAMESH_DOCKER_IMAGE datamesh-server --guess-ipv4-addresses)"
 
 pki_volume_mount=""
 if [ "$PKI_PATH" != "" ]; then
@@ -182,6 +187,7 @@ docker run -i $rm_opt --privileged --name=datamesh-server-inner \
     -v /run/docker/plugins:/run/docker/plugins \
     -v $MOUNTPOINT:$MOUNTPOINT:rshared \
     -v /var/datamesh:/var/datamesh \
+    -v /usr:/system-usr/usr \
     $config_path \
     -l traefik.port=6969 \
     -l traefik.frontend.rule=Host:cloud.datamesh.io \

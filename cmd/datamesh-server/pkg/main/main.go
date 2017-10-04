@@ -55,6 +55,12 @@ func main() {
 		foundConfig = true
 	}
 
+	err = installKubernetesPlugin()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	POOL = os.Getenv("POOL")
 	if POOL == "" {
 		POOL = "pool"

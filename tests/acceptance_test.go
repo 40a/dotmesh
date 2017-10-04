@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 	"testing"
@@ -603,19 +605,19 @@ func TestKubernetes(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	node1 := f[0].GetNode(0).Container
+	node1 := f[0].GetNode(0)
 
 	t.Run("FlexVolume", func(t *testing.T) {
 		// dm list should succeed in connecting to the datamesh cluster
-		d(t, node1, "dm list")
+		d(t, node1.Container, "dm list")
 		// init a datamesh volume and put some data in it
-		d(t, node1, "docker run --rm -i -v apples:/foo --volume-driver dm busybox touch /foo/on-the-tree")
-
-		// TODO implementation needs to move driver to
-		// /usr/libexec/kubernetes/kubelet-plugins/volume/exec/datamesh.io~dm/dm
+		d(t, node1.Container,
+			"docker run --rm -i -v apples:/foo --volume-driver dm "+
+				"busybox touch /foo/on-the-tree",
+		)
 
 		// create a PV referencing the data
-		kubectlApply(t, node1, `
+		kubectlApply(t, node1.Container, `
 kind: PersistentVolume
 apiVersion: v1
 metadata:
@@ -634,10 +636,10 @@ spec:
       namespace: admin
       name: apples
 `)
-		// TODO run a pod with a PVC which lists the data (web server)
-		// TODO check that the output of querying the pod is that we can see
+		// run a pod with a PVC which lists the data (web server)
+		// check that the output of querying the pod is that we can see
 		// that the apples are on the tree
-		kubectlApply(t, node1, `
+		kubectlApply(t, node1.Container, `
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -654,7 +656,7 @@ spec:
       apples: tree
 `)
 
-		kubectlApply(t, node1, `
+		kubectlApply(t, node1.Container, `
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -678,7 +680,7 @@ spec:
           name: apple-storage
 `)
 
-		kubectlApply(t, node1, `
+		kubectlApply(t, node1.Container, `
 apiVersion: v1
 kind: Service
 metadata:
@@ -693,6 +695,25 @@ spec:
        nodePort: 30003
 `)
 	})
+
+	err = tryUntilSucceeds(func() error {
+		resp, err := http.Get(fmt.Sprintf("http://%s:30003/", node1.IP))
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(string(body), "on-the-tree") {
+			return fmt.Errorf("No apples on the tree, got this instead: %v", string(body))
+		}
+		return nil
+	}, "finding apples on the tree")
+	if err != nil {
+		t.Error(err)
+	}
 
 	// TODO FlexVolume test that tests moving the volume between hosts
 	// TODO write a test for dynamic provisioning

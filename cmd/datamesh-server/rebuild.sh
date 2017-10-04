@@ -8,6 +8,7 @@ docker build -f Dockerfile.build -t datamesh-builder .
 docker create --name datamesh-builder datamesh-builder
 docker cp datamesh-builder:/target/docker target/
 docker cp datamesh-builder:/target/datamesh-server target/
+docker cp datamesh-builder:/target/flexvolume target/
 docker rm -f datamesh-builder
 docker build -t "${IMAGE}" .
 
