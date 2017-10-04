@@ -424,6 +424,7 @@ type Node struct {
 
 type Cluster struct {
 	DesiredNodeCount int
+	Config           string
 	Nodes            []Node
 }
 
@@ -438,7 +439,11 @@ type Pair struct {
 }
 
 func NewCluster(desiredNodeCount int) *Cluster {
-	return &Cluster{DesiredNodeCount: desiredNodeCount}
+	return &Cluster{DesiredNodeCount: desiredNodeCount, Config: ""}
+}
+
+func NewClusterWithConfig(desiredNodeCount int, config string) *Cluster {
+	return &Cluster{DesiredNodeCount: desiredNodeCount, Config: config}
 }
 
 func NewKubernetes(desiredNodeCount int) *Kubernetes {
@@ -629,10 +634,12 @@ func (c *Cluster) Start(t *testing.T, now int64, i int) error {
 		panic("no such thing as a zero-node cluster")
 	}
 	st, err := docker(
-		nodeName(now, i, 0), "dm cluster init "+localImageArgs()+
+		nodeName(now, i, 0), "echo '"+c.Config+"' > /tmp/datamesh.conf; dm cluster init "+localImageArgs()+
 			" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
-			" --use-pool-name "+poolId(now, i, 0),
+			" --use-pool-name "+poolId(now, i, 0)+
+			" --config-file /tmp/datamesh.conf",
 	)
+
 	if err != nil {
 		return err
 	}
@@ -660,7 +667,8 @@ func (c *Cluster) Start(t *testing.T, now int64, i int) error {
 		// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
 		// node).
 		_, err = docker(nodeName(now, i, j), fmt.Sprintf(
-			"dm cluster join %s %s %s",
+			"echo '%s' > /tmp/datamesh.conf; dm cluster join --config-file /tmp/datamesh.conf %s %s %s",
+			c.Config,
 			localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, j),
 			joinUrl,
 			" --use-pool-name "+poolId(now, i, j),

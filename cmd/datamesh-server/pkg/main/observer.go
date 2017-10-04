@@ -110,7 +110,7 @@ func (o *Observer) Publish(event string, data interface{}) error {
 
 	// notify all through chan
 	for _, outputChan := range outChans {
-		go func() {
+		go func(outputChan chan interface{}) {
 			defer func() {
 				// recover from panic caused by writing to a closed channel, caused by Unsubscribe racing with Publish
 				// (see issue https://github.com/datamesh-io/datamesh/issues/53 )
@@ -119,7 +119,7 @@ func (o *Observer) Publish(event string, data interface{}) error {
 				}
 			}()
 			outputChan <- data
-		}()
+		}(outputChan)
 	}
 
 	return nil

@@ -126,7 +126,8 @@ func TestSingleNode(t *testing.T) {
 func TestTwoNodesSameCluster(t *testing.T) {
 	teardownFinishedTestRuns()
 
-	f := Federation{NewCluster(2)}
+	// Our cluster gets a metadata timeout of 5s
+	f := Federation{NewClusterWithConfig(2, "FilesystemMetadataTimeoutInSeconds: 5\n")}
 
 	startTiming()
 	err := f.Start(t)
@@ -154,7 +155,8 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		d(t, node1, "dm volume delete "+fsname)
 
 		// Ensure the delete has happened completely
-		time.Sleep(5 * time.Second)
+		// This is twice the metadata timeout configured above.
+		time.Sleep(10 * time.Second)
 
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
@@ -164,6 +166,22 @@ func TestTwoNodesSameCluster(t *testing.T) {
 	})
 
 	t.Run("DeleteQuickly", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		d(t, node1, "dm volume delete "+fsname)
+
+		// Ensure the initial delete has happened, but the metadata is still draining
+		// This is less than half the metadata timeout configured above.
+		time.Sleep(2 * time.Second)
+
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		if strings.Contains(st, "WORLD") {
+			t.Error(fmt.Sprintf("The container didn't get deleted..."))
+		}
+	})
+
+	t.Run("DeleteInstantly", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		d(t, node1, "dm volume delete "+fsname)

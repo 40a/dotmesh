@@ -144,6 +144,7 @@ func (state *InMemoryState) updateAddressesInEtcd() error {
 	if err != nil {
 		return err
 	}
+
 	_, err = kapi.Set(
 		context.Background(),
 		fmt.Sprintf("%s/servers/addresses/%s", ETCD_PREFIX, state.myNodeId),
@@ -212,7 +213,99 @@ func (state *InMemoryState) markFilesystemAsDeletedInEtcd(topLevelFilesystemId, 
 	if err != nil {
 		return err
 	}
+
+	// Now mark it for eventual cleanup (when the liveness key expires)
+	_, err = kapi.Set(
+		context.Background(),
+		fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, topLevelFilesystemId),
+		string(auditTrail),
+		&client.SetOptions{PrevExist: client.PrevNoExist},
+	)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (state *InMemoryState) cleanupDeletedFilesystems() error {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+
+	pending, err := listFilesystemsPendingCleanup(kapi)
+	if err != nil {
+		return err
+	}
+
+	for _, fsid := range pending {
+		errors := make([]error, 0)
+		del := func(key string) {
+			_, err = kapi.Delete(
+				context.Background(),
+				key,
+				&client.DeleteOptions{},
+			)
+			if err != nil && !client.IsKeyNotFound(err) {
+				errors = append(errors, err)
+			}
+		}
+
+		del(fmt.Sprintf("%s/filesystems/containers/%s", ETCD_PREFIX, fsid))
+		del(fmt.Sprintf("%s/filesystems/dirty/%s", ETCD_PREFIX, fsid))
+		del(fmt.Sprintf("%s/filesystems/masters/%s", ETCD_PREFIX, fsid))
+
+		if len(errors) == 0 {
+			del(fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, fsid))
+		} else {
+			return fmt.Errorf("Errors found cleaning up after a deleted filesystem: %+v", errors)
+		}
+	}
+
+	return nil
+}
+
+func listFilesystemsPendingCleanup(kapi client.KeysAPI) ([]string, error) {
+	// list ETCD_PREFIX/filesystems/cleanupPending/ID without corresponding
+	// ETCD_PREFIX/filesystems/live/ID
+
+	pending, err := kapi.Get(context.Background(),
+		fmt.Sprintf("%s/filesystems/cleanupPending", ETCD_PREFIX),
+		&client.GetOptions{Recursive: true, Sort: false},
+	)
+	if err != nil {
+		if client.IsKeyNotFound(err) {
+			return []string{}, nil
+		} else {
+			return []string{}, err
+		}
+	}
+
+	result := make([]string, 0)
+	for _, node := range pending.Node.Nodes {
+		// /datamesh.io/filesystems/cleanupPending/3ed24670-8fd0-4cec-4191-d3d5bae15172
+		pieces := strings.Split(node.Key, "/")
+		if len(pieces) == 5 {
+			fsid := pieces[4]
+
+			_, err := kapi.Get(context.Background(),
+				fmt.Sprintf("%s/filesystems/live/%s", ETCD_PREFIX, fsid),
+				&client.GetOptions{},
+			)
+			if err == nil {
+				// Key was found
+			} else if client.IsKeyNotFound(err) {
+				// Key not found, it's no longer live
+				result = append(result, fsid)
+			} else {
+				// Error!
+				return []string{}, err
+			}
+		}
+	}
+
+	return result, nil
 }
 
 func (state *InMemoryState) markFilesystemAsLiveInEtcd(topLevelFilesystemId string) error {
@@ -221,13 +314,14 @@ func (state *InMemoryState) markFilesystemAsLiveInEtcd(topLevelFilesystemId stri
 		return err
 	}
 
+	key := fmt.Sprintf("%s/filesystems/live/%s", ETCD_PREFIX, topLevelFilesystemId)
+	ttl := time.Duration(state.config.FilesystemMetadataTimeout) * time.Second
+
 	_, err = kapi.Set(
 		context.Background(),
-		fmt.Sprintf("%s/filesystems/live/%s", ETCD_PREFIX, topLevelFilesystemId),
+		key,
 		state.myNodeId,
-		// The 600 second TTL should be safely larger then the keepalive
-		// interval in statemachines.go; see "func (f *fsMachine) run"
-		&client.SetOptions{TTL: 600 * time.Second},
+		&client.SetOptions{TTL: ttl},
 	)
 	if err != nil {
 		return err
@@ -973,7 +1067,6 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 			return err
 		}
 		variant := getVariant(node.Node)
-		log.Printf("ABS TEST: etcd update: %s %#v", variant, node.Node)
 		if variant == "filesystems/masters" {
 			updateMine(node.Node)
 			if err = s.handleOneFilesystemMaster(node.Node); err != nil {

@@ -37,10 +37,18 @@ func main() {
 	var config Config
 	var foundConfig bool
 
+	// Initialise defaults
+	config = Config{
+		Plans:                     []Plan{},
+		StripePrivateKey:          "",
+		StripePublicKey:           "",
+		FilesystemMetadataTimeout: 600,
+	}
+
+	// Attempt to load configuration
 	dat, err := ioutil.ReadFile(CONFIG_PATH)
 
 	if os.IsNotExist(err) {
-		config = Config{}
 		foundConfig = false
 	} else {
 		if err != nil {
@@ -136,6 +144,10 @@ func main() {
 	)
 	// kick off an on-startup perusal of which dm containers are running
 	go runForever(s.fetchRelatedContainers, "fetchRelatedContainers",
+		1*time.Second, 1*time.Second,
+	)
+	// kick off cleanup of deleted filesystems
+	go runForever(s.cleanupDeletedFilesystems, "cleanupDeletedFilesystems",
 		1*time.Second, 1*time.Second,
 	)
 	// TODO proper flag parsing

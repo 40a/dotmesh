@@ -61,11 +61,8 @@ func (f *fsMachine) run() {
 		f.markFilesystemAsLive,
 		"markFilesystemAsLive",
 		f.filesystemId,
-		// The sleep interval should be safely smaller
-		// than the TTL set in
-		// markFilesystemAsLiveInEtcd in etcd.go
-		60*time.Second,
-		60*time.Second,
+		time.Duration(f.state.config.FilesystemMetadataTimeout/2)*time.Second,
+		time.Duration(f.state.config.FilesystemMetadataTimeout/2)*time.Second,
 	)
 	go runWhileFilesystemLives(
 		f.updateEtcdAboutSnapshots,
@@ -149,41 +146,39 @@ func (f *fsMachine) pollDirty() error {
 	if err != nil {
 		return err
 	}
-	for {
-		if f.filesystem.mounted {
-			dirtyDelta, sizeBytes, err := getDirtyDelta(
-				f.filesystemId, f.latestSnapshot(),
+	if f.filesystem.mounted {
+		dirtyDelta, sizeBytes, err := getDirtyDelta(
+			f.filesystemId, f.latestSnapshot(),
+		)
+		if err != nil {
+			return err
+		}
+		if f.dirtyDelta != dirtyDelta || f.sizeBytes != sizeBytes {
+			f.dirtyDelta = dirtyDelta
+			f.sizeBytes = sizeBytes
+
+			serialized, err := json.Marshal(dirtyInfo{
+				Server:     f.state.myNodeId,
+				DirtyBytes: dirtyDelta,
+				SizeBytes:  sizeBytes,
+			})
+			if err != nil {
+				return err
+			}
+			_, err = kapi.Set(
+				context.Background(),
+				fmt.Sprintf(
+					"%s/filesystems/dirty/%s", ETCD_PREFIX, f.filesystemId,
+				),
+				string(serialized),
+				nil,
 			)
 			if err != nil {
 				return err
 			}
-			if f.dirtyDelta != dirtyDelta || f.sizeBytes != sizeBytes {
-				f.dirtyDelta = dirtyDelta
-				f.sizeBytes = sizeBytes
-
-				serialized, err := json.Marshal(dirtyInfo{
-					Server:     f.state.myNodeId,
-					DirtyBytes: dirtyDelta,
-					SizeBytes:  sizeBytes,
-				})
-				if err != nil {
-					return err
-				}
-				_, err = kapi.Set(
-					context.Background(),
-					fmt.Sprintf(
-						"%s/filesystems/dirty/%s", ETCD_PREFIX, f.filesystemId,
-					),
-					string(serialized),
-					nil,
-				)
-				if err != nil {
-					return err
-				}
-			}
 		}
-		time.Sleep(1 * time.Second)
 	}
+	return nil
 }
 
 // return the latest snapshot id, or "" if none exists
@@ -211,56 +206,55 @@ func (f *fsMachine) markFilesystemAsLive() error {
 }
 
 func (f *fsMachine) updateEtcdAboutSnapshots() error {
-	for {
-		// attempt to connect to etcd
-		kapi, err := getEtcdKeysApi()
+	// attempt to connect to etcd
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+	// as soon as we're connected, eagerly: if we know about some
+	// snapshots, set them in etcd.
+	informed := false
+	f.snapshotsLock.Lock()
+	if f.filesystem.snapshots != nil {
+		informed = true
+	}
+	f.snapshotsLock.Unlock()
+
+	if informed {
+		f.snapshotsLock.Lock()
+		serialized, err := json.Marshal(f.filesystem.snapshots)
 		if err != nil {
 			return err
 		}
-		// as soon as we're connected, eagerly: if we know about some
-		// snapshots, set them in etcd.
-		informed := false
-		f.snapshotsLock.Lock()
-		if f.filesystem.snapshots != nil {
-			informed = true
-		}
 		f.snapshotsLock.Unlock()
-
-		if informed {
-			f.snapshotsLock.Lock()
-			serialized, err := json.Marshal(f.filesystem.snapshots)
-			if err != nil {
-				return err
-			}
-			f.snapshotsLock.Unlock()
-			// since we want atomic rewrites, we can just save the entire
-			// snapshot data in a single key, as a json list. this is easier to
-			// begin with! although we'll bump into the 1MB request limit in
-			// etcd eventually.
-			_, err = kapi.Set(
-				context.Background(),
-				fmt.Sprintf(
-					"%s/servers/snapshots/%s/%s", ETCD_PREFIX,
-					f.state.myNodeId, f.filesystemId,
-				),
-				string(serialized),
-				nil,
+		// since we want atomic rewrites, we can just save the entire
+		// snapshot data in a single key, as a json list. this is easier to
+		// begin with! although we'll bump into the 1MB request limit in
+		// etcd eventually.
+		_, err = kapi.Set(
+			context.Background(),
+			fmt.Sprintf(
+				"%s/servers/snapshots/%s/%s", ETCD_PREFIX,
+				f.state.myNodeId, f.filesystemId,
+			),
+			string(serialized),
+			nil,
+		)
+		if err != nil {
+			log.Printf(
+				"[updateEtcdAboutSnapshots] successfully set new snaps for %s on %s,"+
+					" will we hear an echo?",
+				f.filesystemId, f.state.myNodeId,
 			)
-			if err != nil {
-				log.Printf(
-					"[updateEtcdAboutSnapshots] successfully set new snaps for %s on %s,"+
-						" will we hear an echo?",
-					f.filesystemId, f.state.myNodeId,
-				)
-				return err
-			}
+			return err
 		}
-
-		// wait until the state machine notifies us that it's changed the
-		// snapshots
-		_ = <-f.snapshotsModified
-		log.Printf("[updateEtcdAboutSnapshots] going 'round the loop")
 	}
+
+	// wait until the state machine notifies us that it's changed the
+	// snapshots
+	_ = <-f.snapshotsModified
+	log.Printf("[updateEtcdAboutSnapshots] going 'round the loop")
+	return nil
 }
 
 func (f *fsMachine) getCurrentState() string {
@@ -578,7 +572,6 @@ func activeState(f *fsMachine) stateFn {
 	log.Printf("entering active state for %s", f.filesystemId)
 	select {
 	case e := <-f.innerRequests:
-		log.Printf("ABS TEST: activeState %s <- %#v", f.filesystemId, e)
 		if e.Name == "delete" {
 			err := f.state.deleteFilesystem(f.filesystemId)
 			if err != nil {
@@ -1447,7 +1440,9 @@ func updatePollResult(transferRequestId string, pollResult TransferPollResult) e
 		string(serialized),
 		nil,
 	)
-	log.Printf("[updatePollResult] err: %s", err)
+	if err != nil {
+		log.Printf("[updatePollResult] err: %s", err)
+	}
 	return err
 }
 

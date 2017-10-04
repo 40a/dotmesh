@@ -256,7 +256,6 @@ func (r *Registry) UnregisterFilesystem(name VolumeName) error {
 		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<namespace>/(5)<name> =>
 		//     {"Uuid": "<fs-uuid>"}
 		fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, name.Namespace, name.Name),
-		// we support updates in UpdateCollaborators, below.
 		&client.DeleteOptions{},
 	)
 	if err != nil {

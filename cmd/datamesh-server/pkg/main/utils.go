@@ -224,11 +224,10 @@ func runWhileFilesystemLives(f func() error, label string, filesystemId string, 
 		}
 	}
 	deathObserver.Unsubscribe(filesystemId, deathChan)
-	log.Printf("runWhileFilesystemLives(%s@%s) terminated", label, filesystemId)
 }
 
 func terminateRunnersWhileFilesystemLived(filesystemId string) {
-	deathObserver.Publish(filesystemId, struct{}{})
+	deathObserver.Publish(filesystemId, struct{ reason string }{"runWhileFilesystemLives"})
 }
 
 // general purpose function, intended to be runnable in a goroutine, which
