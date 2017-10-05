@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/client"
 	"github.com/nu7hatch/gouuid"
@@ -463,7 +464,9 @@ func (s *InMemoryState) maybeFilesystem(filesystemId string) (*fsMachine, error)
 	}
 }
 
-func (state *InMemoryState) reallyProcureFilesystem(name VolumeName) (string, error) {
+func (state *InMemoryState) reallyProcureFilesystem(ctx context.Context, name VolumeName) (
+	string, error,
+) {
 	// move filesystem here if it's not here already (coordinate the move
 	// with the current master via etcd), also (TODO check this) DON'T
 	// ALLOW PATH TO BE PASSED TO DOCKER IF IT IS NOT ACTUALLY MOUNTED
@@ -589,10 +592,10 @@ func (state *InMemoryState) reallyProcureFilesystem(name VolumeName) (string, er
 	return filesystemId, nil
 }
 
-func (state *InMemoryState) procureFilesystem(name VolumeName) (string, error) {
+func (state *InMemoryState) procureFilesystem(ctx context.Context, name VolumeName) (string, error) {
 	var s string
 	err := tryUntilSucceeds(func() error {
-		ss, err := reallyProcureFilesystem(name)
+		ss, err := state.reallyProcureFilesystem(ctx, name)
 		s = ss // bubble up
 		return err
 	}, "procuring filesystem")
