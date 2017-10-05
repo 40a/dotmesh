@@ -12,8 +12,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
-	"time"
 )
 
 const PLUGINS_DIR = "/run/docker/plugins"
@@ -158,7 +156,7 @@ func (state *InMemoryState) runPlugin() {
 		// for now, just name the volumes as requested by the user. later,
 		// adding ids and per-fs metadata may be useful.
 
-		if _, err := state.procureFilesystem(name); err != nil {
+		if _, err := state.procureFilesystem(ctx, name); err != nil {
 			writeResponseErr(err, w)
 			return
 		}
@@ -237,7 +235,7 @@ func (state *InMemoryState) runPlugin() {
 
 		name := VolumeName{namespace, localName}
 
-		filesystemId, err := state.procureFilesystem(name)
+		filesystemId, err := state.procureFilesystem(ctx, name)
 		if err != nil {
 			writeResponseErr(err, w)
 			return

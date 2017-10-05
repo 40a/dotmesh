@@ -31,7 +31,7 @@ func NewDatameshRPC(state *InMemoryState) *DatameshRPC {
 func (d *DatameshRPC) Procure(
 	r *http.Request, args *VolumeName, result *string) error {
 	ctx := r.Context()
-	res, err := d.state.procureFilesystem(ctx, args)
+	res, err := d.state.procureFilesystem(ctx, *args)
 	*result = res
 	return err
 }

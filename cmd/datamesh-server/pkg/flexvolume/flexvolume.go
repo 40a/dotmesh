@@ -20,11 +20,16 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
+
+	"github.com/gorilla/rpc/v2/json2"
 )
 
 // flexVolumeDebug indicates whether flexvolume debugging should be enabled
@@ -63,19 +68,36 @@ func (d *FlexVolumeDriver) mount(targetMountDir, jsonOptions string) (map[string
 	logIt(fmt.Sprintf("targetMountDir: %v, jsonOptions: %+v", targetMountDir, jsonOptions))
 
 	var mountPath string
-	// TODO client
-	err = client.CallRemote(r.Context(),
-		"DatameshRPC.Procure", map[string]string{
-			"Name":      jsonOptions["name"],
-			"Namespace": jsonOptions["namespace"],
-		}, &mountPath,
+
+	// XXX Assumes that the "local" remote authenticates as "admin". How can we
+	// auth better from kube to datamesh?
+	config, err := ioutil.ReadFile("/root/.datamesh/config")
+	if err != nil {
+		return opts, err
+	}
+
+	m := struct {
+		Remotes struct{ Local struct{ ApiKey string } }
+	}{}
+	json.Unmarshal([]byte(config), &m)
+
+	err = doRPC(
+		"127.0.0.1",
+		"admin",
+		m.Remotes.Local.ApiKey,
+		"DatameshRPC.Procure",
+		map[string]string{
+			"Name":      opts["name"].(string),
+			"Namespace": opts["namespace"].(string),
+		},
+		&mountPath,
 	)
 	if err != nil {
 		return opts, err
 	}
 
 	// hackity hack, let's see how kube feels about being given a symlink
-	_, err := os.Stat(targetMountDir)
+	_, err = os.Stat(targetMountDir)
 	if os.IsNotExist(err) {
 		err = os.Symlink(mountPath, targetMountDir)
 		if err != nil {
