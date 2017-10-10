@@ -1119,9 +1119,9 @@ func (d *DatameshRPC) DeleteVolume(
 	// registered in the registry. If we crash here, the name is taken
 	// by a nonexistant filesystem.
 
-	// FIXME: In order to prevent this lingering fate, we must
-	// periodically check the registry for deleted filesystems, and
-	// kill them off.
+	// This, however, is then recovered from by the
+	// cleanupDeletedFilesystems function, which is invoked
+	// periodically.
 
 	err = d.state.registry.UnregisterFilesystem(*args)
 	if err != nil {

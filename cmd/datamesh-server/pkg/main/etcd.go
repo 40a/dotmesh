@@ -239,7 +239,7 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 		return err
 	}
 
-	for _, fsid := range pending {
+	for fsid, name := range pending {
 		errors := make([]error, 0)
 		del := func(key string) {
 			_, err = kapi.Delete(
@@ -256,6 +256,11 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 		del(fmt.Sprintf("%s/filesystems/dirty/%s", ETCD_PREFIX, fsid))
 		del(fmt.Sprintf("%s/filesystems/masters/%s", ETCD_PREFIX, fsid))
 
+		// Normally, the registry entry is deleted as soon as the volume
+		// is deleted, but in the event of a failure it might not have
+		// been.
+		del(fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, name.Namespace, name.Name))
+
 		if len(errors) == 0 {
 			del(fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, fsid))
 		} else {
@@ -266,7 +271,8 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 	return nil
 }
 
-func listFilesystemsPendingCleanup(kapi client.KeysAPI) ([]string, error) {
+// The result is a map from filesystem ID to the VolumeName it once had.
+func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]VolumeName, error) {
 	// list ETCD_PREFIX/filesystems/cleanupPending/ID without corresponding
 	// ETCD_PREFIX/filesystems/live/ID
 
@@ -276,13 +282,13 @@ func listFilesystemsPendingCleanup(kapi client.KeysAPI) ([]string, error) {
 	)
 	if err != nil {
 		if client.IsKeyNotFound(err) {
-			return []string{}, nil
+			return map[string]VolumeName{}, nil
 		} else {
-			return []string{}, err
+			return map[string]VolumeName{}, err
 		}
 	}
 
-	result := make([]string, 0)
+	result := make(map[string]VolumeName, 0)
 	for _, node := range pending.Node.Nodes {
 		// /datamesh.io/filesystems/cleanupPending/3ed24670-8fd0-4cec-4191-d3d5bae15172
 		pieces := strings.Split(node.Key, "/")
@@ -297,10 +303,21 @@ func listFilesystemsPendingCleanup(kapi client.KeysAPI) ([]string, error) {
 				// Key was found
 			} else if client.IsKeyNotFound(err) {
 				// Key not found, it's no longer live
-				result = append(result, fsid)
+				// So extract the name from the audit trail and add it to the result
+				var audit struct {
+					Name VolumeName
+				}
+				err := json.Unmarshal([]byte(node.Value), &audit)
+				if err != nil {
+					// We don't want one corrupted key stopping us from finding the rest
+					// So log+ignore.
+					log.Printf("[listFilesystemsPendingCleanup] Error parsing audit trail: %s=%s", node.Key, node.Value)
+				} else {
+					result[fsid] = audit.Name
+				}
 			} else {
 				// Error!
-				return []string{}, err
+				return map[string]VolumeName{}, err
 			}
 		}
 	}
