@@ -1061,8 +1061,20 @@ func missingState(f *fsMachine) stateFn {
 		return receivingState
 	case e := <-f.innerRequests:
 		if e.Name == "delete" {
-			f.innerResponses <- &Event{
-				Name: "deleted",
+			// We're in the missing state, so the filesystem
+			// theoretically isn't here anyway. But it may be present in
+			// some internal caches, so we call deleteFilesystem for
+			// thoroughness.
+			err := f.state.deleteFilesystem(f.filesystemId)
+			if err != nil {
+				f.innerResponses <- &Event{
+					Name: "cant-delete",
+					Args: &EventArgs{"err": err},
+				}
+			} else {
+				f.innerResponses <- &Event{
+					Name: "deleted",
+				}
 			}
 			return nil
 		} else if e.Name == "transfer" {

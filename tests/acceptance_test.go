@@ -160,18 +160,17 @@ func TestTwoNodesSameCluster(t *testing.T) {
 
 		st := s(t, node1, "dm list")
 		if strings.Contains(st, fsname) {
-			t.Error(fmt.Sprintf("The container is still in 'dm list' on node1"))
+			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node1"))
 		}
 
 		st = s(t, node2, "dm list")
 		if strings.Contains(st, fsname) {
-			t.Error(fmt.Sprintf("The container is still in 'dm list' on node2"))
+			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node2"))
 		}
 
-		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The container didn't get deleted..."))
+			t.Error(fmt.Sprintf("The volume didn't get deleted..."))
 		}
 	})
 
@@ -186,18 +185,17 @@ func TestTwoNodesSameCluster(t *testing.T) {
 
 		st := s(t, node1, "dm list")
 		if strings.Contains(st, fsname) {
-			t.Error(fmt.Sprintf("The container is still in 'dm list' on node1"))
+			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node1"))
 		}
 
 		st = s(t, node2, "dm list")
 		if strings.Contains(st, fsname) {
-			t.Error(fmt.Sprintf("The container is still in 'dm list' on node2"))
+			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node2"))
 		}
 
-		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The container didn't get deleted..."))
+			t.Error(fmt.Sprintf("The volume didn't get deleted..."))
 		}
 	})
 
@@ -208,16 +206,15 @@ func TestTwoNodesSameCluster(t *testing.T) {
 
 		// Try to re-use the name IMMEDIATELY, while the delete is still replicating.
 
-		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		st := s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The container didn't get deleted on node 1..."))
+			t.Error(fmt.Sprintf("The volume didn't get deleted on node 1..."))
 		}
 
 		d(t, node2, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The container didn't get deleted on node 2..."))
+			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
 		}
 	})
 }
