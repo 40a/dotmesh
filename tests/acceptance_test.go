@@ -158,8 +158,18 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		// This is twice the metadata timeout configured above.
 		time.Sleep(10 * time.Second)
 
+		st := s(t, node1, "dm list")
+		if strings.Contains(st, fsname) {
+			t.Error(fmt.Sprintf("The container is still in 'dm list' on node1"))
+		}
+
+		st = s(t, node2, "dm list")
+		if strings.Contains(st, fsname) {
+			t.Error(fmt.Sprintf("The container is still in 'dm list' on node2"))
+		}
+
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
-		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
 			t.Error(fmt.Sprintf("The container didn't get deleted..."))
 		}
@@ -174,8 +184,18 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		// This is less than half the metadata timeout configured above.
 		time.Sleep(2 * time.Second)
 
+		st := s(t, node1, "dm list")
+		if strings.Contains(st, fsname) {
+			t.Error(fmt.Sprintf("The container is still in 'dm list' on node1"))
+		}
+
+		st = s(t, node2, "dm list")
+		if strings.Contains(st, fsname) {
+			t.Error(fmt.Sprintf("The container is still in 'dm list' on node2"))
+		}
+
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
-		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
 			t.Error(fmt.Sprintf("The container didn't get deleted..."))
 		}
@@ -189,9 +209,15 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		// Try to re-use the name IMMEDIATELY, while the delete is still replicating.
 
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
-		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		st := s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The container didn't get deleted..."))
+			t.Error(fmt.Sprintf("The container didn't get deleted on node 1..."))
+		}
+
+		d(t, node2, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		if strings.Contains(st, "WORLD") {
+			t.Error(fmt.Sprintf("The container didn't get deleted on node 2..."))
 		}
 	})
 }

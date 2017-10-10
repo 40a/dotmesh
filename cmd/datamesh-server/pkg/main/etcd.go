@@ -714,7 +714,6 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 	// thread-local map to remember whether to act on events for a master or
 	// not (currently we never act on events for non-masters, one day we'll
 	// want to for e.g. deletions, rollbacks and the like)
-	// ABS FIXME: Remove filesystems from this map when deleted!
 	filesystemBelongsToMe := map[string]bool{}
 
 	// handy inline funcs to avoid duplication
@@ -727,6 +726,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		defer s.mastersCacheLock.Unlock()
 		(*s.mastersCache)[fs] = node.Value
 
+		log.Printf("ABS TEST: updateMine %s = %s", fs, node.Value)
 		if node.Value == s.myNodeId {
 			filesystemBelongsToMe[fs] = true
 		} else {
