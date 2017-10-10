@@ -1103,11 +1103,6 @@ func (d *DatameshRPC) DeleteVolume(
 	// filesystem is unused from here onwards, as it could come into
 	// use at any point.
 
-	// ABS FIXME: Also try and put some "Is this filesystem marked as
-	// deleted? If so, give up now" checks in useful places elsewhere
-	// in the code, for usability, to ensure faster failure. Don't let
-	// a deleted filesystem be mounted by a container.
-
 	// This will error if the filesystem is already marked as deleted.
 	err = d.state.markFilesystemAsDeletedInEtcd(filesystem.TopLevelVolume.Id, user.Name, *args)
 	if err != nil {

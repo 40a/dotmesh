@@ -214,7 +214,6 @@ func runWhileFilesystemLives(f func() error, label string, filesystemId string, 
 			stillAlive = false
 		default:
 			err := f()
-			// ABS FIXME: Suppress errors if the filesystem got deleted while we were working
 			if err != nil {
 				log.Printf("Error in runWhileFilesystemLives(%s@%s), retrying in %s: %s", label, filesystemId, errorBackoff, err)
 				time.Sleep(errorBackoff)
