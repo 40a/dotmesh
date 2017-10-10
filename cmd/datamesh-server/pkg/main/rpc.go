@@ -1123,6 +1123,11 @@ func (d *DatameshRPC) DeleteVolume(
 		return err
 	}
 
+	// Block until the filesystem is gone locally (it may still be
+	// dying on other nodes in the cluster, but it's too costly to
+	// track that for the gains it gives us)
+	waitForFilesystemDeath(filesystem.TopLevelVolume.Id)
+
 	*result = true
 	return nil
 }

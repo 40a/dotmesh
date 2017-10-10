@@ -229,6 +229,13 @@ func terminateRunnersWhileFilesystemLived(filesystemId string) {
 	deathObserver.Publish(filesystemId, struct{ reason string }{"runWhileFilesystemLives"})
 }
 
+func waitForFilesystemDeath(filesystemId string) {
+	deathChan := make(chan interface{})
+	deathObserver.Subscribe(filesystemId, deathChan)
+	<-deathChan
+	deathObserver.Unsubscribe(filesystemId, deathChan)
+}
+
 // general purpose function, intended to be runnable in a goroutine, which
 // reads bytes from a Reader and writes them to a Writer, closing the Writer
 // when the Reader yields EOF. should be useable both to pipe command outputs

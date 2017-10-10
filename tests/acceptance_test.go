@@ -170,7 +170,12 @@ func TestTwoNodesSameCluster(t *testing.T) {
 
 		st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The volume didn't get deleted..."))
+			t.Error(fmt.Sprintf("The volume didn't get deleted on node 1..."))
+		}
+
+		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		if strings.Contains(st, "WORLD") {
+			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
 		}
 	})
 
@@ -195,7 +200,12 @@ func TestTwoNodesSameCluster(t *testing.T) {
 
 		st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The volume didn't get deleted..."))
+			t.Error(fmt.Sprintf("The volume didn't get deleted on node 1..."))
+		}
+
+		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		if strings.Contains(st, "WORLD") {
+			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
 		}
 	})
 
@@ -204,18 +214,22 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		d(t, node1, "dm volume delete "+fsname)
 
-		// Try to re-use the name IMMEDIATELY, while the delete is still replicating.
+		// Try to re-use the name IMMEDIATELY, while the delete is still
+		// replicating around the system.
 
 		st := s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
 			t.Error(fmt.Sprintf("The volume didn't get deleted on node 1..."))
 		}
+		/*
+		         We don't try and guarantee immediate deletion on other nodes.
+		         So the following may or may not fail, we can't test for it.
 
-		d(t, node2, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
-		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
-		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
-		}
+		   		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+		   		if strings.Contains(st, "WORLD") {
+		   			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
+		   		}
+		*/
 	})
 }
 
