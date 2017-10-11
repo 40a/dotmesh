@@ -1098,10 +1098,23 @@ func (d *DatameshRPC) DeleteVolume(
 		return err
 	}
 
-	// ABS FIXME: At this point, check the filesystem has no containers
+	// At this point, check the filesystem has no containers
 	// using it and error if so, for usability. This does not mean the
 	// filesystem is unused from here onwards, as it could come into
 	// use at any point.
+
+	containersInUse := func() int {
+		d.state.globalContainerCacheLock.Lock()
+		defer d.state.globalContainerCacheLock.Unlock()
+		containerInfo, ok := (*d.state.globalContainerCache)[filesystem.TopLevelVolume.Id]
+		if !ok {
+			return 0
+		}
+		return len(containerInfo.Containers)
+	}()
+	if containersInUse > 0 {
+		return fmt.Errorf("We cannot delete the volume when %d containers are still using it", containersInUse)
+	}
 
 	// ABS FIXME: At some point, expand this top level filesystem ID
 	// into all the filesystem IDs of branches of this volume.

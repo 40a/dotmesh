@@ -149,6 +149,31 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		}
 	})
 
+	t.Run("DeleteNonexistant", func(t *testing.T) {
+		fsname := uniqName()
+
+		st := s(t, node1, "if dm volume delete "+fsname+"; then false; else true; fi")
+		if !strings.Contains(st, "No such filesystem") {
+			t.Error(fmt.Sprintf("Deleting a nonexistant volume didn't fail"))
+		}
+	})
+
+	t.Run("DeleteInUseFails", func(t *testing.T) {
+		fsname := uniqName()
+		go func() {
+			d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO; sleep 10'")
+		}()
+
+		// Give time for the container to start
+		time.Sleep(5 * time.Second)
+
+		// Delete, while the container is running! Which should fail!
+		st := s(t, node1, "if dm volume delete "+fsname+"; then false; else true; fi")
+		if !strings.Contains(st, "cannot delete the volume") {
+			t.Error(fmt.Sprintf("The presence of a running container failed to suppress volume deletion"))
+		}
+	})
+
 	t.Run("DeleteHappyPath", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")

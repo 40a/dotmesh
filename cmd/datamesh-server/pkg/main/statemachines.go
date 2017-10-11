@@ -437,7 +437,9 @@ waitingForSlaveSnapshot:
 		for !gotSnaps {
 			select {
 			case e := <-f.innerRequests:
-				// ABS FIXME: What if a deletion message comes in here?
+				// What if a deletion message comes in here? Hopefully,
+				// the deletion will happen later, when we go into
+				// discovery again.
 				log.Printf("rejecting all %s", e)
 				f.innerResponses <- &Event{"busy-handoff", &EventArgs{}}
 			case _ = <-newSnapsChan:
