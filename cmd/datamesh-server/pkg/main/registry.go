@@ -393,10 +393,18 @@ func (r *Registry) UpdateFilesystemFromEtcd(
 func (r *Registry) UpdateCloneFromEtcd(name string, topLevelFilesystemId string, clone Clone) {
 	r.ClonesLock.Lock()
 	defer r.ClonesLock.Unlock()
+
 	if _, ok := r.Clones[topLevelFilesystemId]; !ok {
 		r.Clones[topLevelFilesystemId] = map[string]Clone{}
 	}
 	r.Clones[topLevelFilesystemId][name] = clone
+}
+
+func (r *Registry) DeleteCloneFromEtcd(name string, topLevelFilesystemId string) {
+	r.ClonesLock.Lock()
+	defer r.ClonesLock.Unlock()
+
+	delete(r.Clones, topLevelFilesystemId)
 }
 
 func (r *Registry) LookupFilesystem(name VolumeName) (TopLevelFilesystem, error) {

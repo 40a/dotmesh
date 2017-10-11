@@ -154,8 +154,9 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		d(t, node1, "dm volume delete "+fsname)
 
-		// Ensure the delete has happened completely
-		// This is twice the metadata timeout configured above.
+		// Ensure the delete has happened completely This is twice the
+		// metadata timeout configured above, so all traces of the
+		// volume should be gone.
 		time.Sleep(10 * time.Second)
 
 		st := s(t, node1, "dm list")
@@ -184,8 +185,11 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		d(t, node1, "dm volume delete "+fsname)
 
-		// Ensure the initial delete has happened, but the metadata is still draining
-		// This is less than half the metadata timeout configured above.
+		// Ensure the initial delete has happened, but the metadata is
+		// still draining This is less than half the metadata timeout
+		// configured above; the system should be in the process of
+		// cleaning up after the volume, but it should be fine to reuse
+		// the name by now.
 		time.Sleep(2 * time.Second)
 
 		st := s(t, node1, "dm list")
@@ -216,6 +220,8 @@ func TestTwoNodesSameCluster(t *testing.T) {
 
 		// Try to re-use the name IMMEDIATELY, while the delete is still
 		// replicating around the system.
+		// This exercises the behaviour of the DeleteVolume rpc, which should
+		// block until the deletion is done on this node.
 
 		st := s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {

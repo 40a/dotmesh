@@ -1103,6 +1103,9 @@ func (d *DatameshRPC) DeleteVolume(
 	// filesystem is unused from here onwards, as it could come into
 	// use at any point.
 
+	// ABS FIXME: At some point, expand this top level filesystem ID
+	// into all the filesystem IDs of branches of this volume.
+
 	// This will error if the filesystem is already marked as deleted.
 	err = d.state.markFilesystemAsDeletedInEtcd(filesystem.TopLevelVolume.Id, user.Name, *args)
 	if err != nil {

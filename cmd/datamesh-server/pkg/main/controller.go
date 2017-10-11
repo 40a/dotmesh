@@ -68,12 +68,7 @@ func NewInMemoryState(localPoolId string, config Config) *InMemoryState {
 func (s *InMemoryState) deleteFilesystem(filesystemId string) error {
 	var errors []error
 
-	log.Printf("Attempting to delete filesystem %s", filesystemId)
-
-	err := deleteFilesystemInZFS(filesystemId)
-	if err != nil {
-		errors = append(errors, err)
-	}
+	log.Printf("[deleteFilesystem] Attempting to delete filesystem %s", filesystemId)
 
 	// Remove the FS from all our myriad caches
 	func() {
@@ -96,12 +91,18 @@ func (s *InMemoryState) deleteFilesystem(filesystemId string) error {
 
 	// No need to worry about globalStateCache, as the fsmachine's termination will gracefully handle that
 
+	// Actually remove from ZFS
+	err := deleteFilesystemInZFS(filesystemId)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
 	if len(errors) != 0 {
 		// We just make our best attempt at deleting; if anything
 		// failed, we'll try and clean it up again later.  Therefore,
 		// when we try again, various bits might already be deleted, so
 		// trying to delete them fails.  It's all good.
-		log.Printf("Errors deleting filesystem %s, possibly because some operations were previously completed: %+v", filesystemId, errors)
+		log.Printf("[deleteFilesystem] Errors deleting filesystem %s, possibly because some operations were previously completed: %+v", filesystemId, errors)
 	}
 
 	// However, we reserve the right to return an error if we decide to in future.
