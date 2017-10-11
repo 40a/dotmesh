@@ -1050,6 +1050,21 @@ func missingState(f *fsMachine) stateFn {
 	f.transitionedTo("missing", "waiting")
 	log.Printf("entering missing state for %s", f.filesystemId)
 
+	// Are we missing because we're being deleted?
+	deleted, err := isFilesystemDeletedInEtcd(f.filesystemId)
+	if err != nil {
+		log.Printf("Error trying to check for filesystem deletion while in missingState: %s", err)
+		return backoffState
+	}
+	if deleted {
+		err := f.state.deleteFilesystem(f.filesystemId)
+		if err != nil {
+			log.Printf("Error deleting filesystem while in missingState: %s", err)
+			return backoffState
+		}
+		return nil
+	}
+
 	if f.attemptReceive() {
 		return receivingState
 	}

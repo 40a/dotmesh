@@ -262,6 +262,35 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		   		}
 		*/
 	})
+
+	t.Run("DeleteBranches", func(t *testing.T) {
+		// Set up some branches:
+		//
+		// Master -> branch1 -> branch2
+		//   |
+		//   \-> branch3
+
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		d(t, node1, "dm switch "+fsname)
+		d(t, node1, "dm commit -m 'On master'")
+
+		d(t, node1, "dm checkout -b branch1")
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/GOODBYE'")
+		d(t, node1, "dm commit -m 'On branch1'")
+
+		d(t, node1, "dm checkout -b branch2")
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/GOODBYE_CRUEL'")
+		d(t, node1, "dm commit -m 'On branch2'")
+
+		d(t, node1, "dm checkout master")
+		d(t, node1, "dm checkout -b branch3")
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO_CRUEL'")
+		d(t, node1, "dm commit -m 'On branch3'")
+
+		// Now kill the lot, right?
+		d(t, node1, "dm volume delete "+fsname)
+	})
 }
 
 func TestTwoSingleNodeClusters(t *testing.T) {

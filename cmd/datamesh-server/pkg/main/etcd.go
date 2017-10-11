@@ -157,7 +157,7 @@ func (state *InMemoryState) updateAddressesInEtcd() error {
 	return nil
 }
 
-func isFilesystemDeletedInEtcd(fsid string) (bool, error) {
+func isFilesystemDeletedInEtcd(fsId string) (bool, error) {
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		return false, err
@@ -165,7 +165,7 @@ func isFilesystemDeletedInEtcd(fsid string) (bool, error) {
 
 	result, err := kapi.Get(
 		context.Background(),
-		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, fsid),
+		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, fsId),
 		nil,
 	)
 
@@ -184,33 +184,40 @@ func isFilesystemDeletedInEtcd(fsid string) (bool, error) {
 	}
 }
 
-func (state *InMemoryState) markFilesystemAsDeletedInEtcd(fsid, username string, name VolumeName) error {
+func (state *InMemoryState) markFilesystemAsDeletedInEtcd(fsId, username string, name VolumeName, tlFsId, branch string) error {
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		return err
 	}
 
 	// Feel free to suggest additional useful things to put in the
-	// deletion audit trail.  The one that the system REQUIRES is
-	// "Name", which is used to ensure that the registry entry is
-	// cleaned up later. Please don't remove/rename that without
-	// updating cleanupDeletedFilesystems
+	// deletion audit trail.  The two that the system REQUIRES are
+	// "Name", "TopLevelFilesystemId" and "Branch", which are used to ensure that the registry
+	// entry is cleaned up later. (Name for a top level filesystem,
+	// Branch for a non-master branch). Please don't remove/rename that
+	// without updating cleanupDeletedFilesystems
 	auditTrail, err := json.Marshal(struct {
 		Server    string
 		Username  string
-		Name      VolumeName
 		DeletedAt time.Time
+
+		Name                 VolumeName
+		TopLevelFilesystemId string
+		Branch               string
 	}{state.myNodeId,
 		username,
+		time.Now(),
+
 		name,
-		time.Now()})
+		tlFsId,
+		branch})
 	if err != nil {
 		return err
 	}
 
 	_, err = kapi.Set(
 		context.Background(),
-		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, fsid),
+		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, fsId),
 		string(auditTrail),
 		&client.SetOptions{PrevExist: client.PrevNoExist},
 	)
@@ -221,7 +228,7 @@ func (state *InMemoryState) markFilesystemAsDeletedInEtcd(fsid, username string,
 	// Now mark it for eventual cleanup (when the liveness key expires)
 	_, err = kapi.Set(
 		context.Background(),
-		fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, fsid),
+		fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, fsId),
 		string(auditTrail),
 		&client.SetOptions{PrevExist: client.PrevNoExist},
 	)
@@ -230,6 +237,17 @@ func (state *InMemoryState) markFilesystemAsDeletedInEtcd(fsid, username string,
 	}
 
 	return nil
+}
+
+// This struct is a subset of the struct used as the audit trail in
+// markFilesystemAsDeletedInEtcd.  A subset is used here to avoid
+// issues with upgrading a running cluster, if old deletion audit
+// trails are in etcd with different state. These are the only things
+// we need to read back.
+type NameOrBranch struct {
+	Name                 VolumeName
+	TopLevelFilesystemId string
+	Branch               string
 }
 
 func (state *InMemoryState) cleanupDeletedFilesystems() error {
@@ -243,9 +261,12 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 		return err
 	}
 
-	for fsid, name := range pending {
+	for fsId, names := range pending {
+		log.Printf("ABS TEST - cleaning up %#v", names)
+
 		errors := make([]error, 0)
 		del := func(key string) {
+			log.Printf("ABS TEST - deleting key %s", key)
 			_, err = kapi.Delete(
 				context.Background(),
 				key,
@@ -256,17 +277,28 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 			}
 		}
 
-		del(fmt.Sprintf("%s/filesystems/containers/%s", ETCD_PREFIX, fsid))
-		del(fmt.Sprintf("%s/filesystems/dirty/%s", ETCD_PREFIX, fsid))
-		del(fmt.Sprintf("%s/filesystems/masters/%s", ETCD_PREFIX, fsid))
+		del(fmt.Sprintf("%s/filesystems/containers/%s", ETCD_PREFIX, fsId))
+		del(fmt.Sprintf("%s/filesystems/dirty/%s", ETCD_PREFIX, fsId))
+		del(fmt.Sprintf("%s/filesystems/masters/%s", ETCD_PREFIX, fsId))
 
 		// Normally, the registry entry is deleted as soon as the volume
 		// is deleted, but in the event of a failure it might not have
-		// been.
-		del(fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, name.Namespace, name.Name))
+		// been. So we try again.
+
+		if names.Name.Namespace != "" && names.Name.Name != "" {
+			// The name might be blank in the audit trail - this is used
+			// to indicate that this was a branch, NOT the master, so
+			// there's no need to remove the registry entry for the whole
+			// volume. We only do that when deleting master.
+			del(fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, names.Name.Namespace, names.Name.Name))
+		}
+
+		if names.Branch != "" {
+			del(fmt.Sprintf("%s/registry/clones/%s/%s", ETCD_PREFIX, names.TopLevelFilesystemId, names.Branch))
+		}
 
 		if len(errors) == 0 {
-			del(fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, fsid))
+			del(fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, fsId))
 		} else {
 			return fmt.Errorf("Errors found cleaning up after a deleted filesystem: %+v", errors)
 		}
@@ -275,8 +307,8 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 	return nil
 }
 
-// The result is a map from filesystem ID to the VolumeName it once had.
-func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]VolumeName, error) {
+// The result is a map from filesystem ID to the VolumeName or branch name it once had.
+func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]NameOrBranch, error) {
 	// list ETCD_PREFIX/filesystems/cleanupPending/ID without corresponding
 	// ETCD_PREFIX/filesystems/live/ID
 
@@ -286,21 +318,21 @@ func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]VolumeName, 
 	)
 	if err != nil {
 		if client.IsKeyNotFound(err) {
-			return map[string]VolumeName{}, nil
+			return map[string]NameOrBranch{}, nil
 		} else {
-			return map[string]VolumeName{}, err
+			return map[string]NameOrBranch{}, err
 		}
 	}
 
-	result := make(map[string]VolumeName, 0)
+	result := make(map[string]NameOrBranch, 0)
 	for _, node := range pending.Node.Nodes {
 		// /datamesh.io/filesystems/cleanupPending/3ed24670-8fd0-4cec-4191-d3d5bae15172
 		pieces := strings.Split(node.Key, "/")
 		if len(pieces) == 5 {
-			fsid := pieces[4]
+			fsId := pieces[4]
 
 			_, err := kapi.Get(context.Background(),
-				fmt.Sprintf("%s/filesystems/live/%s", ETCD_PREFIX, fsid),
+				fmt.Sprintf("%s/filesystems/live/%s", ETCD_PREFIX, fsId),
 				&client.GetOptions{},
 			)
 			if err == nil {
@@ -308,20 +340,18 @@ func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]VolumeName, 
 			} else if client.IsKeyNotFound(err) {
 				// Key not found, it's no longer live
 				// So extract the name from the audit trail and add it to the result
-				var audit struct {
-					Name VolumeName
-				}
+				var audit NameOrBranch
 				err := json.Unmarshal([]byte(node.Value), &audit)
 				if err != nil {
 					// We don't want one corrupted key stopping us from finding the rest
 					// So log+ignore.
 					log.Printf("[listFilesystemsPendingCleanup] Error parsing audit trail: %s=%s", node.Key, node.Value)
 				} else {
-					result[fsid] = audit.Name
+					result[fsId] = audit
 				}
 			} else {
 				// Error!
-				return map[string]VolumeName{}, err
+				return map[string]NameOrBranch{}, err
 			}
 		}
 	}

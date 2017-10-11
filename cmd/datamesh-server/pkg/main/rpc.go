@@ -1082,6 +1082,42 @@ func (d *DatameshRPC) PredictSize(
 	return nil
 }
 
+func checkNotInUse(d *DatameshRPC, fsid string, origins map[string]string) error {
+	containersInUse := func() int {
+		d.state.globalContainerCacheLock.Lock()
+		defer d.state.globalContainerCacheLock.Unlock()
+		containerInfo, ok := (*d.state.globalContainerCache)[fsid]
+		if !ok {
+			return 0
+		}
+		return len(containerInfo.Containers)
+	}()
+	if containersInUse > 0 {
+		return fmt.Errorf("We cannot delete the volume %s when %d containers are still using it", fsid, containersInUse)
+	}
+	for child, parent := range origins {
+		if parent == fsid {
+			err := checkNotInUse(d, child, origins)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func sortFilesystemsInDeletionOrder(in []string, rootId string, origins map[string]string) []string {
+	// Recursively zap any children
+	for child, parent := range origins {
+		if parent == rootId {
+			in = sortFilesystemsInDeletionOrder(in, child, origins)
+		}
+	}
+	// Then zap the root
+	in = append(in, rootId)
+	return in
+}
+
 // Containers that were recently known to be running on a given filesystem.
 func (d *DatameshRPC) DeleteVolume(
 	r *http.Request,
@@ -1092,41 +1128,95 @@ func (d *DatameshRPC) DeleteVolume(
 
 	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
 
-	// This will error if the filesystem name isn't registered.
+	// Look up the top-level filesystem. This will error if the
+	// filesystem name isn't registered.
 	filesystem, err := d.state.registry.LookupFilesystem(*args)
 	if err != nil {
 		return err
 	}
 
-	// At this point, check the filesystem has no containers
-	// using it and error if so, for usability. This does not mean the
-	// filesystem is unused from here onwards, as it could come into
-	// use at any point.
+	// Find the list of all clones of the filesystem, as we need to delete each independently.
+	filesystems := d.state.registry.ClonesFor(filesystem.TopLevelVolume.Id)
 
-	containersInUse := func() int {
-		d.state.globalContainerCacheLock.Lock()
-		defer d.state.globalContainerCacheLock.Unlock()
-		containerInfo, ok := (*d.state.globalContainerCache)[filesystem.TopLevelVolume.Id]
-		if !ok {
-			return 0
-		}
-		return len(containerInfo.Containers)
-	}()
-	if containersInUse > 0 {
-		return fmt.Errorf("We cannot delete the volume when %d containers are still using it", containersInUse)
+	// We can't destroy a filesystem that's an origin for another
+	// filesystem, so let's topologically sort them and destroy them leaves-first.
+
+	// Analuse the list of filesystems, putting it into a more useful form for our purposes
+	origins := make(map[string]string)
+	names := make(map[string]string)
+	for name, fs := range filesystems {
+		// Record the origin
+		origins[fs.FilesystemId] = fs.Origin.FilesystemId
+		// Record the name
+		names[fs.FilesystemId] = name
 	}
 
-	// ABS FIXME: At some point, expand this top level filesystem ID
-	// into all the filesystem IDs of branches of this volume.
+	// FUTURE WORK: If we ever need to delete just some branches, we
+	// can do so by picking a different rootId here.
+	rootId := filesystem.TopLevelVolume.Id
 
-	// This will error if the filesystem is already marked as deleted.
-	err = d.state.markFilesystemAsDeletedInEtcd(filesystem.TopLevelVolume.Id, user.Name, *args)
+	log.Printf("ABS TEST: Got tree %#v", origins)
+
+	// Check all clones are not in use. This is no guarantee one won't
+	// come into use while we're processing the deletion, but it's nice
+	// for the user to try and check first.
+
+	err = checkNotInUse(d, rootId, origins)
 	if err != nil {
 		return err
 	}
 
+	filesystemsInOrder := make([]string, 0)
+	filesystemsInOrder = sortFilesystemsInDeletionOrder(filesystemsInOrder, rootId, origins)
+
+	log.Printf("ABS TEST: Got order %#v", filesystemsInOrder)
+
+	// What if we are interrupted during this loop?
+
+	// Because we delete from the leaves up, we SHOULD be OK: the
+	// system may end up in a state where some branches are gone, but
+	// the top-level filesystem remains and a new deletion on that
+	// should pick up where we left off.  I don't know how to easily
+	// test that with the current test harness, however, so here's
+	// hoping I'm right.
+	for _, fsid := range filesystemsInOrder {
+		log.Printf("ABS TEST: Deleting %s", fsid)
+		// At this point, check the filesystem has no containers
+		// using it and error if so, for usability. This does not mean the
+		// filesystem is unused from here onwards, as it could come into
+		// use at any point.
+
+		// This will error if the filesystem is already marked as
+		// deleted; it shouldn't be in the metadata if it was, so
+		// hopefully that will never happen.
+		if rootId == fsid {
+			// master branch, so record the name to delete and no branch to deklete
+			err = d.state.markFilesystemAsDeletedInEtcd(fsid, user.Name, *args, "", "")
+		} else {
+			// Not the master branch, so don't record a name to delete, but do record a branch
+			err = d.state.markFilesystemAsDeletedInEtcd(fsid, user.Name, VolumeName{}, filesystem.TopLevelVolume.Id, names[fsid])
+		}
+		if err != nil {
+			return err
+		}
+
+		// Block until the filesystem is gone locally (it may still be
+		// dying on other nodes in the cluster, but it's too costly to
+		// track that for the gains it gives us)
+		waitForFilesystemDeath(fsid)
+
+		// As we only block for completion locally, there IS a chance
+		// that the deletions will happen in the wrong order on other
+		// nodes in the cluster.  This may mean that some of them fail
+		// with an error, because their origins still exist.  However,
+		// hopefully, the discovery-triggers-redeletion code will cause
+		// them to eventually be deleted.
+	}
+
+	// If we're deleting the entire filesystem rather than just a branch, we need to unregister it.
+
 	// At this point, we have an inconsistent system state: the
-	// filesystem is marked for deletion, but its name is still
+	// clone filesystems are marked for deletion, but their name is still
 	// registered in the registry. If we crash here, the name is taken
 	// by a nonexistant filesystem.
 
@@ -1134,15 +1224,12 @@ func (d *DatameshRPC) DeleteVolume(
 	// cleanupDeletedFilesystems function, which is invoked
 	// periodically.
 
-	err = d.state.registry.UnregisterFilesystem(*args)
-	if err != nil {
-		return err
+	if rootId == filesystem.TopLevelVolume.Id {
+		err = d.state.registry.UnregisterFilesystem(*args)
+		if err != nil {
+			return err
+		}
 	}
-
-	// Block until the filesystem is gone locally (it may still be
-	// dying on other nodes in the cluster, but it's too costly to
-	// track that for the gains it gives us)
-	waitForFilesystemDeath(filesystem.TopLevelVolume.Id)
 
 	*result = true
 	return nil
