@@ -294,9 +294,7 @@ func clusterCommonPreflight() error {
 	}
 	cv, err := semver.Make(strings.TrimSpace(string(clientVersion)))
 	if err != nil {
-		fmt.Printf("Unable to compare Docker versions: got '%v', maybe you're "+
-			"using a too-new version of docker that broke semver, presumably all future "+
-			"versions of Docker will work perfectly, continuing...\n", err)
+		fmt.Printf("assuming post-semver Docker client is sufficient.\n")
 	} else {
 		if cv.LT(v1_10_0) {
 			return fmt.Errorf("Docker client version is < 1.10.0, please upgrade")
@@ -312,9 +310,7 @@ func clusterCommonPreflight() error {
 	}
 	sv, err := semver.Make(strings.TrimSpace(string(serverVersion)))
 	if err != nil {
-		fmt.Printf("Unable to compare Docker versions: got '%v', maybe you're "+
-			"using a too-new version of docker that broke semver, presumably all future "+
-			"versions of Docker will work perfectly, continuing...\n", err)
+		fmt.Printf("assuming post-semver Docker server is sufficient.\n")
 	} else {
 		if sv.LT(v1_10_0) {
 			return fmt.Errorf("Docker server version is < 1.10.0, please upgrade")
@@ -586,7 +582,6 @@ func startDatameshContainer(pkiPath string) error {
 		// actual datamesh-server with an rshared bind-mount of /var/pool.
 		"/require_zfs.sh", "datamesh-server",
 	}...)
-	fmt.Printf("docker %s\n", strings.Join(args, " "))
 	fmt.Fprintf(logFile, "docker %s\n", strings.Join(args, " "))
 	resp, err := exec.Command("docker", args...).CombinedOutput()
 	if err != nil {
