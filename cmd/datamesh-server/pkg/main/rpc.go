@@ -611,7 +611,6 @@ func (d *DatameshRPC) RegisterFilesystem(
 	}
 
 	if !isAdmin {
-		// Really, we want to return a 403 http code
 		return fmt.Errorf("User is not an administrator for namespace %s, so cannot create volumes",
 			args.Namespace)
 	}
