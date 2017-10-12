@@ -170,7 +170,7 @@ func (s *InMemoryState) getOne(ctx context.Context, fs string) (DatameshVolume, 
 
 	log.Printf("[getOne] starting for %v", fs)
 
-	if tlf, clone, err := s.registry.LookupFilesystemId(fs); err == nil {
+	if tlf, clone, err := s.registry.LookupFilesystemById(fs); err == nil {
 		authorized, err := tlf.Authorize(ctx)
 		if err != nil {
 			return DatameshVolume{}, err

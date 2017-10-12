@@ -262,11 +262,8 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 	}
 
 	for fsId, names := range pending {
-		log.Printf("ABS TEST - cleaning up %#v", names)
-
 		errors := make([]error, 0)
 		del := func(key string) {
-			log.Printf("ABS TEST - deleting key %s", key)
 			_, err = kapi.Delete(
 				context.Background(),
 				key,
@@ -290,7 +287,41 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 			// to indicate that this was a branch, NOT the master, so
 			// there's no need to remove the registry entry for the whole
 			// volume. We only do that when deleting master.
-			del(fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, names.Name.Namespace, names.Name.Name))
+			key := fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, names.Name.Namespace, names.Name.Name)
+
+			oldNode, err := kapi.Get(
+				context.Background(),
+				key,
+				&client.GetOptions{},
+			)
+			if err != nil {
+				if client.IsKeyNotFound(err) {
+					// we are good, it doesn't exist, nothing to delete
+				} else {
+					errors = append(errors, err)
+				}
+			} else {
+				// We have an existing registry entry, but is it the one
+				// we're supposed to delete, or a newly-created volume
+				// with the name of the deleted one?
+				currentData := struct {
+					Id string
+				}{}
+				err = json.Unmarshal([]byte(oldNode.Node.Value), &currentData)
+				if err != nil {
+					errors = append(errors, err)
+				}
+				if currentData.Id == fsId {
+					_, err = kapi.Delete(
+						context.Background(),
+						key,
+						&client.DeleteOptions{PrevValue: oldNode.Node.Value},
+					)
+					if err != nil && !client.IsKeyNotFound(err) {
+						errors = append(errors, err)
+					}
+				}
+			}
 		}
 
 		if names.Branch != "" {
@@ -446,7 +477,9 @@ func (s *InMemoryState) handleOneFilesystemMaster(node *client.Node) error {
 				return err
 			}
 		}
-		_ = <-responseChan
+		go func() {
+			_ = <-responseChan
+		}()
 	}
 	return nil
 }
@@ -454,6 +487,7 @@ func (s *InMemoryState) handleOneFilesystemMaster(node *client.Node) error {
 func (s *InMemoryState) handleOneFilesystemDeletion(node *client.Node) error {
 	// This is where each node is notified of a filesystem being
 	// deleted.  We must inform the fsmachine.
+	log.Printf("DELETING: %s=%s", node.Key, node.Value)
 
 	pieces := strings.Split(node.Key, "/")
 	fs := pieces[len(pieces)-1]
@@ -461,12 +495,13 @@ func (s *InMemoryState) handleOneFilesystemDeletion(node *client.Node) error {
 	var responseChan chan *Event
 	var err error
 	requestId := pieces[len(pieces)-1]
-	log.Printf("DELETING: %s=%s", fs, node.Value)
 	responseChan, err = s.dispatchEvent(fs, &Event{Name: "delete"}, requestId)
 	if err != nil {
 		return err
 	}
-	_ = <-responseChan
+	go func() {
+		_ = <-responseChan
+	}()
 	return nil
 }
 
@@ -1006,6 +1041,7 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 
 	// find the masters and requests nodes
 	var masters *client.Node
+	var deleted *client.Node
 	var requests *client.Node
 	var serverAddresses *client.Node
 	var serverSnapshots *client.Node
@@ -1020,6 +1056,8 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		for _, child := range parent.Nodes {
 			if getVariant(child) == "filesystems/masters" {
 				masters = child
+			} else if getVariant(child) == "filesystems/deleted" {
+				deleted = child
 			} else if getVariant(child) == "filesystems/requests" {
 				requests = child
 			} else if getVariant(child) == "servers/addresses" {
@@ -1051,6 +1089,13 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		for _, node := range masters.Nodes {
 			updateMine(node)
 			if err = s.handleOneFilesystemMaster(node); err != nil {
+				return err
+			}
+		}
+	}
+	if deleted != nil {
+		for _, node := range deleted.Nodes {
+			if err = s.handleOneFilesystemDeletion(node); err != nil {
 				return err
 			}
 		}

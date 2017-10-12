@@ -537,7 +537,7 @@ func (f *fsMachine) snapshot(e *Event) (responseEvent *Event, nextState stateFn)
 // find the user-facing name of a given filesystem id. if we're a branch
 // (clone), return the name of our parent filesystem.
 func (f *fsMachine) name() (VolumeName, error) {
-	tlf, _, err := f.state.registry.LookupFilesystemId(f.filesystemId)
+	tlf, _, err := f.state.registry.LookupFilesystemById(f.filesystemId)
 	return tlf.TopLevelVolume.Name, err
 }
 

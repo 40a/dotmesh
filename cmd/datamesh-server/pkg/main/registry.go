@@ -435,10 +435,10 @@ func (r *Registry) LookupClone(topLevelFilesystemId, cloneName string) (Clone, e
 	r.ClonesLock.Lock()
 	defer r.ClonesLock.Unlock()
 	if _, ok := r.Clones[topLevelFilesystemId]; !ok {
-		return Clone{}, fmt.Errorf("No top-level filesystem id '%s'", topLevelFilesystemId)
+		return Clone{}, fmt.Errorf("No clones at all, let alone named '%s' for filesystem id '%s'", cloneName, topLevelFilesystemId)
 	}
 	if _, ok := r.Clones[topLevelFilesystemId][cloneName]; !ok {
-		return Clone{}, fmt.Errorf("No clone named '%s'", cloneName)
+		return Clone{}, fmt.Errorf("No clone named '%s' for filesystem id '%s'", cloneName, topLevelFilesystemId)
 	}
 	return r.Clones[topLevelFilesystemId][cloneName], nil
 }
@@ -474,7 +474,9 @@ func (r *Registry) LookupCloneByIdWithName(filesystemId string) (Clone, string, 
 // can be identified by to the user.
 // XXX make this less horrifically inefficient by storing & updating inverted
 // indexes.
-func (r *Registry) LookupFilesystemId(filesystemId string) (TopLevelFilesystem, string, error) {
+func (r *Registry) LookupFilesystemById(filesystemId string) (TopLevelFilesystem, string, error) {
+	r.TopLevelFilesystemsLock.Lock()
+	defer r.TopLevelFilesystemsLock.Unlock()
 	r.ClonesLock.Lock()
 	defer r.ClonesLock.Unlock()
 	for _, tlf := range r.TopLevelFilesystems {
@@ -495,6 +497,7 @@ func (r *Registry) LookupFilesystemId(filesystemId string) (TopLevelFilesystem, 
 			}
 		}
 	}
+
 	return TopLevelFilesystem{}, "", fmt.Errorf(
 		"Unable to find user-facing filesystemName, cloneName for filesystem id %s",
 		filesystemId,

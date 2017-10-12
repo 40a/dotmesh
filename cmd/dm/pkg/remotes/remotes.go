@@ -220,6 +220,26 @@ func (c *Configuration) SetCurrentBranch(branch string) error {
 	return c.save()
 }
 
+func (c *Configuration) DeleteStateForVolume(volume string) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	_, ok := c.Remotes[c.CurrentRemote]
+	if !ok {
+		return fmt.Errorf(
+			"Unable to find remote '%s', which was apparently current",
+			c.CurrentRemote,
+		)
+	}
+	delete(c.Remotes[c.CurrentRemote].CurrentBranches, volume)
+	n, v, err := ParseNamespacedVolume(volume)
+	if err == nil {
+		delete(c.Remotes[c.CurrentRemote].DefaultRemoteVolumes[n], v)
+	} else {
+		return err
+	}
+	return c.save()
+}
+
 func (c *Configuration) SetCurrentBranchForVolume(volume, branch string) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()

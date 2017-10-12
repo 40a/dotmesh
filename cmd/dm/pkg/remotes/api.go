@@ -241,6 +241,10 @@ func (dm *DatameshAPI) DeleteVolume(volumeName string) error {
 		return err
 	}
 
+	dm.Configuration.DeleteStateForVolume(volumeName)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

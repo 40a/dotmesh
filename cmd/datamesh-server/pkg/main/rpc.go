@@ -221,11 +221,13 @@ func (d *DatameshRPC) Containers(
 	args *struct{ Namespace, TopLevelFilesystemName, CloneName string },
 	result *[]DockerContainer,
 ) error {
+	log.Printf("[Containers] called with %+v", *args)
 	filesystemId, err := d.state.registry.MaybeCloneFilesystemId(
 		VolumeName{args.Namespace, args.TopLevelFilesystemName},
 		args.CloneName,
 	)
 	if err != nil {
+		log.Printf("[Containers] died of %#v", err)
 		return err
 	}
 	d.state.globalContainerCacheLock.Lock()
@@ -1008,7 +1010,7 @@ func (d *DatameshRPC) AddCollaborator(
 	result *bool,
 ) error {
 	// check authenticated user is owner of volume.
-	crappyTlf, clone, err := d.state.registry.LookupFilesystemId(args.Volume)
+	crappyTlf, clone, err := d.state.registry.LookupFilesystemById(args.Volume)
 	if err != nil {
 		return err
 	}
@@ -1155,8 +1157,6 @@ func (d *DatameshRPC) DeleteVolume(
 	// can do so by picking a different rootId here.
 	rootId := filesystem.TopLevelVolume.Id
 
-	log.Printf("ABS TEST: Got tree %#v", origins)
-
 	// Check all clones are not in use. This is no guarantee one won't
 	// come into use while we're processing the deletion, but it's nice
 	// for the user to try and check first.
@@ -1169,8 +1169,6 @@ func (d *DatameshRPC) DeleteVolume(
 	filesystemsInOrder := make([]string, 0)
 	filesystemsInOrder = sortFilesystemsInDeletionOrder(filesystemsInOrder, rootId, origins)
 
-	log.Printf("ABS TEST: Got order %#v", filesystemsInOrder)
-
 	// What if we are interrupted during this loop?
 
 	// Because we delete from the leaves up, we SHOULD be OK: the
@@ -1180,7 +1178,6 @@ func (d *DatameshRPC) DeleteVolume(
 	// test that with the current test harness, however, so here's
 	// hoping I'm right.
 	for _, fsid := range filesystemsInOrder {
-		log.Printf("ABS TEST: Deleting %s", fsid)
 		// At this point, check the filesystem has no containers
 		// using it and error if so, for usability. This does not mean the
 		// filesystem is unused from here onwards, as it could come into
@@ -1189,7 +1186,7 @@ func (d *DatameshRPC) DeleteVolume(
 		// This will error if the filesystem is already marked as
 		// deleted; it shouldn't be in the metadata if it was, so
 		// hopefully that will never happen.
-		if rootId == fsid {
+		if filesystem.TopLevelVolume.Id == fsid {
 			// master branch, so record the name to delete and no branch to deklete
 			err = d.state.markFilesystemAsDeletedInEtcd(fsid, user.Name, *args, "", "")
 		} else {

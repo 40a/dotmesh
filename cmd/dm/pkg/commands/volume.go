@@ -144,8 +144,11 @@ func volumeDelete(cmd *cobra.Command, args []string, out io.Writer) error {
 	}
 
 	err = dm.DeleteVolume(volume)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
 
 func volumeShow(cmd *cobra.Command, args []string, out io.Writer) error {

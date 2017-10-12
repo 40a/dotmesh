@@ -123,7 +123,51 @@ func TestSingleNode(t *testing.T) {
 
 }
 
-func TestTwoNodesSameCluster(t *testing.T) {
+func checkDeletionWorked(t *testing.T, fsname string, delay time.Duration, node1 string, node2 string) {
+	// We return after the first failure, as there's little point
+	// continuing (it just makes it hard to scroll back to the point of
+	// initial failure).
+	fmt.Printf("Sleeping for %d seconds, to ensure the initial delete has happened but metadata cleanup hasn't yet.\n", delay/time.Second)
+	time.Sleep(delay)
+
+	st := s(t, node1, "dm list")
+	if strings.Contains(st, fsname) {
+		t.Error(fmt.Sprintf("The volume is still in 'dm list' on node1 (after %d seconds)", delay/time.Second))
+		return
+	}
+
+	st = s(t, node2, "dm list")
+	if strings.Contains(st, fsname) {
+		t.Error(fmt.Sprintf("The volume is still in 'dm list' on node2 (after %d seconds)", delay/time.Second))
+		return
+	}
+
+	st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
+	if strings.Contains(st, "WORLD") {
+		t.Error(fmt.Sprintf("The volume name wasn't reusable %d seconds after delete on node 1...", delay/time.Second))
+		return
+	}
+
+	st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+	if strings.Contains(st, "WORLD") {
+		t.Error(fmt.Sprintf("The volume name wasn't reusable %d seconds after delete on node 2...", delay/time.Second))
+		return
+	}
+
+	st = s(t, node1, "dm list")
+	if !strings.Contains(st, fsname) {
+		t.Error(fmt.Sprintf("The re-use of the deleted volume name failed in 'dm list' on node1 (after %d seconds)", delay/time.Second))
+		return
+	}
+
+	st = s(t, node2, "dm list")
+	if !strings.Contains(st, fsname) {
+		t.Error(fmt.Sprintf("The re-use of the deleted volume name failed in 'dm list' on node2 (after %d seconds)", delay/time.Second))
+		return
+	}
+}
+
+func TestDeletionSimple(t *testing.T) {
 	teardownFinishedTestRuns()
 
 	// Our cluster gets a metadata timeout of 5s
@@ -140,16 +184,7 @@ func TestTwoNodesSameCluster(t *testing.T) {
 	node1 := f[0].GetNode(0).Container
 	node2 := f[0].GetNode(1).Container
 
-	t.Run("Move", func(t *testing.T) {
-		fsname := uniqName()
-		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
-		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO")
-		if !strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("Unable to find world in transported data capsule, got '%s'", st))
-		}
-	})
-
-	t.Run("DeleteNonexistant", func(t *testing.T) {
+	t.Run("DeleteNonexistantFails", func(t *testing.T) {
 		fsname := uniqName()
 
 		st := s(t, node1, "if dm volume delete "+fsname+"; then false; else true; fi")
@@ -174,35 +209,34 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		}
 	})
 
-	t.Run("DeleteHappyPath", func(t *testing.T) {
+	t.Run("DeleteInstantly", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		d(t, node1, "dm volume delete "+fsname)
 
-		// Ensure the delete has happened completely This is twice the
-		// metadata timeout configured above, so all traces of the
-		// volume should be gone.
-		time.Sleep(10 * time.Second)
-
 		st := s(t, node1, "dm list")
 		if strings.Contains(st, fsname) {
-			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node1"))
-		}
-
-		st = s(t, node2, "dm list")
-		if strings.Contains(st, fsname) {
-			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node2"))
+			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node1 (immediately after deletion)"))
+			return
 		}
 
 		st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
 		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The volume didn't get deleted on node 1..."))
+			t.Error(fmt.Sprintf("The volume name wasn't immediately reusable after deletion on node 1..."))
+			return
 		}
 
-		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
-		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
-		}
+		/*
+				         We don't try and guarantee immediate deletion on other nodes.
+				         So the following may or may not fail, we can't test for it.
+
+				   		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
+				   		if strings.Contains(st, "WORLD") {
+				   			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
+			          		return
+				   		}
+		*/
+
 	})
 
 	t.Run("DeleteQuickly", func(t *testing.T) {
@@ -211,57 +245,62 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		d(t, node1, "dm volume delete "+fsname)
 
 		// Ensure the initial delete has happened, but the metadata is
-		// still draining This is less than half the metadata timeout
+		// still draining. This is less than half the metadata timeout
 		// configured above; the system should be in the process of
 		// cleaning up after the volume, but it should be fine to reuse
 		// the name by now.
-		time.Sleep(2 * time.Second)
 
-		st := s(t, node1, "dm list")
-		if strings.Contains(st, fsname) {
-			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node1"))
-		}
-
-		st = s(t, node2, "dm list")
-		if strings.Contains(st, fsname) {
-			t.Error(fmt.Sprintf("The volume is still in 'dm list' on node2"))
-		}
-
-		st = s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
-		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The volume didn't get deleted on node 1..."))
-		}
-
-		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
-		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
-		}
+		checkDeletionWorked(t, fsname, 2*time.Second, node1, node2)
 	})
 
-	t.Run("DeleteInstantly", func(t *testing.T) {
+	t.Run("DeleteSlowly", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
 		d(t, node1, "dm volume delete "+fsname)
 
-		// Try to re-use the name IMMEDIATELY, while the delete is still
-		// replicating around the system.
-		// This exercises the behaviour of the DeleteVolume rpc, which should
-		// block until the deletion is done on this node.
+		// Ensure the delete has happened completely This is twice the
+		// metadata timeout configured above, so all traces of the
+		// volume should be gone.
 
-		st := s(t, node1, dockerRun(fsname)+" cat /foo/HELLO || true")
-		if strings.Contains(st, "WORLD") {
-			t.Error(fmt.Sprintf("The volume didn't get deleted on node 1..."))
-		}
-		/*
-		         We don't try and guarantee immediate deletion on other nodes.
-		         So the following may or may not fail, we can't test for it.
-
-		   		st = s(t, node2, dockerRun(fsname)+" cat /foo/HELLO || true")
-		   		if strings.Contains(st, "WORLD") {
-		   			t.Error(fmt.Sprintf("The volume didn't get deleted on node 2..."))
-		   		}
-		*/
+		checkDeletionWorked(t, fsname, 10*time.Second, node1, node2)
 	})
+}
+
+func setupBranchesForDeletion(t *testing.T, fsname string, node1 string, node2 string) {
+	d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+	d(t, node1, "dm switch "+fsname)
+	d(t, node1, "dm commit -m 'On master'")
+
+	d(t, node1, "dm checkout -b branch1")
+	d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/GOODBYE'")
+	d(t, node1, "dm commit -m 'On branch1'")
+
+	d(t, node1, "dm checkout -b branch2")
+	d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/GOODBYE_CRUEL'")
+	d(t, node1, "dm commit -m 'On branch2'")
+
+	d(t, node1, "dm checkout master")
+	d(t, node1, "dm checkout -b branch3")
+	d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO_CRUEL'")
+	d(t, node1, "dm commit -m 'On branch3'")
+}
+
+func TestDeletionComplex(t *testing.T) {
+	teardownFinishedTestRuns()
+
+	// Our cluster gets a metadata timeout of 5s
+	f := Federation{NewClusterWithConfig(2, "FilesystemMetadataTimeoutInSeconds: 5\n")}
+
+	startTiming()
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		t.Error(err)
+	}
+	logTiming("setup")
+
+	node1 := f[0].GetNode(0).Container
+	node2 := f[0].GetNode(1).Container
 
 	t.Run("DeleteBranches", func(t *testing.T) {
 		// Set up some branches:
@@ -271,25 +310,40 @@ func TestTwoNodesSameCluster(t *testing.T) {
 		//   \-> branch3
 
 		fsname := uniqName()
-		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
-		d(t, node1, "dm switch "+fsname)
-		d(t, node1, "dm commit -m 'On master'")
-
-		d(t, node1, "dm checkout -b branch1")
-		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/GOODBYE'")
-		d(t, node1, "dm commit -m 'On branch1'")
-
-		d(t, node1, "dm checkout -b branch2")
-		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/GOODBYE_CRUEL'")
-		d(t, node1, "dm commit -m 'On branch2'")
-
-		d(t, node1, "dm checkout master")
-		d(t, node1, "dm checkout -b branch3")
-		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO_CRUEL'")
-		d(t, node1, "dm commit -m 'On branch3'")
+		setupBranchesForDeletion(t, fsname, node1, node2)
 
 		// Now kill the lot, right?
 		d(t, node1, "dm volume delete "+fsname)
+
+		// FIXME: Run this test again with a 10s delay as well
+		checkDeletionWorked(t, fsname, 2*time.Second, node1, node2)
+	})
+}
+
+func TestTwoNodesSameCluster(t *testing.T) {
+	teardownFinishedTestRuns()
+
+	// Our cluster gets a metadata timeout of 5s
+	f := Federation{NewCluster(2)}
+
+	startTiming()
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		t.Error(err)
+	}
+	logTiming("setup")
+
+	node1 := f[0].GetNode(0).Container
+	node2 := f[0].GetNode(1).Container
+
+	t.Run("Move", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" sh -c 'echo WORLD > /foo/HELLO'")
+		st := s(t, node2, dockerRun(fsname)+" cat /foo/HELLO")
+		if !strings.Contains(st, "WORLD") {
+			t.Error(fmt.Sprintf("Unable to find world in transported data capsule, got '%s'", st))
+		}
 	})
 }
 

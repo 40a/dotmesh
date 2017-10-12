@@ -150,6 +150,22 @@ linux_two_nodes_same_cluster:
     script:
         - ./test.sh -run TestTwoNodesSameCluster
 
+linux_deletion_simple:
+    stage: test
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestDeletionSimple
+
+linux_deletion_complex:
+    stage: test
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestDeletionComplex
+
 linux_two_single_node_clusters:
     stage: test
     tags:
