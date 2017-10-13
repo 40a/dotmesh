@@ -21,6 +21,7 @@ const AuthSagas = (opts = {}) => {
     if(!apis[name]) throw new Error(`${name} api required`)
   })
 
+  const analytics = opts.analytics
   ///////////////////////////////////////
   ///////////////////////////////////////
   // redux state
@@ -28,6 +29,7 @@ const AuthSagas = (opts = {}) => {
   // write the given credentials to the value reducer
   function* reduceCredentials(credentials) {
     yield put(actions.auth.setUser(credentials))
+    yield call(analytics.setUser, credentials)
     return credentials
   }
 

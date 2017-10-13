@@ -12,8 +12,16 @@ import Repo from './repo'
 import Billing from './billing'
 import Config from './config'
 import Controller from './controller'
+import Analytics from './analytics'
+
+const analytics = Analytics({
+  apis: {
+    
+  }
+})
 
 const auth = Auth({
+  analytics,
   apis: {
     login: apis.authLogin,
     register: apis.authRegister
@@ -21,6 +29,7 @@ const auth = Auth({
 })
 
 const repo = Repo({
+  analytics,
   apis: {
     list: apis.repoList,
     create: apis.repoCreate,
@@ -30,6 +39,7 @@ const repo = Repo({
 })
 
 const billing = Billing({
+  analytics,
   apis: {
     submit: apis.billingSubmitPayment
   }
@@ -52,11 +62,17 @@ const controllerLoop = Controller({
   hooks
 })
 
+function* onRouteChange() {
+  const routerState = yield select(state => state.router)
+  yield call(analytics.visitPage, routerState.pathname, routerState)
+  yield call(controllerLoop.onRouteChange)
+}
+
 const router = RouterSaga({
   hooks,
   basepath: config.basepath,
   authenticate: auth.authenticateRoute,
-  onChange: controllerLoop.onRouteChange,
+  onChange: onRouteChange,
   trigger: (name, payload) => {
     if(process.env.NODE_ENV=='development') {
       console.log(`hook: ${name} ${payload && payload.name ? payload.name : ''}`)
@@ -67,6 +83,7 @@ const router = RouterSaga({
 
 function* initialize() {
   yield call(delay, 1)
+  yield call(analytics.initialize)
   yield call(auth.initialize)
   yield put(actions.value.set('initialized', true))
   yield call(router.initialize)
