@@ -240,8 +240,6 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		// TODO move this into the Procure RPC, make flexvolume driver link to
-		// /var/datamesh/admin/apples
 		mountpoint, err := newContainerMountSymlink(name, filesystemId)
 		if err != nil {
 			writeResponseErr(err, w)
