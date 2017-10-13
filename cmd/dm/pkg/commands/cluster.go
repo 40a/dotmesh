@@ -824,7 +824,7 @@ func clusterReset(cmd *cobra.Command, args []string, out io.Writer) error {
 	fmt.Printf("done.\n")
 
 	fmt.Printf("Deleting datamesh-etcd container... ")
-	resp, err := exec.Command(
+	resp, err = exec.Command(
 		"docker", "rm", "-v", "-f", "datamesh-etcd",
 	).CombinedOutput()
 	if err != nil {
