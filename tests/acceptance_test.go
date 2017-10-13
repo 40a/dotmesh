@@ -822,4 +822,53 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		}
 	})
 
+	t.Run("NamespaceAuthorisationNonexistant", func(t *testing.T) {
+		d(t, aliceNode.Container, dockerRun("grapes")+" touch /foo/alice")
+		d(t, aliceNode.Container, "echo '"+aliceKey+"' | dm remote add common_grapes alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "dm switch grapes")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+
+		// Let's try and put things in a nonexistant namespace
+		// Likewise, This SHOULD fail, so we reverse the sense of the return code.
+		d(t, aliceNode.Container, "if dm push common_grapes --remote-volume nonexistant/grapes; then exit 1; else exit 0; fi")
+
+		// Check it doesn't get there
+		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | sort")
+		if strings.Contains(resp, "nonexistant/grapes") {
+			t.Error("Found nonexistant/grapes on the common node - but alice shouldn't have been able to create that!")
+		}
+	})
+
+	t.Run("NamespaceAuthorisation", func(t *testing.T) {
+		d(t, aliceNode.Container, dockerRun("passionfruit")+" touch /foo/alice")
+		d(t, aliceNode.Container, "echo '"+aliceKey+"' | dm remote add common_passionfruit alice@"+commonNode.IP)
+		d(t, aliceNode.Container, "dm switch passionfruit")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+
+		// Let's try and put things in bob's namespace.
+		// This SHOULD fail, so we reverse the sense of the return code.
+		d(t, aliceNode.Container, "if dm push common_passionfruit --remote-volume bob/passionfruit; then exit 1; else exit 0; fi")
+
+		// Check it doesn't get there
+		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | sort")
+		if strings.Contains(resp, "bob/passionfruit") {
+			t.Error("Found bob/passionfruit on the common node - but alice shouldn't have been able to create that!")
+		}
+	})
+
+	t.Run("NamespaceAuthorisationAdmin", func(t *testing.T) {
+		d(t, aliceNode.Container, dockerRun("prune")+" touch /foo/alice")
+		d(t, aliceNode.Container, "dm switch prune")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+
+		// Let's try and put things in bob's namespace, but using the cluster_0 remote which is logged in as admin
+		// This should work, because we're admin, even though it's bob's namespace
+		d(t, aliceNode.Container, "dm push cluster_0 --remote-volume bob/prune")
+
+		// Check it got there
+		resp := s(t, commonNode.Container, "dm list -H | cut -f 1 | sort")
+		if !strings.Contains(resp, "bob/prune") {
+			t.Error("Didn't find bob/prune on the common node - but alice should have been able to create that using her admin account!")
+		}
+	})
 }
