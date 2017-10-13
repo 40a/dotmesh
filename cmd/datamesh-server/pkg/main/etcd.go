@@ -184,7 +184,11 @@ func isFilesystemDeletedInEtcd(fsId string) (bool, error) {
 	}
 }
 
-func (state *InMemoryState) markFilesystemAsDeletedInEtcd(fsId, username string, name VolumeName, tlFsId, branch string) error {
+func (state *InMemoryState) markFilesystemAsDeletedInEtcd(
+	fsId, username string,
+	name VolumeName,
+	tlFsId, branch string,
+) error {
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		return err
@@ -192,22 +196,25 @@ func (state *InMemoryState) markFilesystemAsDeletedInEtcd(fsId, username string,
 
 	// Feel free to suggest additional useful things to put in the
 	// deletion audit trail.  The two that the system REQUIRES are
-	// "Name", "TopLevelFilesystemId" and "Branch", which are used to ensure that the registry
+	// "Name", "TopLevelFilesystemId" and "Clone", which are used to ensure that the registry
 	// entry is cleaned up later. (Name for a top level filesystem,
-	// Branch for a non-master branch). Please don't remove/rename that
+	// Clone for a non-master branch). Please don't remove/rename that
 	// without updating cleanupDeletedFilesystems
 	auditTrail, err := json.Marshal(struct {
 		Server    string
 		Username  string
 		DeletedAt time.Time
 
+		// These fields are mandatory
 		Name                 VolumeName
 		TopLevelFilesystemId string
-		Branch               string
-	}{state.myNodeId,
+		Clone                string
+	}{
+		state.myNodeId,
 		username,
 		time.Now(),
 
+		// These fields are mandatory
 		name,
 		tlFsId,
 		branch})
@@ -244,10 +251,10 @@ func (state *InMemoryState) markFilesystemAsDeletedInEtcd(fsId, username string,
 // issues with upgrading a running cluster, if old deletion audit
 // trails are in etcd with different state. These are the only things
 // we need to read back.
-type NameOrBranch struct {
+type NameOrClone struct {
 	Name                 VolumeName
 	TopLevelFilesystemId string
-	Branch               string
+	Clone                string
 }
 
 func (state *InMemoryState) cleanupDeletedFilesystems() error {
@@ -287,7 +294,11 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 			// to indicate that this was a branch, NOT the master, so
 			// there's no need to remove the registry entry for the whole
 			// volume. We only do that when deleting master.
-			key := fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, names.Name.Namespace, names.Name.Name)
+			key := fmt.Sprintf(
+				"%s/registry/filesystems/%s/%s",
+				ETCD_PREFIX,
+				names.Name.Namespace,
+				names.Name.Name)
 
 			oldNode, err := kapi.Get(
 				context.Background(),
@@ -324,8 +335,10 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 			}
 		}
 
-		if names.Branch != "" {
-			del(fmt.Sprintf("%s/registry/clones/%s/%s", ETCD_PREFIX, names.TopLevelFilesystemId, names.Branch))
+		if names.Clone != "" {
+			del(fmt.Sprintf(
+				"%s/registry/clones/%s/%s", ETCD_PREFIX,
+				names.TopLevelFilesystemId, names.Clone))
 		}
 
 		if len(errors) == 0 {
@@ -339,7 +352,7 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 }
 
 // The result is a map from filesystem ID to the VolumeName or branch name it once had.
-func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]NameOrBranch, error) {
+func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]NameOrClone, error) {
 	// list ETCD_PREFIX/filesystems/cleanupPending/ID without corresponding
 	// ETCD_PREFIX/filesystems/live/ID
 
@@ -349,13 +362,13 @@ func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]NameOrBranch
 	)
 	if err != nil {
 		if client.IsKeyNotFound(err) {
-			return map[string]NameOrBranch{}, nil
+			return map[string]NameOrClone{}, nil
 		} else {
-			return map[string]NameOrBranch{}, err
+			return map[string]NameOrClone{}, err
 		}
 	}
 
-	result := make(map[string]NameOrBranch, 0)
+	result := make(map[string]NameOrClone, 0)
 	for _, node := range pending.Node.Nodes {
 		// /datamesh.io/filesystems/cleanupPending/3ed24670-8fd0-4cec-4191-d3d5bae15172
 		pieces := strings.Split(node.Key, "/")
@@ -371,18 +384,20 @@ func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]NameOrBranch
 			} else if client.IsKeyNotFound(err) {
 				// Key not found, it's no longer live
 				// So extract the name from the audit trail and add it to the result
-				var audit NameOrBranch
+				var audit NameOrClone
 				err := json.Unmarshal([]byte(node.Value), &audit)
 				if err != nil {
 					// We don't want one corrupted key stopping us from finding the rest
 					// So log+ignore.
-					log.Printf("[listFilesystemsPendingCleanup] Error parsing audit trail: %s=%s", node.Key, node.Value)
+					log.Printf(
+						"[listFilesystemsPendingCleanup] Error parsing audit trail: %s=%s",
+						node.Key, node.Value)
 				} else {
 					result[fsId] = audit
 				}
 			} else {
 				// Error!
-				return map[string]NameOrBranch{}, err
+				return map[string]NameOrClone{}, err
 			}
 		}
 	}
@@ -953,6 +968,8 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		filesystemId := pieces[4]
 		dirtyInfo := &dirtyInfo{}
 		if node.Value == "" {
+			s.globalDirtyCacheLock.Lock()
+			defer s.globalDirtyCacheLock.Unlock()
 			delete((*s.globalDirtyCache), filesystemId)
 		} else {
 			err := json.Unmarshal([]byte(node.Value), dirtyInfo)
@@ -970,6 +987,8 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		filesystemId := pieces[4]
 		containerInfo := &containerInfo{}
 		if node.Value == "" {
+			s.globalContainerCacheLock.Lock()
+			defer s.globalContainerCacheLock.Unlock()
 			delete(*s.globalContainerCache, filesystemId)
 		} else {
 			err := json.Unmarshal([]byte(node.Value), containerInfo)
@@ -989,6 +1008,8 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		transferId := pieces[4]
 		transferInfo := &TransferPollResult{}
 		if node.Value == "" {
+			s.interclusterTransfersLock.Lock()
+			defer s.interclusterTransfersLock.Unlock()
 			delete(*s.interclusterTransfers, transferId)
 		} else {
 			err := json.Unmarshal([]byte(node.Value), transferInfo)
@@ -1041,7 +1062,6 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 
 	// find the masters and requests nodes
 	var masters *client.Node
-	var deleted *client.Node
 	var requests *client.Node
 	var serverAddresses *client.Node
 	var serverSnapshots *client.Node
@@ -1053,11 +1073,26 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 	var dirtyFilesystems *client.Node
 	for _, parent := range current.Node.Nodes {
 		// need to iterate in...
+
+		// We delibarately skip the "filesystems/deleted",
+		// "filesystems/cleanupNeeded" and "filesystems/live" regions as
+		// we don't store any caches of those things. In particular,
+		// filesystems/deleted might grow without bound in a long-lived
+		// cluster so we avoid ever keeping the whole thing anywhere
+		// other than in etcd (and even there it might require pruning
+		// in future); and cleanupNeeded and live are polled for in the
+		// cleanupDeletedFilesystems goroutine. We could, if needed,
+		// rewrite that to make the watcher notice "live" nodes
+		// disappearing and check for a corresponding "cleanupNeeded"
+		// and trigger cleanup, but that makes it almost certain that
+		// multiple nodes (indeed, all nodes) will attempt to do the
+		// cleanup - polling makes it most likely that one random node
+		// will do any given cleanup, avoiding waste without the cost of
+		// an explicit distributed transaction to ensure exactly one
+		// node does it.
 		for _, child := range parent.Nodes {
 			if getVariant(child) == "filesystems/masters" {
 				masters = child
-			} else if getVariant(child) == "filesystems/deleted" {
-				deleted = child
 			} else if getVariant(child) == "filesystems/requests" {
 				requests = child
 			} else if getVariant(child) == "servers/addresses" {
@@ -1089,13 +1124,6 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		for _, node := range masters.Nodes {
 			updateMine(node)
 			if err = s.handleOneFilesystemMaster(node); err != nil {
-				return err
-			}
-		}
-	}
-	if deleted != nil {
-		for _, node := range deleted.Nodes {
-			if err = s.handleOneFilesystemDeletion(node); err != nil {
 				return err
 			}
 		}

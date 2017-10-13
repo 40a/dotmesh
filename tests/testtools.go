@@ -442,6 +442,11 @@ func NewCluster(desiredNodeCount int) *Cluster {
 	return &Cluster{DesiredNodeCount: desiredNodeCount, Config: ""}
 }
 
+/*
+ Caller beware: the config string is put into a shell command in
+ single quotes, so please don't use single quotes inside it. If you
+ need to, them implement quoting where c.Config is mentioned below.
+*/
 func NewClusterWithConfig(desiredNodeCount int, config string) *Cluster {
 	return &Cluster{DesiredNodeCount: desiredNodeCount, Config: config}
 }

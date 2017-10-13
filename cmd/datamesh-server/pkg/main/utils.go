@@ -215,7 +215,9 @@ func runWhileFilesystemLives(f func() error, label string, filesystemId string, 
 		default:
 			err := f()
 			if err != nil {
-				log.Printf("Error in runWhileFilesystemLives(%s@%s), retrying in %s: %s", label, filesystemId, errorBackoff, err)
+				log.Printf(
+					"Error in runWhileFilesystemLives(%s@%s), retrying in %s: %s",
+					label, filesystemId, errorBackoff, err)
 				time.Sleep(errorBackoff)
 			} else {
 				time.Sleep(successBackoff)

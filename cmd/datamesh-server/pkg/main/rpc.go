@@ -1120,7 +1120,6 @@ func sortFilesystemsInDeletionOrder(in []string, rootId string, origins map[stri
 	return in
 }
 
-// Containers that were recently known to be running on a given filesystem.
 func (d *DatameshRPC) DeleteVolume(
 	r *http.Request,
 	args *VolumeName,
@@ -1137,13 +1136,25 @@ func (d *DatameshRPC) DeleteVolume(
 		return err
 	}
 
+	authorized, err := filesystem.AuthorizeOwner(r.Context())
+	if err != nil {
+		return err
+	}
+	if !authorized {
+		return fmt.Errorf(
+			"You are not the owner of volume %s/%s. Only the owner can delete it.",
+			args.Namespace, args.Name,
+		)
+
+	}
+
 	// Find the list of all clones of the filesystem, as we need to delete each independently.
 	filesystems := d.state.registry.ClonesFor(filesystem.TopLevelVolume.Id)
 
 	// We can't destroy a filesystem that's an origin for another
 	// filesystem, so let's topologically sort them and destroy them leaves-first.
 
-	// Analuse the list of filesystems, putting it into a more useful form for our purposes
+	// Analyse the list of filesystems, putting it into a more useful form for our purposes
 	origins := make(map[string]string)
 	names := make(map[string]string)
 	for name, fs := range filesystems {
@@ -1153,8 +1164,9 @@ func (d *DatameshRPC) DeleteVolume(
 		names[fs.FilesystemId] = name
 	}
 
-	// FUTURE WORK: If we ever need to delete just some branches, we
-	// can do so by picking a different rootId here.
+	// FUTURE WORK: If we ever need to delete just some clones, we
+	// can do so by picking a different rootId here. See
+	// https://github.com/datamesh-io/datamesh/issues/58
 	rootId := filesystem.TopLevelVolume.Id
 
 	// Check all clones are not in use. This is no guarantee one won't
@@ -1172,7 +1184,7 @@ func (d *DatameshRPC) DeleteVolume(
 	// What if we are interrupted during this loop?
 
 	// Because we delete from the leaves up, we SHOULD be OK: the
-	// system may end up in a state where some branches are gone, but
+	// system may end up in a state where some clones are gone, but
 	// the top-level filesystem remains and a new deletion on that
 	// should pick up where we left off.  I don't know how to easily
 	// test that with the current test harness, however, so here's
@@ -1187,11 +1199,13 @@ func (d *DatameshRPC) DeleteVolume(
 		// deleted; it shouldn't be in the metadata if it was, so
 		// hopefully that will never happen.
 		if filesystem.TopLevelVolume.Id == fsid {
-			// master branch, so record the name to delete and no branch to deklete
+			// master clone, so record the name to delete and no clone registry entry to delete
 			err = d.state.markFilesystemAsDeletedInEtcd(fsid, user.Name, *args, "", "")
 		} else {
-			// Not the master branch, so don't record a name to delete, but do record a branch
-			err = d.state.markFilesystemAsDeletedInEtcd(fsid, user.Name, VolumeName{}, filesystem.TopLevelVolume.Id, names[fsid])
+			// Not the master clone, so don't record a name to delete, but do record a clone name for deletion
+			err = d.state.markFilesystemAsDeletedInEtcd(
+				fsid, user.Name, VolumeName{},
+				filesystem.TopLevelVolume.Id, names[fsid])
 		}
 		if err != nil {
 			return err
@@ -1210,10 +1224,11 @@ func (d *DatameshRPC) DeleteVolume(
 		// them to eventually be deleted.
 	}
 
-	// If we're deleting the entire filesystem rather than just a branch, we need to unregister it.
+	// If we're deleting the entire filesystem rather than just a
+	// clone, we need to unregister it.
 
-	// At this point, we have an inconsistent system state: the
-	// clone filesystems are marked for deletion, but their name is still
+	// At this point, we have an inconsistent system state: the clone
+	// filesystems are marked for deletion, but their name is still
 	// registered in the registry. If we crash here, the name is taken
 	// by a nonexistant filesystem.
 

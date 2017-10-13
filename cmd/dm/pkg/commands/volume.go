@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -58,6 +59,10 @@ func NewCmdVolumeDelete(out io.Writer) *cobra.Command {
 			}
 		},
 	}
+	cmd.Flags().BoolVarP(
+		&forceMode, "force", "f", false,
+		"perform dangerous operations without requiring confirmation.",
+	)
 	return cmd
 }
 
@@ -134,12 +139,20 @@ func volumeDelete(cmd *cobra.Command, args []string, out io.Writer) error {
 	}
 
 	var volume string
-	if len(args) == 1 {
+	switch len(args) {
+	case 1:
 		volume = args[0]
-	} else {
-		volume, err = dm.CurrentVolume()
-		if err != nil {
-			return err
+	default:
+		return fmt.Errorf("Please specify the volume to delete (the default volume is ignored for deletion, to avoid mistakes).")
+	}
+
+	if !forceMode {
+		fmt.Printf("Please confirm that you really want to delete the volume %s, including all branches and commits? (enter Y to continue): ", volume)
+		reader := bufio.NewReader(os.Stdin)
+		text, _ := reader.ReadString('\n')
+		if text != "Y\n" {
+			fmt.Printf("Aborted.\n")
+			return nil
 		}
 	}
 

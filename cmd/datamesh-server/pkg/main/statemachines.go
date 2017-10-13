@@ -64,6 +64,10 @@ func (f *fsMachine) run() {
 		time.Duration(f.state.config.FilesystemMetadataTimeout/2)*time.Second,
 		time.Duration(f.state.config.FilesystemMetadataTimeout/2)*time.Second,
 	)
+	// The success backoff time for updateEtcdAboutSnapshots is 0s
+	// because it blocks on a channel anyway; inserting a success
+	// backoff just means it'll be rate-limited as it'll sleep before
+	// processing each snapshot!
 	go runWhileFilesystemLives(
 		f.updateEtcdAboutSnapshots,
 		"updateEtcdAboutSnapshots",
@@ -89,17 +93,8 @@ func (f *fsMachine) run() {
 
 		// Senders close channels, receivers check for closedness.
 
-		// close(f.requests) // no more events will come out if we reach the nil state
-		// close(f.innerRequests)
 		close(f.innerResponses)
-		/*
-			f.responsesLock.Lock()
-			for _, c := range f.responses {
-				close(c)
-			}
-			f.responsesLock.Unlock()
-			close(f.snapshotsModified)
-		*/
+
 		// Remove ourself from the filesystems map
 		f.state.filesystemsLock.Lock()
 		defer f.state.filesystemsLock.Unlock()
@@ -437,9 +432,11 @@ waitingForSlaveSnapshot:
 		for !gotSnaps {
 			select {
 			case e := <-f.innerRequests:
-				// What if a deletion message comes in here? Hopefully,
-				// the deletion will happen later, when we go into
-				// discovery again.
+				// What if a deletion message comes in here?
+
+				// In that case, the deletion will happen later, when we
+				// go into discovery again and perform the check for the
+				// filesystem being deleted.
 				log.Printf("rejecting all %s", e)
 				f.innerResponses <- &Event{"busy-handoff", &EventArgs{}}
 			case _ = <-newSnapsChan:

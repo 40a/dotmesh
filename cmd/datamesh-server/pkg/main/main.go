@@ -37,13 +37,11 @@ func main() {
 	var config Config
 	var foundConfig bool
 
-	// Initialise defaults
-	config = Config{
-		Plans:                     []Plan{},
-		StripePrivateKey:          "",
-		StripePublicKey:           "",
-		FilesystemMetadataTimeout: 600,
-	}
+	// Blank configuration to begin with
+	config = Config{}
+
+	// Initialise defaults, where zero values aren't good
+	config.FilesystemMetadataTimeout = 600
 
 	// Attempt to load configuration
 	dat, err := ioutil.ReadFile(CONFIG_PATH)
