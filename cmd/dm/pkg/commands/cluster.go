@@ -960,7 +960,7 @@ func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
 	if err != nil {
 		panic(err)
 	}
-	if strings.Contains(version, "Microsoft") {
+	if strings.Contains(string(version), "Microsoft") {
 		// In test environment, user was 'User' and Linux user was 'user'.
 		// Hopefully lowercasing is the only transformation.  Hopefully on the
 		// Windows (docker server) side, the path is case insensitive!
