@@ -952,7 +952,7 @@ func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
 	// We can determine whether this is necessary by reading /proc/version
 	// https://github.com/Microsoft/BashOnWindows/issues/423#issuecomment-221627364
 
-	version, err := os.ReadFile("/proc/version")
+	version, err := ioutil.ReadFile("/proc/version")
 	if err != nil {
 		panic(err)
 	}
