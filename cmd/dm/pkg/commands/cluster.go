@@ -810,9 +810,22 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 }
 
 func clusterReset(cmd *cobra.Command, args []string, out io.Writer) error {
+	// TODO this should gather a _list_ of errors, not just at-most-one!
 	var bailErr error
-	fmt.Printf("Deleting datamesh-etcd container... ")
+
+	fmt.Printf("Destroying all datamesh data... ")
 	resp, err := exec.Command(
+		"docker", "exec", "datamesh-server-inner",
+		"zfs", "destroy", "-r", "pool",
+	).CombinedOutput()
+	if err != nil {
+		fmt.Printf("response: %s\n", resp)
+		bailErr = err
+	}
+	fmt.Printf("done.\n")
+
+	fmt.Printf("Deleting datamesh-etcd container... ")
+	resp, err = exec.Command(
 		"docker", "rm", "-v", "-f", "datamesh-etcd",
 	).CombinedOutput()
 	if err != nil {

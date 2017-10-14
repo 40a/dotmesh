@@ -604,10 +604,21 @@ func (d *DatameshRPC) RegisterFilesystem(
 	result *bool,
 ) error {
 	log.Printf("[RegisterFilesystem] called with args: %+v", args)
+
+	isAdmin, err := AuthenticatedUserIsNamespaceAdministrator(r.Context(), args.Namespace)
+	if err != nil {
+		return err
+	}
+
+	if !isAdmin {
+		return fmt.Errorf("User is not an administrator for namespace %s, so cannot create volumes",
+			args.Namespace)
+	}
+
 	if !args.BecomeMasterIfNotExists {
 		panic("can't not become master in RegisterFilesystem inter-cluster rpc")
 	}
-	err := d.registerFilesystemBecomeMaster(
+	err = d.registerFilesystemBecomeMaster(
 		r.Context(),
 		args.Namespace,
 		args.TopLevelFilesystemName,
