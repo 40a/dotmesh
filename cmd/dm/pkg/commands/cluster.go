@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -639,7 +640,7 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 		// hopefully it works well enough on docker for mac and docker machine.
 		// An alternative approach could be to pass in the cluster secret as an
 		// env var and download it and cache it in a docker volume.
-		"-v", fmt.Sprintf("%s:/pki", pkiPath),
+		"-v", fmt.Sprintf("%s:/pki", maybeEscapeLinuxEmulatedPathOnWindows(pkiPath)),
 		etcdDockerImage,
 		"etcd", "--name", hostnameString,
 		"--data-dir", "/var/lib/etcd",
@@ -923,6 +924,36 @@ func getPkiPath() string {
 	dirPath := filepath.Dir(configPath)
 	pkiPath := dirPath + "/pki"
 	return pkiPath
+}
+
+func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
+	// If the 'dm' client is running on Windows in WSL (Windows Subsystem for
+	// Linux), and the Linux docker client is installed in the WSL environment,
+	// and Docker for Windows is installed, we need to escape the WSL chroot
+	// path, before being passed to Docker as a Windows path. E.g.
+	//
+	// /home/$USER/.datamesh/pki
+	//   ->
+	// C:/Users/$USER/AppData/Local/lxss/home/$USER/.datamesh/pki
+	//
+	// We can determine whether this is necessary by reading /proc/version
+	// https://github.com/Microsoft/BashOnWindows/issues/423#issuecomment-221627364
+
+	version, err := os.ReadFile("/proc/version")
+	if err != nil {
+		panic(err)
+	}
+	user, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	if strings.Contains(version, "Microsoft") {
+		// In test environment, user was 'User' and Linux user was 'user'.
+		// Hopefully lowercasing is the only transformation.  Hopefully on the
+		// Windows (docker server) side, the path is case insensitive!
+		return "C:/Users/" + user.Username + "/AppData/Local/lxss" + path
+	}
+	return path
 }
 
 func generatePKI(extantCA bool) error {
