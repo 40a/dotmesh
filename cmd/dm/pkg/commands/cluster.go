@@ -955,7 +955,7 @@ func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// normal on macOS
-			return version
+			return path
 		} else {
 			panic(err)
 		}
