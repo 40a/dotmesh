@@ -953,7 +953,7 @@ func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
 
 	version, err := ioutil.ReadFile("/proc/version")
 	if err != nil {
-		if io.IsNotExist(err) {
+		if os.IsNotExist(err) {
 			// normal on macOS
 			return string
 		} else {
