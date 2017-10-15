@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -956,7 +955,7 @@ func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
 	if err != nil {
 		panic(err)
 	}
-	user, err := user.Current()
+	user, err := exec.Command("whoami").CombinedOutput()
 	if err != nil {
 		panic(err)
 	}
@@ -964,7 +963,7 @@ func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
 		// In test environment, user was 'User' and Linux user was 'user'.
 		// Hopefully lowercasing is the only transformation.  Hopefully on the
 		// Windows (docker server) side, the path is case insensitive!
-		return "C:/Users/" + user.Username + "/AppData/Local/lxss" + path
+		return "C:/Users/" + strings.TrimSpace(string(user)) + "/AppData/Local/lxss" + path
 	}
 	return path
 }
