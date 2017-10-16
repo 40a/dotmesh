@@ -557,7 +557,7 @@ func startDatameshContainer(pkiPath string) error {
 		"-e", fmt.Sprintf("ALLOW_PUBLIC_REGISTRATION=%s", regStr),
 		// Set env var so that sub-container executor can bind-mount the right
 		// certificates in.
-		"-e", fmt.Sprintf("PKI_PATH=%s", pkiPath),
+		"-e", fmt.Sprintf("PKI_PATH=%s", maybeEscapeLinuxEmulatedPathOnWindows(pkiPath)),
 		// And know their own identity, so they can respawn.
 		"-e", fmt.Sprintf("DATAMESH_DOCKER_IMAGE=%s", datameshDockerImage),
 		"-e", fmt.Sprintf("ASSETS_URL_PREFIX=%s", assetsURLPrefix),
