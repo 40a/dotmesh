@@ -690,8 +690,7 @@ spec:
    selector:
        app: apple-server
    ports:
-     - port: 8080
-       targetPort: 8080
+     - port: 80
        nodePort: 30003
 `)
 	})
