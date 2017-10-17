@@ -110,6 +110,16 @@ windows_docker_stable:
     tags:
         - windows
         - docker-stable
+    before_script:
+        - |
+          bash -c "
+          mkdir -p gopath
+          export GOPATH=$(pwd)/gopath
+          cd gopath
+          mkdir -p src/github.com/datamesh-io
+          ln -s `realpath ..` ./src/github.com/datamesh-io/datamesh
+          cd src/github.com/datamesh-io/datamesh
+          "
     script:
         - |
           bash -c "
