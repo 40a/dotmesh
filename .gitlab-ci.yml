@@ -104,7 +104,21 @@ merge_frontend:
         - cd cmd/datamesh-server
         - ./mergebuild.sh
 
-# run sanity check that things still work on macOS
+# run sanity check that things still work on Windows and macOS
+windows_docker_stable:
+    stage: test
+    tags:
+        - windows
+        - docker-stable
+    script:
+        - | bash -c "
+            cd cmd/datamesh-server;
+            docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
+            cd ../..
+            ./smoke.sh $(pwd)/binaries/Linux/dm datamesh-server
+            docker system prune -fa
+            "
+
 macos_docker_stable:
     stage: test
     tags:
