@@ -111,13 +111,14 @@ windows_docker_stable:
         - windows
         - docker-stable
     script:
-        - | bash -c "
-            cd cmd/datamesh-server;
-            docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
-            cd ../..
-            ./smoke.sh $(pwd)/binaries/Linux/dm datamesh-server
-            docker system prune -fa
-            "
+        - |
+          bash -c "
+          cd cmd/datamesh-server;
+          docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
+          cd ../..
+          ./smoke.sh $(pwd)/binaries/Linux/dm datamesh-server
+          docker system prune -fa
+          "
 
 macos_docker_stable:
     stage: test
