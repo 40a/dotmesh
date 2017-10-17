@@ -608,12 +608,27 @@ func TestKubernetes(t *testing.T) {
 	node1 := f[0].GetNode(0)
 
 	t.Run("FlexVolume", func(t *testing.T) {
+
 		// dm list should succeed in connecting to the datamesh cluster
 		d(t, node1.Container, "dm list")
+
+		// Wait for etcd to settle before firing up volumes
+		// FIXME: Make CreateFilesystem (controller.go) not so fragile about failures while it's happening.
+		fmt.Printf("Waiting for etcd...\n")
+		for {
+			resp := s(t, node1.Container, "kubectl describe etcd datamesh-etcd-cluster -n datamesh")
+			if strings.Contains(resp, "Size:\t\t3") {
+				fmt.Printf("etcd is up!\n")
+				break
+			}
+			fmt.Printf("etcd is not up... %#v\n", resp)
+			time.Sleep(time.Second)
+		}
+
 		// init a datamesh volume and put some data in it
 		d(t, node1.Container,
 			"docker run --rm -i -v apples:/foo --volume-driver dm "+
-				"busybox touch /foo/on-the-tree",
+				"busybox sh -c \"echo 'apples' > /foo/on-the-tree\"",
 		)
 
 		// create a PV referencing the data
@@ -696,7 +711,7 @@ spec:
 	})
 
 	err = tryUntilSucceeds(func() error {
-		resp, err := http.Get(fmt.Sprintf("http://%s:30003/", node1.IP))
+		resp, err := http.Get(fmt.Sprintf("http://%s:30003/on-the-tree", node1.IP))
 		if err != nil {
 			return err
 		}
@@ -705,7 +720,7 @@ spec:
 		if err != nil {
 			return err
 		}
-		if !strings.Contains(string(body), "on-the-tree") {
+		if !strings.Contains(string(body), "apples") {
 			return fmt.Errorf("No apples on the tree, got this instead: %v", string(body))
 		}
 		return nil
