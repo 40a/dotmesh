@@ -121,6 +121,31 @@ func TestSingleNode(t *testing.T) {
 		fmt.Printf("AllVolumesAndClones response: %v\n", resp)
 	})
 
+	// Exercise the import functionality which should already exists in Docker
+	t.Run("ImportDockerImage", func(t *testing.T) {
+		fsname := uniqName()
+		resp := s(t, node1,
+			// Mount the volume at /etc in the container. Docker should copy the
+			// contents of /etc in the image over the top of the new blank volume.
+			dockerRun(fsname, "--name import-test", "busybox", "/etc")+" cat /etc/passwd",
+		)
+		// "root" normally shows up in /etc/passwd
+		if !strings.Contains(resp, "root") {
+			t.Error("unable to find 'root' in expected output")
+		}
+		// If we reuse the volume, we should find the contents of /etc
+		// imprinted therein.
+		resp = s(t, node1,
+			// XXX Shouldn't need to prefix "admin/" here.
+			// See: https://github.com/datamesh-io/datamesh/issues/63
+			dockerRun("admin/"+fsname, "--name import-test", "busybox", "/foo")+" cat /foo/passwd",
+		)
+		// "root" normally shows up in /etc/passwd
+		if !strings.Contains(resp, "root") {
+			t.Error("unable to find 'root' in expected output")
+		}
+	})
+
 }
 
 func TestTwoNodesSameCluster(t *testing.T) {
