@@ -496,9 +496,12 @@ func (state *InMemoryState) reallyProcureFilesystem(ctx context.Context, name Vo
 		// TODO can we synchronize with the state machine somehow, to
 		// ensure that we're not currently on a master in the process of
 		// doing a handoff?
-		if state.masterFor(filesystemId) == state.myNodeId {
+		master := state.masterFor(filesystemId)
+		if master == state.myNodeId {
 			log.Printf("Volume already here, we are done %s", filesystemId)
 			return filesystemId, nil
+		} else if master == "" {
+			return "", fmt.Errorf("Internal error: The volume name exists, but the volume does not (have a master). Name:%s Clone:%s ID:%s", name, cloneName, filesystemId)
 		} else {
 			// put in a request for the current master of the filesystem to
 			// move it to me
