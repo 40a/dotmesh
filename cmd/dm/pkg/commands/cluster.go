@@ -968,7 +968,7 @@ func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
 		// In test environment, user was 'User' and Linux user was 'user'.
 		// Hopefully lowercasing is the only transformation.  Hopefully on the
 		// Windows (docker server) side, the path is case insensitive!
-		return "C:/Users/" + strings.TrimSpace(string(user)) + "/AppData/Local/lxss" + path
+		return "/c/Users/" + strings.TrimSpace(string(user)) + "/AppData/Local/lxss" + path
 	}
 	return path
 }
