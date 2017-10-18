@@ -164,6 +164,7 @@ linux_deletion_complex:
         - ubuntu-16.10
         - fast
     script:
+        - git log --pretty=oneline |head -n 3
         - ./test.sh -run TestDeletionComplex
 
 linux_two_single_node_clusters:
