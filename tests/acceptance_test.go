@@ -137,6 +137,20 @@ func TestSingleNode(t *testing.T) {
 		fmt.Printf("AllVolumesAndClones response: %v\n", resp)
 	})
 
+	// XXX This test doesn't fail on Docker 1.12.6, which is used
+	// by dind, but it does fail without using
+	// `fs.StringWithoutAdmin()` in docker.go due to manual testing
+	// on docker 17.06.2-ce. Need to improve the test suite to use
+	// a variety of versions of docker in dind environments.
+	t.Run("RunningContainerTwice", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO")
+		st := s(t, node1, dockerRun(fsname)+" ls /foo/HELLO")
+		if !strings.Contains(st, "HELLO") {
+			t.Errorf("Data did not persist between two instanciations of the same volume on the same host: %v", st)
+		}
+	})
+
 }
 
 func TestTwoNodesSameCluster(t *testing.T) {
