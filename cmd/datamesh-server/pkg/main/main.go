@@ -132,7 +132,9 @@ func main() {
 
 	for _, filesystemId := range findFilesystemIdsOnSystem() {
 		log.Printf("Initializing fsMachine for %s", filesystemId)
-		s.initFilesystemMachine(filesystemId)
+		go func() {
+			s.initFilesystemMachine(filesystemId)
+		}()
 	}
 	go runForever(
 		s.updateAddressesInEtcd, "updateAddressesInEtcd",
