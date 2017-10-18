@@ -279,7 +279,7 @@ func teardownFinishedTestRuns() {
 		}()
 		out, err := exec.Command("docker", "volume", "prune", "-f").Output()
 		if err != nil {
-			fmt.Printf("unable to prune docker volumes: %s\n", err)
+			fmt.Printf("unable to prune docker volumes: %s, %s\n", err, out)
 		}
 	}
 }
