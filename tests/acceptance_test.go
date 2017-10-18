@@ -75,6 +75,15 @@ func TestSingleNode(t *testing.T) {
 
 	t.Run("Reset", func(t *testing.T) {
 		fsname := uniqName()
+		// Run a container in the background so that we can observe it get
+		// restarted.
+		d(t, node1,
+			dockerRun(fsname, "-d --name sleeper")+" sleep 100",
+		)
+		initialStart := s(t, node1,
+			"docker inspect sleeper |jq .[0].State.StartedAt",
+		)
+
 		d(t, node1, dockerRun(fsname)+" touch /foo/X")
 		d(t, node1, "dm switch "+fsname)
 		d(t, node1, "dm commit -m 'hello'")
@@ -98,6 +107,13 @@ func TestSingleNode(t *testing.T) {
 		if strings.Contains(resp, "Y") {
 			t.Error("failed to roll back filesystem")
 		}
+		newStart := s(t, node1,
+			"docker inspect sleeper |jq .[0].State.StartedAt",
+		)
+		if initialStart == newStart {
+			t.Errorf("container was not restarted during rollback (initialStart %v == newStart %v)", strings.TrimSpace(initialStart), strings.TrimSpace(newStart))
+		}
+
 	})
 
 	t.Run("RunningContainersListed", func(t *testing.T) {
@@ -119,6 +135,20 @@ func TestSingleNode(t *testing.T) {
 	t.Run("AllVolumesAndClones", func(t *testing.T) {
 		resp := s(t, node1, "dm debug AllVolumesAndClones")
 		fmt.Printf("AllVolumesAndClones response: %v\n", resp)
+	})
+
+	// XXX This test doesn't fail on Docker 1.12.6, which is used
+	// by dind, but it does fail without using
+	// `fs.StringWithoutAdmin()` in docker.go due to manual testing
+	// on docker 17.06.2-ce. Need to improve the test suite to use
+	// a variety of versions of docker in dind environments.
+	t.Run("RunningContainerTwice", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO")
+		st := s(t, node1, dockerRun(fsname)+" ls /foo/HELLO")
+		if !strings.Contains(st, "HELLO") {
+			t.Errorf("Data did not persist between two instanciations of the same volume on the same host: %v", st)
+		}
 	})
 
 }

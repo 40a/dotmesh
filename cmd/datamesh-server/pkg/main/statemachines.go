@@ -555,7 +555,7 @@ func (f *fsMachine) stopContainers() error {
 	if err != nil {
 		return err
 	}
-	return f.state.containers.Stop(name.String())
+	return f.state.containers.Stop(name.StringWithoutAdmin())
 }
 
 func (f *fsMachine) startContainers() error {
@@ -565,7 +565,7 @@ func (f *fsMachine) startContainers() error {
 	if err != nil {
 		return err
 	}
-	return f.state.containers.Start(name.String())
+	return f.state.containers.Start(name.StringWithoutAdmin())
 }
 
 func activeState(f *fsMachine) stateFn {

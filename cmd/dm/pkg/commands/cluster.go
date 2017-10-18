@@ -556,7 +556,7 @@ func startDatameshContainer(pkiPath string) error {
 		"-e", fmt.Sprintf("ALLOW_PUBLIC_REGISTRATION=%s", regStr),
 		// Set env var so that sub-container executor can bind-mount the right
 		// certificates in.
-		"-e", fmt.Sprintf("PKI_PATH=%s", pkiPath),
+		"-e", fmt.Sprintf("PKI_PATH=%s", maybeEscapeLinuxEmulatedPathOnWindows(pkiPath)),
 		// And know their own identity, so they can respawn.
 		"-e", fmt.Sprintf("DATAMESH_DOCKER_IMAGE=%s", datameshDockerImage),
 		"-e", fmt.Sprintf("ASSETS_URL_PREFIX=%s", assetsURLPrefix),
@@ -638,7 +638,7 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 		// hopefully it works well enough on docker for mac and docker machine.
 		// An alternative approach could be to pass in the cluster secret as an
 		// env var and download it and cache it in a docker volume.
-		"-v", fmt.Sprintf("%s:/pki", pkiPath),
+		"-v", fmt.Sprintf("%s:/pki", maybeEscapeLinuxEmulatedPathOnWindows(pkiPath)),
 		etcdDockerImage,
 		"etcd", "--name", hostnameString,
 		"--data-dir", "/var/lib/etcd",
@@ -817,8 +817,12 @@ func clusterReset(cmd *cobra.Command, args []string, out io.Writer) error {
 		"zfs", "destroy", "-r", "pool",
 	).CombinedOutput()
 	if err != nil {
-		fmt.Printf("response: %s\n", resp)
-		bailErr = err
+		if strings.Contains(string(resp), "dataset is busy") {
+			return fmt.Errorf("unable to destroy zfs pool because it was busy, please ensure all containers using datamesh volumes are deleted and then try again; use dm list to see them: %v", string(resp))
+		} else {
+			fmt.Printf("response: %s\n", resp)
+			bailErr = err
+		}
 	}
 	fmt.Printf("done.\n")
 
@@ -935,6 +939,41 @@ func getPkiPath() string {
 	dirPath := filepath.Dir(configPath)
 	pkiPath := dirPath + "/pki"
 	return pkiPath
+}
+
+func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
+	// If the 'dm' client is running on Windows in WSL (Windows Subsystem for
+	// Linux), and the Linux docker client is installed in the WSL environment,
+	// and Docker for Windows is installed, we need to escape the WSL chroot
+	// path, before being passed to Docker as a Windows path. E.g.
+	//
+	// /home/$USER/.datamesh/pki
+	//   ->
+	// C:/Users/$USER/AppData/Local/lxss/home/$USER/.datamesh/pki
+	//
+	// We can determine whether this is necessary by reading /proc/version
+	// https://github.com/Microsoft/BashOnWindows/issues/423#issuecomment-221627364
+
+	version, err := ioutil.ReadFile("/proc/version")
+	if err != nil {
+		if os.IsNotExist(err) {
+			// normal on macOS
+			return path
+		} else {
+			panic(err)
+		}
+	}
+	user, err := exec.Command("whoami").CombinedOutput()
+	if err != nil {
+		panic(err)
+	}
+	if strings.Contains(string(version), "Microsoft") {
+		// In test environment, user was 'User' and Linux user was 'user'.
+		// Hopefully lowercasing is the only transformation.  Hopefully on the
+		// Windows (docker server) side, the path is case insensitive!
+		return "/c/Users/" + strings.TrimSpace(string(user)) + "/AppData/Local/lxss" + path
+	}
+	return path
 }
 
 func generatePKI(extantCA bool) error {
