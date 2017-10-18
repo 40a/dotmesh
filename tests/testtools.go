@@ -770,6 +770,21 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		}
 		c.Nodes = append(c.Nodes, NodeFromNodeName(t, now, i, j, clusterName))
 	}
+
+	// Wait for etcd to settle before firing up volumes. This works
+	// around https://github.com/datamesh-io/datamesh/issues/62 so
+	// removing this will be a good test of that issue :-)
+	fmt.Printf("Waiting for etcd...\n")
+	for {
+		resp := s(t, c.Nodes[0].Container, "kubectl describe etcd datamesh-etcd-cluster -n datamesh")
+		if strings.Contains(resp, "Size:\t\t3") {
+			fmt.Printf("etcd is up!\n")
+			break
+		}
+		fmt.Printf("etcd is not up... %#v\n", resp)
+		time.Sleep(time.Second)
+	}
+
 	return nil
 }
 

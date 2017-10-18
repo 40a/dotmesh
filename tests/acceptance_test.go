@@ -612,19 +612,6 @@ func TestKubernetes(t *testing.T) {
 		// dm list should succeed in connecting to the datamesh cluster
 		d(t, node1.Container, "dm list")
 
-		// Wait for etcd to settle before firing up volumes
-		// FIXME: Make CreateFilesystem (controller.go) not so fragile about failures while it's happening.
-		fmt.Printf("Waiting for etcd...\n")
-		for {
-			resp := s(t, node1.Container, "kubectl describe etcd datamesh-etcd-cluster -n datamesh")
-			if strings.Contains(resp, "Size:\t\t3") {
-				fmt.Printf("etcd is up!\n")
-				break
-			}
-			fmt.Printf("etcd is not up... %#v\n", resp)
-			time.Sleep(time.Second)
-		}
-
 		// init a datamesh volume and put some data in it
 		d(t, node1.Container,
 			"docker run --rm -i -v apples:/foo --volume-driver dm "+
@@ -708,27 +695,122 @@ spec:
      - port: 80
        nodePort: 30003
 `)
+
+		err = tryUntilSucceeds(func() error {
+			resp, err := http.Get(fmt.Sprintf("http://%s:30003/on-the-tree", node1.IP))
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			if !strings.Contains(string(body), "apples") {
+				return fmt.Errorf("No apples on the tree, got this instead: %v", string(body))
+			}
+			return nil
+		}, "finding apples on the tree")
+		if err != nil {
+			t.Error(err)
+		}
 	})
 
-	err = tryUntilSucceeds(func() error {
-		resp, err := http.Get(fmt.Sprintf("http://%s:30003/on-the-tree", node1.IP))
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		if !strings.Contains(string(body), "apples") {
-			return fmt.Errorf("No apples on the tree, got this instead: %v", string(body))
-		}
-		return nil
-	}, "finding apples on the tree")
-	if err != nil {
-		t.Error(err)
-	}
+	t.Run("DynamicProvisioning", func(t *testing.T) {
+		// dm list should succeed in connecting to the datamesh cluster
+		d(t, node1.Container, "dm list")
 
-	// TODO FlexVolume test that tests moving the volume between hosts
-	// TODO write a test for dynamic provisioning
+		// Tell Kubernetes about our provisioner
+		// FIXME: Put this in the "datamesh" namespace
+
+		kubectlApply(t, node1.Container, `
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dm-provisioner
+`)
+
+		kubectlApply(t, node1.Container, `
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1alpha1
+metadata:
+  name: dm-provisioner-runner
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+`)
+
+		kubectlApply(t, node1.Container, `
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1alpha1
+metadata:
+  name: run-dm-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: dm-provisioner
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: dm-provisioner-runner
+  apiGroup: rbac.authorization.k8s.io
+`)
+
+		kubectlApply(t, node1.Container, `
+kind: Pod
+apiVersion: v1
+metadata:
+  name: datamesh-dynamic-provisioner
+spec:
+  serviceAccount: dm-provisioner
+  containers:
+    - name: datamesh-dynamic-provisioner
+      image: nixos.local:80/datamesh/datamesh-dynamic-provisioner:latest
+      imagePullPolicy: "IfNotPresent"
+`)
+
+		kubectlApply(t, node1.Container, `
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: datamesh
+provisioner: datamesh/datamesh-dynamic-provisioner
+`)
+
+		// run a pod with a PVC which lists the data (web server)
+		// check that the output of querying the pod is that we can see
+		// that the apples are on the tree
+		kubectlApply(t, node1.Container, `
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: admin-grapes-pvc
+spec:
+  storageClassName: datamesh
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+`)
+
+		err = tryUntilSucceeds(func() error {
+			result := s(t, node1.Container, "kubectl get pv")
+			fmt.Printf("ABS TEST 1 GOT '%s'\n", result)
+			return fmt.Errorf("The bit of the test that checks the PV gets created hasn't been written yet")
+		}, "finding the grapes PV")
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
 }
