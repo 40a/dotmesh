@@ -152,9 +152,7 @@ func TestSingleNode(t *testing.T) {
 		// If we reuse the volume, we should find the contents of /etc
 		// imprinted therein.
 		resp = s(t, node1,
-			// XXX Shouldn't need to prefix "admin/" here.
-			// See: https://github.com/datamesh-io/datamesh/issues/63
-			dockerRun("admin/"+fsname, "--name import-test-2", "busybox", "/foo")+" cat /foo/passwd",
+			dockerRun(fsname, "--name import-test-2", "busybox", "/foo")+" cat /foo/passwd",
 		)
 		// "root" normally shows up in /etc/passwd
 		if !strings.Contains(resp, "root") {
