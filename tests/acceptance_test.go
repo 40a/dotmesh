@@ -137,6 +137,28 @@ func TestSingleNode(t *testing.T) {
 		fmt.Printf("AllVolumesAndClones response: %v\n", resp)
 	})
 
+	// Exercise the import functionality which should already exists in Docker
+	t.Run("ImportDockerImage", func(t *testing.T) {
+		fsname := uniqName()
+		resp := s(t, node1,
+			// Mount the volume at /etc in the container. Docker should copy the
+			// contents of /etc in the image over the top of the new blank volume.
+			dockerRun(fsname, "--name import-test", "busybox", "/etc")+" cat /etc/passwd",
+		)
+		// "root" normally shows up in /etc/passwd
+		if !strings.Contains(resp, "root") {
+			t.Error("unable to find 'root' in expected output")
+		}
+		// If we reuse the volume, we should find the contents of /etc
+		// imprinted therein.
+		resp = s(t, node1,
+			dockerRun(fsname, "--name import-test-2", "busybox", "/foo")+" cat /foo/passwd",
+		)
+		// "root" normally shows up in /etc/passwd
+		if !strings.Contains(resp, "root") {
+			t.Error("unable to find 'root' in expected output")
+		}
+	})
 	// XXX This test doesn't fail on Docker 1.12.6, which is used
 	// by dind, but it does fail without using
 	// `fs.StringWithoutAdmin()` in docker.go due to manual testing
