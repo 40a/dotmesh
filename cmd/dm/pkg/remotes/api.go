@@ -548,6 +548,16 @@ func (dm *DatameshAPI) PollTransfer(transferId string, out io.Writer) error {
 			if started {
 				bar.FinishPrint("Done!")
 			}
+			// A terrible hack: many of the tests race the next 'dm log' or
+			// similar command against snapshots received by a push/pull/clone
+			// updating etcd which updates nodes' local caches of state. Give
+			// the etcd updates a 1 second head start, which might reduce the
+			// incidence of test flakes.
+			// TODO: In general, we need a better way to _request_ the current
+			// state of snapshots on a node, rather than always consulting
+			// potentially out-of-date global caches. This might help with
+			// scaling, too.
+			time.Sleep(time.Second)
 			return nil
 		}
 		if result.Status == "error" {
@@ -555,17 +565,11 @@ func (dm *DatameshAPI) PollTransfer(transferId string, out io.Writer) error {
 				bar.FinishPrint(fmt.Sprintf("error: %s", result.Message))
 			}
 			out.Write([]byte(result.Message + "\n"))
+			// A similarly terrible hack. See comment above.
+			time.Sleep(time.Second)
 			return fmt.Errorf(result.Message)
 		}
 	}
-	// A terrible hack: many of the tests race the next 'dm log' or similar
-	// command against snapshots received by a push/pull/clone updating etcd
-	// which updates nodes' local caches of state. Give the etcd updates a 1
-	// second head start, which might reduce the incidence of test flakes.
-	// TODO: In general, we need a better way to _request_ the current state of
-	// snapshots on a node, rather than always consulting potentially
-	// out-of-date global caches. This might help with scaling, too.
-	time.Sleep(time.Second)
 }
 
 /*
