@@ -11,7 +11,7 @@ sudo $DM cluster reset || true
 
 $DM cluster init --offline --image datamesh-server
 
-docker run -i --name smoke -v $VOL:/foo --volume-driver dm ubuntu touch /foo/X
+docker run --rm -i --name smoke -v $VOL:/foo --volume-driver dm ubuntu touch /foo/X
 OUT=`$DM list`
 
 if [[ $OUT == *"$VOL"* ]]; then
