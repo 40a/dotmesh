@@ -819,7 +819,7 @@ func clusterReset(cmd *cobra.Command, args []string, out io.Writer) error {
 	).CombinedOutput()
 	if err != nil {
 		if strings.Contains(string(resp), "dataset is busy") {
-			return fmt.Errorf("unable to destroy zfs pool because it was busy, please ensure all containers using datamesh volumes are deleted and then try again; use dm list to see them: %v", resp)
+			return fmt.Errorf("unable to destroy zfs pool because it was busy, please ensure all containers using datamesh volumes are deleted and then try again; use dm list to see them: %v", string(resp))
 		} else {
 			fmt.Printf("response: %s\n", resp)
 			bailErr = err
