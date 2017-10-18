@@ -18,6 +18,7 @@ import (
 
 var configPath string
 var makeBranch bool
+var forceMode bool
 var scriptingMode bool
 var commitMsg string
 var resetHard bool

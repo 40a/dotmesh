@@ -245,6 +245,26 @@ func (r *Registry) RegisterFilesystem(ctx context.Context, name VolumeName, file
 	return r.UpdateFilesystemFromEtcd(name, rf)
 }
 
+// Remove a filesystem from the registry
+func (r *Registry) UnregisterFilesystem(name VolumeName) error {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+	_, err = kapi.Delete(
+		context.Background(),
+		// (0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<namespace>/(5)<name> =>
+		//     {"Uuid": "<fs-uuid>"}
+		fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, name.Namespace, name.Name),
+		&client.DeleteOptions{},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *Registry) UpdateCollaborators(
 	ctx context.Context, tlf TopLevelFilesystem, newCollaborators []SafeUser,
 ) error {
@@ -326,39 +346,46 @@ func (r *Registry) UpdateFilesystemFromEtcd(
 	r.TopLevelFilesystemsLock.Lock()
 	defer r.TopLevelFilesystemsLock.Unlock()
 
-	us, err := AllUsers()
-	if err != nil {
-		return err
-	}
-	umap := map[string]User{}
-	for _, u := range us {
-		umap[u.Id] = u
-	}
-
-	owner, ok := umap[rf.OwnerId]
-	if !ok {
-		return fmt.Errorf("Unable to locate owner %v.", rf.OwnerId)
-	}
-
-	collaborators := []SafeUser{}
-	for _, c := range rf.CollaboratorIds {
-		user, ok := umap[c]
-		if !ok {
-			return fmt.Errorf("Unable to locate collaborator.")
+	if rf.Id == "" {
+		// Deletion
+		log.Printf("[UpdateFilesystemFromEtcd] %s => GONE", name)
+		delete(r.TopLevelFilesystems, name)
+	} else {
+		// Creation or Update
+		us, err := AllUsers()
+		if err != nil {
+			return err
 		}
-		collaborators = append(collaborators, safeUser(user))
-	}
+		umap := map[string]User{}
+		for _, u := range us {
+			umap[u.Id] = u
+		}
 
-	log.Printf("[UpdateFilesystemFromEtcd] %s => %s", name, rf.Id)
-	r.TopLevelFilesystems[name] = TopLevelFilesystem{
-		// XXX: Hmm, I wonder if it's OK to just put minimal information here.
-		// Probably not! We should construct a real TopLevelFilesystem object
-		// if that's even the right level of abstraction. At time of writing,
-		// the only thing that seems to reasonably construct a
-		// TopLevelFilesystem is rpc's AllVolumesAndClones.
-		TopLevelVolume: DatameshVolume{Id: rf.Id, Name: name},
-		Owner:          safeUser(owner),
-		Collaborators:  collaborators,
+		owner, ok := umap[rf.OwnerId]
+		if !ok {
+			return fmt.Errorf("Unable to locate owner %v.", rf.OwnerId)
+		}
+
+		collaborators := []SafeUser{}
+		for _, c := range rf.CollaboratorIds {
+			user, ok := umap[c]
+			if !ok {
+				return fmt.Errorf("Unable to locate collaborator.")
+			}
+			collaborators = append(collaborators, safeUser(user))
+		}
+
+		log.Printf("[UpdateFilesystemFromEtcd] %s => %s", name, rf.Id)
+		r.TopLevelFilesystems[name] = TopLevelFilesystem{
+			// XXX: Hmm, I wonder if it's OK to just put minimal information here.
+			// Probably not! We should construct a real TopLevelFilesystem object
+			// if that's even the right level of abstraction. At time of writing,
+			// the only thing that seems to reasonably construct a
+			// TopLevelFilesystem is rpc's AllVolumesAndClones.
+			TopLevelVolume: DatameshVolume{Id: rf.Id, Name: name},
+			Owner:          safeUser(owner),
+			Collaborators:  collaborators,
+		}
 	}
 	return nil
 }
@@ -366,10 +393,18 @@ func (r *Registry) UpdateFilesystemFromEtcd(
 func (r *Registry) UpdateCloneFromEtcd(name string, topLevelFilesystemId string, clone Clone) {
 	r.ClonesLock.Lock()
 	defer r.ClonesLock.Unlock()
+
 	if _, ok := r.Clones[topLevelFilesystemId]; !ok {
 		r.Clones[topLevelFilesystemId] = map[string]Clone{}
 	}
 	r.Clones[topLevelFilesystemId][name] = clone
+}
+
+func (r *Registry) DeleteCloneFromEtcd(name string, topLevelFilesystemId string) {
+	r.ClonesLock.Lock()
+	defer r.ClonesLock.Unlock()
+
+	delete(r.Clones, topLevelFilesystemId)
 }
 
 func (r *Registry) LookupFilesystem(name VolumeName) (TopLevelFilesystem, error) {
@@ -400,10 +435,10 @@ func (r *Registry) LookupClone(topLevelFilesystemId, cloneName string) (Clone, e
 	r.ClonesLock.Lock()
 	defer r.ClonesLock.Unlock()
 	if _, ok := r.Clones[topLevelFilesystemId]; !ok {
-		return Clone{}, fmt.Errorf("No top-level filesystem id '%s'", topLevelFilesystemId)
+		return Clone{}, fmt.Errorf("No clones at all, let alone named '%s' for filesystem id '%s'", cloneName, topLevelFilesystemId)
 	}
 	if _, ok := r.Clones[topLevelFilesystemId][cloneName]; !ok {
-		return Clone{}, fmt.Errorf("No clone named '%s'", cloneName)
+		return Clone{}, fmt.Errorf("No clone named '%s' for filesystem id '%s'", cloneName, topLevelFilesystemId)
 	}
 	return r.Clones[topLevelFilesystemId][cloneName], nil
 }
@@ -439,7 +474,9 @@ func (r *Registry) LookupCloneByIdWithName(filesystemId string) (Clone, string, 
 // can be identified by to the user.
 // XXX make this less horrifically inefficient by storing & updating inverted
 // indexes.
-func (r *Registry) LookupFilesystemId(filesystemId string) (TopLevelFilesystem, string, error) {
+func (r *Registry) LookupFilesystemById(filesystemId string) (TopLevelFilesystem, string, error) {
+	r.TopLevelFilesystemsLock.Lock()
+	defer r.TopLevelFilesystemsLock.Unlock()
 	r.ClonesLock.Lock()
 	defer r.ClonesLock.Unlock()
 	for _, tlf := range r.TopLevelFilesystems {
@@ -460,6 +497,7 @@ func (r *Registry) LookupFilesystemId(filesystemId string) (TopLevelFilesystem, 
 			}
 		}
 	}
+
 	return TopLevelFilesystem{}, "", fmt.Errorf(
 		"Unable to find user-facing filesystemName, cloneName for filesystem id %s",
 		filesystemId,

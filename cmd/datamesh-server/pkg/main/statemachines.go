@@ -57,15 +57,28 @@ func newFilesystemMachine(filesystemId string, s *InMemoryState) *fsMachine {
 func (f *fsMachine) run() {
 	// TODO cancel this when we eventually support deletion
 	log.Printf("[run:%s] INIT", f.filesystemId)
-	go runForever(
+	go runWhileFilesystemLives(
+		f.markFilesystemAsLive,
+		"markFilesystemAsLive",
+		f.filesystemId,
+		time.Duration(f.state.config.FilesystemMetadataTimeout/2)*time.Second,
+		time.Duration(f.state.config.FilesystemMetadataTimeout/2)*time.Second,
+	)
+	// The success backoff time for updateEtcdAboutSnapshots is 0s
+	// because it blocks on a channel anyway; inserting a success
+	// backoff just means it'll be rate-limited as it'll sleep before
+	// processing each snapshot!
+	go runWhileFilesystemLives(
 		f.updateEtcdAboutSnapshots,
 		"updateEtcdAboutSnapshots",
+		f.filesystemId,
 		1*time.Second,
-		1*time.Second,
+		0*time.Second,
 	)
-	go runForever(
+	go runWhileFilesystemLives(
 		f.pollDirty,
 		"pollDirty",
+		f.filesystemId,
 		1*time.Second,
 		1*time.Second,
 	)
@@ -73,16 +86,21 @@ func (f *fsMachine) run() {
 		for state := discoveringState; state != nil; {
 			state = state(f)
 		}
-		log.Printf("[run:%s] got nil state, closing up shop", f.filesystemId)
-		close(f.requests) // no more events will come out if we reach the nil state
-		close(f.innerRequests)
+
+		f.transitionedTo("gone", "")
+
+		terminateRunnersWhileFilesystemLived(f.filesystemId)
+
+		// Senders close channels, receivers check for closedness.
+
 		close(f.innerResponses)
-		f.responsesLock.Lock()
-		for _, c := range f.responses {
-			close(c)
-		}
-		f.responsesLock.Unlock()
-		close(f.snapshotsModified)
+
+		// Remove ourself from the filesystems map
+		f.state.filesystemsLock.Lock()
+		defer f.state.filesystemsLock.Unlock()
+		delete(*(f.state.filesystems), f.filesystemId)
+
+		log.Printf("[run:%s] terminated", f.filesystemId)
 	}()
 	// proxy requests and responses, enforcing an ordering, to avoid accepting
 	// a new request before a response comes back, ie to serialize requests &
@@ -94,7 +112,11 @@ func (f *fsMachine) run() {
 		log.Printf("[run:%s] writing to internal requests", f.filesystemId)
 		f.innerRequests <- req
 		log.Printf("[run:%s] reading from internal responses", f.filesystemId)
-		resp := <-f.innerResponses
+		resp, more := <-f.innerResponses
+		if !more {
+			log.Printf("[run:%s] statemachine is finished", f.filesystemId)
+			resp = &Event{"filesystem-gone", &EventArgs{}}
+		}
 		log.Printf("[run:%s] got resp: %s", f.filesystemId, resp)
 		log.Printf("[run:%s] writing to external responses", f.filesystemId)
 		f.responsesLock.Lock()
@@ -119,41 +141,39 @@ func (f *fsMachine) pollDirty() error {
 	if err != nil {
 		return err
 	}
-	for {
-		if f.filesystem.mounted {
-			dirtyDelta, sizeBytes, err := getDirtyDelta(
-				f.filesystemId, f.latestSnapshot(),
+	if f.filesystem.mounted {
+		dirtyDelta, sizeBytes, err := getDirtyDelta(
+			f.filesystemId, f.latestSnapshot(),
+		)
+		if err != nil {
+			return err
+		}
+		if f.dirtyDelta != dirtyDelta || f.sizeBytes != sizeBytes {
+			f.dirtyDelta = dirtyDelta
+			f.sizeBytes = sizeBytes
+
+			serialized, err := json.Marshal(dirtyInfo{
+				Server:     f.state.myNodeId,
+				DirtyBytes: dirtyDelta,
+				SizeBytes:  sizeBytes,
+			})
+			if err != nil {
+				return err
+			}
+			_, err = kapi.Set(
+				context.Background(),
+				fmt.Sprintf(
+					"%s/filesystems/dirty/%s", ETCD_PREFIX, f.filesystemId,
+				),
+				string(serialized),
+				nil,
 			)
 			if err != nil {
 				return err
 			}
-			if f.dirtyDelta != dirtyDelta || f.sizeBytes != sizeBytes {
-				f.dirtyDelta = dirtyDelta
-				f.sizeBytes = sizeBytes
-
-				serialized, err := json.Marshal(dirtyInfo{
-					Server:     f.state.myNodeId,
-					DirtyBytes: dirtyDelta,
-					SizeBytes:  sizeBytes,
-				})
-				if err != nil {
-					return err
-				}
-				_, err = kapi.Set(
-					context.Background(),
-					fmt.Sprintf(
-						"%s/filesystems/dirty/%s", ETCD_PREFIX, f.filesystemId,
-					),
-					string(serialized),
-					nil,
-				)
-				if err != nil {
-					return err
-				}
-			}
 		}
-		time.Sleep(1 * time.Second)
 	}
+	return nil
 }
 
 // return the latest snapshot id, or "" if none exists
@@ -176,57 +196,62 @@ func (f *fsMachine) getResponseChan(reqId string, e *Event) (chan *Event, error)
 	return respChan, nil
 }
 
+func (f *fsMachine) markFilesystemAsLive() error {
+	return f.state.markFilesystemAsLiveInEtcd(f.filesystemId)
+}
+
 func (f *fsMachine) updateEtcdAboutSnapshots() error {
-	for {
-		// attempt to connect to etcd
-		kapi, err := getEtcdKeysApi()
+	// attempt to connect to etcd
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+	// as soon as we're connected, eagerly: if we know about some
+	// snapshots, set them in etcd.
+	informed := false
+	f.snapshotsLock.Lock()
+	if f.filesystem.snapshots != nil {
+		informed = true
+	}
+	f.snapshotsLock.Unlock()
+
+	if informed {
+		f.snapshotsLock.Lock()
+		serialized, err := json.Marshal(f.filesystem.snapshots)
 		if err != nil {
 			return err
 		}
-		// as soon as we're connected, eagerly: if we know about some
-		// snapshots, set them in etcd.
-		informed := false
-		f.snapshotsLock.Lock()
-		if f.filesystem.snapshots != nil {
-			informed = true
-		}
 		f.snapshotsLock.Unlock()
-
-		if informed {
-			f.snapshotsLock.Lock()
-			serialized, err := json.Marshal(f.filesystem.snapshots)
-			if err != nil {
-				return err
-			}
-			f.snapshotsLock.Unlock()
-			// since we want atomic rewrites, we can just save the entire
-			// snapshot data in a single key, as a json list. this is easier to
-			// begin with! although we'll bump into the 1MB request limit in
-			// etcd eventually.
-			_, err = kapi.Set(
-				context.Background(),
-				fmt.Sprintf(
-					"%s/servers/snapshots/%s/%s", ETCD_PREFIX,
-					f.state.myNodeId, f.filesystemId,
-				),
-				string(serialized),
-				nil,
+		// since we want atomic rewrites, we can just save the entire
+		// snapshot data in a single key, as a json list. this is easier to
+		// begin with! although we'll bump into the 1MB request limit in
+		// etcd eventually.
+		_, err = kapi.Set(
+			context.Background(),
+			fmt.Sprintf(
+				"%s/servers/snapshots/%s/%s", ETCD_PREFIX,
+				f.state.myNodeId, f.filesystemId,
+			),
+			string(serialized),
+			nil,
+		)
+		if err != nil {
+			// ISSUE: We don't always hear the echo in time, see
+			// issue https://github.com/datamesh-io/datamesh/issues/54
+			log.Printf(
+				"[updateEtcdAboutSnapshots] successfully set new snaps for %s on %s,"+
+					" will we hear an echo?",
+				f.filesystemId, f.state.myNodeId,
 			)
-			if err != nil {
-				log.Printf(
-					"[updateEtcdAboutSnapshots] successfully set new snaps for %s on %s,"+
-						" will we hear an echo?",
-					f.filesystemId, f.state.myNodeId,
-				)
-				return err
-			}
+			return err
 		}
-
-		// wait until the state machine notifies us that it's changed the
-		// snapshots
-		_ = <-f.snapshotsModified
-		log.Printf("[updateEtcdAboutSnapshots] going 'round the loop")
 	}
+
+	// wait until the state machine notifies us that it's changed the
+	// snapshots
+	_ = <-f.snapshotsModified
+	log.Printf("[updateEtcdAboutSnapshots] going 'round the loop")
+	return nil
 }
 
 func (f *fsMachine) getCurrentState() string {
@@ -407,6 +432,11 @@ waitingForSlaveSnapshot:
 		for !gotSnaps {
 			select {
 			case e := <-f.innerRequests:
+				// What if a deletion message comes in here?
+
+				// In that case, the deletion will happen later, when we
+				// go into discovery again and perform the check for the
+				// filesystem being deleted.
 				log.Printf("rejecting all %s", e)
 				f.innerResponses <- &Event{"busy-handoff", &EventArgs{}}
 			case _ = <-newSnapsChan:
@@ -504,7 +534,7 @@ func (f *fsMachine) snapshot(e *Event) (responseEvent *Event, nextState stateFn)
 // find the user-facing name of a given filesystem id. if we're a branch
 // (clone), return the name of our parent filesystem.
 func (f *fsMachine) name() (VolumeName, error) {
-	tlf, _, err := f.state.registry.LookupFilesystemId(f.filesystemId)
+	tlf, _, err := f.state.registry.LookupFilesystemById(f.filesystemId)
 	return tlf.TopLevelVolume.Name, err
 }
 
@@ -543,7 +573,20 @@ func activeState(f *fsMachine) stateFn {
 	log.Printf("entering active state for %s", f.filesystemId)
 	select {
 	case e := <-f.innerRequests:
-		if e.Name == "transfer" {
+		if e.Name == "delete" {
+			err := f.state.deleteFilesystem(f.filesystemId)
+			if err != nil {
+				f.innerResponses <- &Event{
+					Name: "cant-delete",
+					Args: &EventArgs{"err": err},
+				}
+			} else {
+				f.innerResponses <- &Event{
+					Name: "deleted",
+				}
+			}
+			return nil
+		} else if e.Name == "transfer" {
 
 			// TODO dedupe
 			transferRequest, err := transferRequestify((*e.Args)["Transfer"])
@@ -867,7 +910,20 @@ func inactiveState(f *fsMachine) stateFn {
 	log.Printf("entering inactive state for %s", f.filesystemId)
 
 	handleEvent := func(e *Event) (bool, stateFn) {
-		if e.Name == "mount" {
+		if e.Name == "delete" {
+			err := f.state.deleteFilesystem(f.filesystemId)
+			if err != nil {
+				f.innerResponses <- &Event{
+					Name: "cant-delete",
+					Args: &EventArgs{"err": err},
+				}
+			} else {
+				f.innerResponses <- &Event{
+					Name: "deleted",
+				}
+			}
+			return true, nil
+		} else if e.Name == "mount" {
 			f.transitionedTo("inactive", "mounting")
 			event, nextState := f.mount()
 			f.innerResponses <- event
@@ -991,6 +1047,21 @@ func missingState(f *fsMachine) stateFn {
 	f.transitionedTo("missing", "waiting")
 	log.Printf("entering missing state for %s", f.filesystemId)
 
+	// Are we missing because we're being deleted?
+	deleted, err := isFilesystemDeletedInEtcd(f.filesystemId)
+	if err != nil {
+		log.Printf("Error trying to check for filesystem deletion while in missingState: %s", err)
+		return backoffState
+	}
+	if deleted {
+		err := f.state.deleteFilesystem(f.filesystemId)
+		if err != nil {
+			log.Printf("Error deleting filesystem while in missingState: %s", err)
+			return backoffState
+		}
+		return nil
+	}
+
 	if f.attemptReceive() {
 		return receivingState
 	}
@@ -1003,7 +1074,24 @@ func missingState(f *fsMachine) stateFn {
 	case _ = <-newSnapsOnMaster:
 		return receivingState
 	case e := <-f.innerRequests:
-		if e.Name == "transfer" {
+		if e.Name == "delete" {
+			// We're in the missing state, so the filesystem
+			// theoretically isn't here anyway. But it may be present in
+			// some internal caches, so we call deleteFilesystem for
+			// thoroughness.
+			err := f.state.deleteFilesystem(f.filesystemId)
+			if err != nil {
+				f.innerResponses <- &Event{
+					Name: "cant-delete",
+					Args: &EventArgs{"err": err},
+				}
+			} else {
+				f.innerResponses <- &Event{
+					Name: "deleted",
+				}
+			}
+			return nil
+		} else if e.Name == "transfer" {
 			log.Printf("GOT TRANSFER REQUEST (while missing) %+v", e.Args)
 
 			// TODO dedupe
@@ -1380,7 +1468,9 @@ func updatePollResult(transferRequestId string, pollResult TransferPollResult) e
 		string(serialized),
 		nil,
 	)
-	log.Printf("[updatePollResult] err: %s", err)
+	if err != nil {
+		log.Printf("[updatePollResult] err: %s", err)
+	}
 	return err
 }
 

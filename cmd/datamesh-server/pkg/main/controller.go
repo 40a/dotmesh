@@ -65,6 +65,50 @@ func NewInMemoryState(localPoolId string, config Config) *InMemoryState {
 	return s
 }
 
+func (s *InMemoryState) deleteFilesystem(filesystemId string) error {
+	var errors []error
+
+	log.Printf("[deleteFilesystem] Attempting to delete filesystem %s", filesystemId)
+
+	// Remove the FS from all our myriad caches
+	func() {
+		s.filesystemsLock.Lock()
+		defer s.filesystemsLock.Unlock()
+		delete(*s.filesystems, filesystemId)
+	}()
+
+	func() {
+		s.mastersCacheLock.Lock()
+		defer s.mastersCacheLock.Unlock()
+		delete(*s.mastersCache, filesystemId)
+	}()
+
+	func() {
+		s.globalContainerCacheLock.Lock()
+		defer s.globalContainerCacheLock.Unlock()
+		delete(*s.globalContainerCache, filesystemId)
+	}()
+
+	// No need to worry about globalStateCache, as the fsmachine's termination will gracefully handle that
+
+	// Actually remove from ZFS
+	err := deleteFilesystemInZFS(filesystemId)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
+	if len(errors) != 0 {
+		// We just make our best attempt at deleting; if anything
+		// failed, we'll try and clean it up again later.  Therefore,
+		// when we try again, various bits might already be deleted, so
+		// trying to delete them fails.  It's all good.
+		log.Printf("[deleteFilesystem] Errors deleting filesystem %s, possibly because some operations were previously completed: %+v", filesystemId, errors)
+	}
+
+	// However, we reserve the right to return an error if we decide to in future.
+	return nil
+}
+
 func (s *InMemoryState) maybeMountFilesystem(filesystemId string) error {
 	// We have been given a hint that a ZFS filesystem may now exist locally
 	// which may need to be mounted to match up with its desired mount state
@@ -126,7 +170,7 @@ func (s *InMemoryState) getOne(ctx context.Context, fs string) (DatameshVolume, 
 
 	log.Printf("[getOne] starting for %v", fs)
 
-	if tlf, clone, err := s.registry.LookupFilesystemId(fs); err == nil {
+	if tlf, clone, err := s.registry.LookupFilesystemById(fs); err == nil {
 		authorized, err := tlf.Authorize(ctx)
 		if err != nil {
 			return DatameshVolume{}, err
@@ -428,6 +472,7 @@ func (s *InMemoryState) masterFor(filesystem string) string {
 
 func (s *InMemoryState) initFilesystemMachine(filesystemId string) *fsMachine {
 	log.Printf("[initFilesystemMachine] starting: %s", filesystemId)
+
 	s.filesystemsLock.Lock()
 	defer s.filesystemsLock.Unlock()
 	log.Printf("[initFilesystemMachine] acquired lock: %s", filesystemId)
@@ -437,10 +482,25 @@ func (s *InMemoryState) initFilesystemMachine(filesystemId string) *fsMachine {
 		log.Printf("[initFilesystemMachine] reusing fsMachine for %s", filesystemId)
 		return fs
 	} else {
-		log.Printf("[initFilesystemMachine] initializing new fsMachine for %s", filesystemId)
-		(*s.filesystems)[filesystemId] = newFilesystemMachine(filesystemId, s)
-		go (*s.filesystems)[filesystemId].run() // concurrently run state machine
-		return (*s.filesystems)[filesystemId]
+		// Don't create a new fsMachine if we've been deleted
+		deleted, err := isFilesystemDeletedInEtcd(filesystemId)
+		if err != nil {
+			log.Printf("%v while requesting deletion state from etcd", err)
+			return nil
+		}
+
+		if deleted {
+			err := s.deleteFilesystem(filesystemId)
+			if err != nil {
+				log.Printf("Error deleting filesystem: %v", err)
+			}
+			return nil
+		} else {
+			log.Printf("[initFilesystemMachine] initializing new fsMachine for %s", filesystemId)
+			(*s.filesystems)[filesystemId] = newFilesystemMachine(filesystemId, s)
+			go (*s.filesystems)[filesystemId].run() // concurrently run state machine
+			return (*s.filesystems)[filesystemId]
+		}
 	}
 }
 

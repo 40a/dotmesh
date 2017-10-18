@@ -520,7 +520,7 @@ func startDatameshContainer(pkiPath string) error {
 	var configFileExists bool
 	e, err := pathExists(configFile)
 	if err != nil {
-		fmt.Printf("we have an exists error: %s", err)
+		fmt.Printf("Error examining config file %s: %s", configFile, err)
 		return err
 	}
 	if e {
@@ -528,7 +528,6 @@ func startDatameshContainer(pkiPath string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("we have a file: %s", string(absoluteConfigPath))
 		configFileExists = true
 	}
 	args := []string{

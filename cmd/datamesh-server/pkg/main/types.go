@@ -293,10 +293,12 @@ type transferFn func(
 	client *JsonRpcClient, transferRequest *TransferRequest,
 ) (*Event, stateFn)
 
+// Defaults are specified in main.go
 type Config struct {
-	Plans            []Plan `yaml:"Plans"`
-	StripePrivateKey string `yaml:"StripePrivateKey"`
-	StripePublicKey  string `yaml:"StripePublicKey"`
+	Plans                     []Plan `yaml:"Plans"`
+	StripePrivateKey          string `yaml:"StripePrivateKey"`
+	StripePublicKey           string `yaml:"StripePublicKey"`
+	FilesystemMetadataTimeout int64  `yaml:"FilesystemMetadataTimeoutInSeconds"`
 }
 
 type SafeConfig struct {

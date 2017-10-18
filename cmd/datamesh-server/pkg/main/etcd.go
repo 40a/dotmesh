@@ -144,11 +144,281 @@ func (state *InMemoryState) updateAddressesInEtcd() error {
 	if err != nil {
 		return err
 	}
+
 	_, err = kapi.Set(
 		context.Background(),
 		fmt.Sprintf("%s/servers/addresses/%s", ETCD_PREFIX, state.myNodeId),
 		strings.Join(addresses, ","),
 		&client.SetOptions{TTL: 60 * time.Second},
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func isFilesystemDeletedInEtcd(fsId string) (bool, error) {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return false, err
+	}
+
+	result, err := kapi.Get(
+		context.Background(),
+		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, fsId),
+		nil,
+	)
+
+	if err != nil {
+		if client.IsKeyNotFound(err) {
+			return false, nil
+		} else {
+			return false, err
+		}
+	}
+
+	if result != nil {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func (state *InMemoryState) markFilesystemAsDeletedInEtcd(
+	fsId, username string,
+	name VolumeName,
+	tlFsId, branch string,
+) error {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+
+	// Feel free to suggest additional useful things to put in the
+	// deletion audit trail.  The two that the system REQUIRES are
+	// "Name", "TopLevelFilesystemId" and "Clone", which are used to ensure that the registry
+	// entry is cleaned up later. (Name for a top level filesystem,
+	// Clone for a non-master branch). Please don't remove/rename that
+	// without updating cleanupDeletedFilesystems
+	auditTrail, err := json.Marshal(struct {
+		Server    string
+		Username  string
+		DeletedAt time.Time
+
+		// These fields are mandatory
+		Name                 VolumeName
+		TopLevelFilesystemId string
+		Clone                string
+	}{
+		state.myNodeId,
+		username,
+		time.Now(),
+
+		// These fields are mandatory
+		name,
+		tlFsId,
+		branch})
+	if err != nil {
+		return err
+	}
+
+	_, err = kapi.Set(
+		context.Background(),
+		fmt.Sprintf("%s/filesystems/deleted/%s", ETCD_PREFIX, fsId),
+		string(auditTrail),
+		&client.SetOptions{PrevExist: client.PrevNoExist},
+	)
+	if err != nil {
+		return err
+	}
+
+	// Now mark it for eventual cleanup (when the liveness key expires)
+	_, err = kapi.Set(
+		context.Background(),
+		fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, fsId),
+		string(auditTrail),
+		&client.SetOptions{PrevExist: client.PrevNoExist},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// This struct is a subset of the struct used as the audit trail in
+// markFilesystemAsDeletedInEtcd.  A subset is used here to avoid
+// issues with upgrading a running cluster, if old deletion audit
+// trails are in etcd with different state. These are the only things
+// we need to read back.
+type NameOrClone struct {
+	Name                 VolumeName
+	TopLevelFilesystemId string
+	Clone                string
+}
+
+func (state *InMemoryState) cleanupDeletedFilesystems() error {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+
+	pending, err := listFilesystemsPendingCleanup(kapi)
+	if err != nil {
+		return err
+	}
+
+	for fsId, names := range pending {
+		errors := make([]error, 0)
+		del := func(key string) {
+			_, err = kapi.Delete(
+				context.Background(),
+				key,
+				&client.DeleteOptions{},
+			)
+			if err != nil && !client.IsKeyNotFound(err) {
+				errors = append(errors, err)
+			}
+		}
+
+		del(fmt.Sprintf("%s/filesystems/containers/%s", ETCD_PREFIX, fsId))
+		del(fmt.Sprintf("%s/filesystems/dirty/%s", ETCD_PREFIX, fsId))
+		del(fmt.Sprintf("%s/filesystems/masters/%s", ETCD_PREFIX, fsId))
+
+		// Normally, the registry entry is deleted as soon as the volume
+		// is deleted, but in the event of a failure it might not have
+		// been. So we try again.
+
+		if names.Name.Namespace != "" && names.Name.Name != "" {
+			// The name might be blank in the audit trail - this is used
+			// to indicate that this was a branch, NOT the master, so
+			// there's no need to remove the registry entry for the whole
+			// volume. We only do that when deleting master.
+			key := fmt.Sprintf(
+				"%s/registry/filesystems/%s/%s",
+				ETCD_PREFIX,
+				names.Name.Namespace,
+				names.Name.Name)
+
+			oldNode, err := kapi.Get(
+				context.Background(),
+				key,
+				&client.GetOptions{},
+			)
+			if err != nil {
+				if client.IsKeyNotFound(err) {
+					// we are good, it doesn't exist, nothing to delete
+				} else {
+					errors = append(errors, err)
+				}
+			} else {
+				// We have an existing registry entry, but is it the one
+				// we're supposed to delete, or a newly-created volume
+				// with the name of the deleted one?
+				currentData := struct {
+					Id string
+				}{}
+				err = json.Unmarshal([]byte(oldNode.Node.Value), &currentData)
+				if err != nil {
+					errors = append(errors, err)
+				}
+				if currentData.Id == fsId {
+					_, err = kapi.Delete(
+						context.Background(),
+						key,
+						&client.DeleteOptions{PrevValue: oldNode.Node.Value},
+					)
+					if err != nil && !client.IsKeyNotFound(err) {
+						errors = append(errors, err)
+					}
+				}
+			}
+		}
+
+		if names.Clone != "" {
+			del(fmt.Sprintf(
+				"%s/registry/clones/%s/%s", ETCD_PREFIX,
+				names.TopLevelFilesystemId, names.Clone))
+		}
+
+		if len(errors) == 0 {
+			del(fmt.Sprintf("%s/filesystems/cleanupPending/%s", ETCD_PREFIX, fsId))
+		} else {
+			return fmt.Errorf("Errors found cleaning up after a deleted filesystem: %+v", errors)
+		}
+	}
+
+	return nil
+}
+
+// The result is a map from filesystem ID to the VolumeName or branch name it once had.
+func listFilesystemsPendingCleanup(kapi client.KeysAPI) (map[string]NameOrClone, error) {
+	// list ETCD_PREFIX/filesystems/cleanupPending/ID without corresponding
+	// ETCD_PREFIX/filesystems/live/ID
+
+	pending, err := kapi.Get(context.Background(),
+		fmt.Sprintf("%s/filesystems/cleanupPending", ETCD_PREFIX),
+		&client.GetOptions{Recursive: true, Sort: false},
+	)
+	if err != nil {
+		if client.IsKeyNotFound(err) {
+			return map[string]NameOrClone{}, nil
+		} else {
+			return map[string]NameOrClone{}, err
+		}
+	}
+
+	result := make(map[string]NameOrClone, 0)
+	for _, node := range pending.Node.Nodes {
+		// /datamesh.io/filesystems/cleanupPending/3ed24670-8fd0-4cec-4191-d3d5bae15172
+		pieces := strings.Split(node.Key, "/")
+		if len(pieces) == 5 {
+			fsId := pieces[4]
+
+			_, err := kapi.Get(context.Background(),
+				fmt.Sprintf("%s/filesystems/live/%s", ETCD_PREFIX, fsId),
+				&client.GetOptions{},
+			)
+			if err == nil {
+				// Key was found
+			} else if client.IsKeyNotFound(err) {
+				// Key not found, it's no longer live
+				// So extract the name from the audit trail and add it to the result
+				var audit NameOrClone
+				err := json.Unmarshal([]byte(node.Value), &audit)
+				if err != nil {
+					// We don't want one corrupted key stopping us from finding the rest
+					// So log+ignore.
+					log.Printf(
+						"[listFilesystemsPendingCleanup] Error parsing audit trail: %s=%s",
+						node.Key, node.Value)
+				} else {
+					result[fsId] = audit
+				}
+			} else {
+				// Error!
+				return map[string]NameOrClone{}, err
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (state *InMemoryState) markFilesystemAsLiveInEtcd(topLevelFilesystemId string) error {
+	kapi, err := getEtcdKeysApi()
+	if err != nil {
+		return err
+	}
+
+	key := fmt.Sprintf("%s/filesystems/live/%s", ETCD_PREFIX, topLevelFilesystemId)
+	ttl := time.Duration(state.config.FilesystemMetadataTimeout) * time.Second
+
+	_, err = kapi.Set(
+		context.Background(),
+		key,
+		state.myNodeId,
+		&client.SetOptions{TTL: ttl},
 	)
 	if err != nil {
 		return err
@@ -177,13 +447,6 @@ func (s *InMemoryState) dispatchEvent(
 		e.Args = &EventArgs{}
 	}
 	(*e.Args)["RequestId"] = requestId
-	// Don't block the entire etcd event-loop just because one fsMachine isn't
-	// ready to receive an event. Our response is a chan anyway, so consumers
-	// can synchronize on reading from that as they wish (for example, in
-	// another goroutine).
-	go func() {
-		fs.requests <- e
-	}()
 	fs.responsesLock.Lock()
 	defer fs.responsesLock.Unlock()
 	rc, ok := fs.responses[requestId]
@@ -192,30 +455,68 @@ func (s *InMemoryState) dispatchEvent(
 		fs.responses[requestId] = responseChan
 		rc = responseChan
 	}
+
+	// Now we have a response channel set up, it's safe to send the request.
+
+	// Don't block the entire etcd event-loop just because one fsMachine isn't
+	// ready to receive an event. Our response is a chan anyway, so consumers
+	// can synchronize on reading from that as they wish (for example, in
+	// another goroutine).
+	go func() {
+		fs.requests <- e
+	}()
+
 	return rc, nil
 }
 
 func (s *InMemoryState) handleOneFilesystemMaster(node *client.Node) error {
+	if node.Value == "" {
+		// The filesystem is being deleted, and we need do nothing about it
+	} else {
+		pieces := strings.Split(node.Key, "/")
+		fs := pieces[len(pieces)-1]
+		s.initFilesystemMachine(fs)
+		var responseChan chan *Event
+		var err error
+		requestId := pieces[len(pieces)-1]
+		if node.Value == s.myNodeId {
+			log.Printf("MOUNTING: %s=%s", fs, node.Value)
+			responseChan, err = s.dispatchEvent(fs, &Event{Name: "mount"}, requestId)
+			if err != nil {
+				return err
+			}
+		} else {
+			log.Printf("UNMOUNTING: %s=%s", fs, node.Value)
+			responseChan, err = s.dispatchEvent(fs, &Event{Name: "unmount"}, requestId)
+			if err != nil {
+				return err
+			}
+		}
+		go func() {
+			_ = <-responseChan
+		}()
+	}
+	return nil
+}
+
+func (s *InMemoryState) handleOneFilesystemDeletion(node *client.Node) error {
+	// This is where each node is notified of a filesystem being
+	// deleted.  We must inform the fsmachine.
+	log.Printf("DELETING: %s=%s", node.Key, node.Value)
+
 	pieces := strings.Split(node.Key, "/")
 	fs := pieces[len(pieces)-1]
 	s.initFilesystemMachine(fs)
 	var responseChan chan *Event
 	var err error
 	requestId := pieces[len(pieces)-1]
-	if node.Value == s.myNodeId {
-		log.Printf("MOUNTING: %s=%s", fs, node.Value)
-		responseChan, err = s.dispatchEvent(fs, &Event{Name: "mount"}, requestId)
-		if err != nil {
-			return err
-		}
-	} else {
-		log.Printf("UNMOUNTING: %s=%s", fs, node.Value)
-		responseChan, err = s.dispatchEvent(fs, &Event{Name: "unmount"}, requestId)
-		if err != nil {
-			return err
-		}
+	responseChan, err = s.dispatchEvent(fs, &Event{Name: "delete"}, requestId)
+	if err != nil {
+		return err
 	}
-	_ = <-responseChan
+	go func() {
+		_ = <-responseChan
+	}()
 	return nil
 }
 
@@ -418,6 +719,15 @@ func (s *InMemoryState) deserializeDispatchAndRespond(fs string, node *client.No
 func (s *InMemoryState) updateSnapshotsFromKnownState(
 	server, filesystem string, snapshots *[]snapshot,
 ) error {
+	deleted, err := isFilesystemDeletedInEtcd(filesystem)
+	if err != nil {
+		return err
+	}
+	if deleted {
+		// Filesystem is being deleted, so ignore it.
+		return nil
+	}
+
 	s.globalSnapshotCacheLock.Lock()
 	if _, ok := (*s.globalSnapshotCache)[server]; !ok {
 		(*s.globalSnapshotCache)[server] = map[string][]snapshot{}
@@ -502,12 +812,17 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 
 		s.mastersCacheLock.Lock()
 		defer s.mastersCacheLock.Unlock()
-		(*s.mastersCache)[fs] = node.Value
 
-		if node.Value == s.myNodeId {
-			filesystemBelongsToMe[fs] = true
+		if node.Value == "" {
+			delete(*s.mastersCache, fs)
+			delete(filesystemBelongsToMe, fs)
 		} else {
-			filesystemBelongsToMe[fs] = false
+			(*s.mastersCache)[fs] = node.Value
+			if node.Value == s.myNodeId {
+				filesystemBelongsToMe[fs] = true
+			} else {
+				filesystemBelongsToMe[fs] = false
+			}
 		}
 	}
 	updateAddresses := func(node *client.Node) error {
@@ -527,41 +842,50 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		server := pieces[4]
 		filesystem := pieces[5]
 		s.globalStateCacheLock.Lock()
+		defer s.globalStateCacheLock.Unlock()
+
 		stateMetadata := &map[string]string{}
-		err := json.Unmarshal([]byte(node.Value), stateMetadata)
-		if err != nil {
-			log.Printf("Unable to marshal for updateStates - %s: %s", node.Value, err)
-			return err
-		}
-		if _, ok := (*s.globalStateCache)[server]; !ok {
-			(*s.globalStateCache)[server] = map[string]map[string]string{}
-		} else {
-			if _, ok := (*s.globalStateCache)[server][filesystem]; !ok {
-				// ok, we'll be setting it below...
+		if node.Value == "" {
+			if _, ok := (*s.globalStateCache)[server]; !ok {
+				delete((*s.globalStateCache)[server], filesystem)
 			} else {
-				// state already exists. check that we're updating with a
-				// revision that is strictly newer...
-				currentVersion := (*s.globalStateCache)[server][filesystem]["version"]
-				i, err := strconv.ParseUint(currentVersion, 10, 64)
-				if err != nil {
-					return err
-				}
-				if i >= node.ModifiedIndex {
-					log.Printf(
-						"Out of order updates! %s is older than %s",
-						(*s.globalStateCache)[server][filesystem],
-						node,
-					)
-					s.globalStateCacheLock.Unlock()
-					return nil
+				// We don't know about the server anyway, so there's nothing to do
+			}
+		} else {
+			err := json.Unmarshal([]byte(node.Value), stateMetadata)
+			if err != nil {
+				log.Printf("Unable to marshal for updateStates - %s: %s", node.Value, err)
+				return err
+			}
+			if _, ok := (*s.globalStateCache)[server]; !ok {
+				(*s.globalStateCache)[server] = map[string]map[string]string{}
+			} else {
+				if _, ok := (*s.globalStateCache)[server][filesystem]; !ok {
+					// ok, we'll be setting it below...
+				} else {
+					// state already exists. check that we're updating with a
+					// revision that is strictly newer...
+					currentVersion := (*s.globalStateCache)[server][filesystem]["version"]
+					i, err := strconv.ParseUint(currentVersion, 10, 64)
+					if err != nil {
+						return err
+					}
+					if i >= node.ModifiedIndex {
+						log.Printf(
+							"Out of order updates! %s is older than %s",
+							(*s.globalStateCache)[server][filesystem],
+							node,
+						)
+						s.globalStateCacheLock.Unlock()
+						return nil
+					}
 				}
 			}
+			(*s.globalStateCache)[server][filesystem] = *stateMetadata
+			(*s.globalStateCache)[server][filesystem]["version"] = fmt.Sprintf(
+				"%d", node.ModifiedIndex,
+			)
 		}
-		(*s.globalStateCache)[server][filesystem] = *stateMetadata
-		(*s.globalStateCache)[server][filesystem]["version"] = fmt.Sprintf(
-			"%d", node.ModifiedIndex,
-		)
-		s.globalStateCacheLock.Unlock()
 		return nil
 	}
 
@@ -573,15 +897,20 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		filesystem := pieces[5]
 
 		snapshots := &[]snapshot{}
-		err := json.Unmarshal([]byte(node.Value), snapshots)
-		if err != nil {
-			log.Printf(
-				"updateSnapshots: error trying to unmarshal '%s' for %s on %s, %s",
-				node.Value, filesystem, server, node.Key,
-			)
-			return err
+		if node.Value == "" {
+			// Key was deleted, so there's no snapshots
+			return s.updateSnapshotsFromKnownState(server, filesystem, snapshots)
+		} else {
+			err := json.Unmarshal([]byte(node.Value), snapshots)
+			if err != nil {
+				log.Printf(
+					"updateSnapshots: error trying to unmarshal '%s' for %s on %s, %s",
+					node.Value, filesystem, server, node.Key,
+				)
+				return err
+			}
+			return s.updateSnapshotsFromKnownState(server, filesystem, snapshots)
 		}
-		return s.updateSnapshotsFromKnownState(server, filesystem, snapshots)
 	}
 	/*
 		(0)/(1)datamesh.io/(2)registry/(3)filesystems/(4)<namespace>/(5)name =>
@@ -592,11 +921,16 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		pieces := strings.Split(node.Key, "/")
 		name := VolumeName{pieces[4], pieces[5]}
 		rf := registryFilesystem{}
-		err := json.Unmarshal([]byte(node.Value), &rf)
-		if err != nil {
-			return err
+		if node.Value == "" {
+			// Deletion: the empty registryFilesystem will indicate that.
+			return s.registry.UpdateFilesystemFromEtcd(name, rf)
+		} else {
+			err := json.Unmarshal([]byte(node.Value), &rf)
+			if err != nil {
+				return err
+			}
+			return s.registry.UpdateFilesystemFromEtcd(name, rf)
 		}
-		return s.registry.UpdateFilesystemFromEtcd(name, rf)
 	}
 	/*
 		   (0)/(1)datamesh.io/(2)registry/(3)clones/(4)<fs-uuid-of-filesystem>/(5)<name> =>
@@ -613,11 +947,16 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		topLevelFilesystemId := pieces[4]
 		name := pieces[5]
 		clone := &Clone{}
-		err := json.Unmarshal([]byte(node.Value), clone)
-		if err != nil {
-			return err
+		if node.Value == "" {
+			// It's a deletion, so pass the empty value in clone
+			s.registry.DeleteCloneFromEtcd(name, topLevelFilesystemId)
+		} else {
+			err := json.Unmarshal([]byte(node.Value), clone)
+			if err != nil {
+				return err
+			}
+			s.registry.UpdateCloneFromEtcd(name, topLevelFilesystemId, *clone)
 		}
-		s.registry.UpdateCloneFromEtcd(name, topLevelFilesystemId, *clone)
 		return nil
 	}
 	/*
@@ -628,26 +967,38 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		pieces := strings.Split(node.Key, "/")
 		filesystemId := pieces[4]
 		dirtyInfo := &dirtyInfo{}
-		err := json.Unmarshal([]byte(node.Value), dirtyInfo)
-		if err != nil {
-			return err
+		if node.Value == "" {
+			s.globalDirtyCacheLock.Lock()
+			defer s.globalDirtyCacheLock.Unlock()
+			delete((*s.globalDirtyCache), filesystemId)
+		} else {
+			err := json.Unmarshal([]byte(node.Value), dirtyInfo)
+			if err != nil {
+				return err
+			}
+			s.globalDirtyCacheLock.Lock()
+			defer s.globalDirtyCacheLock.Unlock()
+			(*s.globalDirtyCache)[filesystemId] = *dirtyInfo
 		}
-		s.globalDirtyCacheLock.Lock()
-		defer s.globalDirtyCacheLock.Unlock()
-		(*s.globalDirtyCache)[filesystemId] = *dirtyInfo
 		return nil
 	}
 	updateFilesystemsContainers := func(node *client.Node) error {
 		pieces := strings.Split(node.Key, "/")
 		filesystemId := pieces[4]
 		containerInfo := &containerInfo{}
-		err := json.Unmarshal([]byte(node.Value), containerInfo)
-		if err != nil {
-			return err
+		if node.Value == "" {
+			s.globalContainerCacheLock.Lock()
+			defer s.globalContainerCacheLock.Unlock()
+			delete(*s.globalContainerCache, filesystemId)
+		} else {
+			err := json.Unmarshal([]byte(node.Value), containerInfo)
+			if err != nil {
+				return err
+			}
+			s.globalContainerCacheLock.Lock()
+			defer s.globalContainerCacheLock.Unlock()
+			(*s.globalContainerCache)[filesystemId] = *containerInfo
 		}
-		s.globalContainerCacheLock.Lock()
-		defer s.globalContainerCacheLock.Unlock()
-		(*s.globalContainerCache)[filesystemId] = *containerInfo
 		return nil
 	}
 	updateTransfers := func(node *client.Node) error {
@@ -656,13 +1007,19 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		pieces := strings.Split(node.Key, "/")
 		transferId := pieces[4]
 		transferInfo := &TransferPollResult{}
-		err := json.Unmarshal([]byte(node.Value), transferInfo)
-		if err != nil {
-			return err
+		if node.Value == "" {
+			s.interclusterTransfersLock.Lock()
+			defer s.interclusterTransfersLock.Unlock()
+			delete(*s.interclusterTransfers, transferId)
+		} else {
+			err := json.Unmarshal([]byte(node.Value), transferInfo)
+			if err != nil {
+				return err
+			}
+			s.interclusterTransfersLock.Lock()
+			defer s.interclusterTransfersLock.Unlock()
+			(*s.interclusterTransfers)[transferId] = *transferInfo
 		}
-		s.interclusterTransfersLock.Lock()
-		defer s.interclusterTransfersLock.Unlock()
-		(*s.interclusterTransfers)[transferId] = *transferInfo
 		return nil
 	}
 	var kapi client.KeysAPI
@@ -716,6 +1073,23 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 	var dirtyFilesystems *client.Node
 	for _, parent := range current.Node.Nodes {
 		// need to iterate in...
+
+		// We delibarately skip the "filesystems/deleted",
+		// "filesystems/cleanupNeeded" and "filesystems/live" regions as
+		// we don't store any caches of those things. In particular,
+		// filesystems/deleted might grow without bound in a long-lived
+		// cluster so we avoid ever keeping the whole thing anywhere
+		// other than in etcd (and even there it might require pruning
+		// in future); and cleanupNeeded and live are polled for in the
+		// cleanupDeletedFilesystems goroutine. We could, if needed,
+		// rewrite that to make the watcher notice "live" nodes
+		// disappearing and check for a corresponding "cleanupNeeded"
+		// and trigger cleanup, but that makes it almost certain that
+		// multiple nodes (indeed, all nodes) will attempt to do the
+		// cleanup - polling makes it most likely that one random node
+		// will do any given cleanup, avoiding waste without the cost of
+		// an explicit distributed transaction to ensure exactly one
+		// node does it.
 		for _, child := range parent.Nodes {
 			if getVariant(child) == "filesystems/masters" {
 				masters = child
@@ -859,6 +1233,10 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 		if variant == "filesystems/masters" {
 			updateMine(node.Node)
 			if err = s.handleOneFilesystemMaster(node.Node); err != nil {
+				return err
+			}
+		} else if variant == "filesystems/deleted" {
+			if err = s.handleOneFilesystemDeletion(node.Node); err != nil {
 				return err
 			}
 		} else if variant == "filesystems/requests" {

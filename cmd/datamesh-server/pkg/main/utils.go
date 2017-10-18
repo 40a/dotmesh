@@ -201,6 +201,43 @@ func runForever(f func() error, label string, errorBackoff, successBackoff time.
 	}
 }
 
+var deathObserver *Observer = NewObserver()
+
+// run while filesystem lives
+func runWhileFilesystemLives(f func() error, label string, filesystemId string, errorBackoff, successBackoff time.Duration) {
+	deathChan := make(chan interface{})
+	deathObserver.Subscribe(filesystemId, deathChan)
+	stillAlive := true
+	for stillAlive {
+		select {
+		case _ = <-deathChan:
+			stillAlive = false
+		default:
+			err := f()
+			if err != nil {
+				log.Printf(
+					"Error in runWhileFilesystemLives(%s@%s), retrying in %s: %s",
+					label, filesystemId, errorBackoff, err)
+				time.Sleep(errorBackoff)
+			} else {
+				time.Sleep(successBackoff)
+			}
+		}
+	}
+	deathObserver.Unsubscribe(filesystemId, deathChan)
+}
+
+func terminateRunnersWhileFilesystemLived(filesystemId string) {
+	deathObserver.Publish(filesystemId, struct{ reason string }{"runWhileFilesystemLives"})
+}
+
+func waitForFilesystemDeath(filesystemId string) {
+	deathChan := make(chan interface{})
+	deathObserver.Subscribe(filesystemId, deathChan)
+	<-deathChan
+	deathObserver.Unsubscribe(filesystemId, deathChan)
+}
+
 // general purpose function, intended to be runnable in a goroutine, which
 // reads bytes from a Reader and writes them to a Writer, closing the Writer
 // when the Reader yields EOF. should be useable both to pipe command outputs
