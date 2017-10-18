@@ -6,8 +6,7 @@ set -xe
 DM=$1
 VOL="volume_`date +%s`"
 
-docker rm -f smoke || true
-sudo $DM cluster reset || true
+sudo $DM cluster reset || (sleep 30; sudo $DM cluster reset) || true
 
 $DM cluster init --offline --image datamesh-server
 
