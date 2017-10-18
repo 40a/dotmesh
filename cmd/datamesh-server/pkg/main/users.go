@@ -18,7 +18,21 @@ func NewUser(name, email, apiKey string) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
-	// TODO enforce username and email address uniqueness
+	allUsers, err := AllUsers()
+	if err != nil {
+		return User{}, err
+	}
+	// TODO make email in error messages below configurable.
+	// XXX this way of enforcing username and email address uniqueness is racy
+	// with concurrent creation, need to use something CAS-y in etcd.
+	for _, user := range allUsers {
+		if user.Name == name {
+			return User{}, fmt.Errorf("Username already exists - contact help@datamesh.io")
+		}
+		if user.Email == email {
+			return User{}, fmt.Errorf("Email already exists - contact help@datamesh.io")
+		}
+	}
 	return User{Id: id.String(), Name: name, Email: email, ApiKey: apiKey}, nil
 }
 
