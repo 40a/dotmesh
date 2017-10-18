@@ -75,6 +75,15 @@ func TestSingleNode(t *testing.T) {
 
 	t.Run("Reset", func(t *testing.T) {
 		fsname := uniqName()
+		// Run a container in the background so that we can observe it get
+		// restarted.
+		d(t, node1,
+			dockerRun(fsname, "-d --name sleeper")+" sleep 100",
+		)
+		initialStart := s(t, node1,
+			"docker inspect sleeper |jq .[0].State.StartedAt",
+		)
+
 		d(t, node1, dockerRun(fsname)+" touch /foo/X")
 		d(t, node1, "dm switch "+fsname)
 		d(t, node1, "dm commit -m 'hello'")
@@ -98,6 +107,13 @@ func TestSingleNode(t *testing.T) {
 		if strings.Contains(resp, "Y") {
 			t.Error("failed to roll back filesystem")
 		}
+		newStart := s(t, node1,
+			"docker inspect sleeper |jq .[0].State.StartedAt",
+		)
+		if initialStart == newStart {
+			t.Errorf("container was not restarted during rollback (initialStart %v == newStart %v)", strings.TrimSpace(initialStart), strings.TrimSpace(newStart))
+		}
+
 	})
 
 	t.Run("RunningContainersListed", func(t *testing.T) {
