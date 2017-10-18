@@ -402,3 +402,15 @@ func (v VolumeName) String() string {
 	// the server, it's clearer to always show full namespaces and not elide admin/.
 	return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
 }
+
+func (v VolumeName) StringWithoutAdmin() string {
+	// But, we also have the 'dm client' version, because we pass
+	// that back to Docker when it asks, and use it for comparisons
+	// too (e.g. when deciding which containers are using a given
+	// volume).
+	if v.Namespace == "admin" {
+		return v.Name
+	} else {
+		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
+	}
+}
