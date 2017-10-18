@@ -157,7 +157,7 @@ func checkDeletionWorked(t *testing.T, fsname string, delay time.Duration, node1
 	// We return after the first failure, as there's little point
 	// continuing (it just makes it hard to scroll back to the point of
 	// initial failure).
-	fmt.Printf("Sleeping for %d seconds, to ensure the initial delete has happened but metadata cleanup hasn't yet.\n", delay/time.Second)
+	fmt.Printf("Sleeping for %d seconds. See comments in acceptance_test.go for why.\n", delay/time.Second)
 	time.Sleep(delay)
 
 	st := s(t, node1, "dm list")
