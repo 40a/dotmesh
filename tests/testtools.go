@@ -115,6 +115,7 @@ func testSetup(f Federation, stamp int64) error {
 			fmt.Printf(">>> Using RunArgs %s\n", c.RunArgs(j))
 			// XXX the following only works if overlay is working
 			err := system("bash", "-c", fmt.Sprintf(`
+			set -xe
 			mkdir -p /datamesh-test-pools
 			MOUNTPOINT=/datamesh-test-pools
 			NODE=%s
@@ -127,8 +128,9 @@ func testSetup(f Federation, stamp int64) error {
 			EXTRA_DOCKER_ARGS="-v /datamesh-test-pools:/datamesh-test-pools:rshared" \
 				../kubernetes/dind-cluster-v1.7.sh bare $NODE %s
 			sleep 1
-			echo "About to run docker exec"
+			echo "About to run docker exec on $NODE"
 			docker exec -t $NODE bash -c '
+				set -xe
 			    echo "%s '$(hostname)'.local" >> /etc/hosts
 				sed -i "s/rundocker/rundocker \
 					--insecure-registry '$(hostname)'.local:80/" \
@@ -143,6 +145,7 @@ func testSetup(f Federation, stamp int64) error {
 				echo "Retrying after 5 seconds..."
 				sleep 5
 				docker exec -t $NODE bash -c '
+					set -xe
 					echo "%s '$(hostname)'.local" >> /etc/hosts
 					sed -i "s/rundocker/rundocker \
 						--insecure-registry '$(hostname)'.local:80/" \
