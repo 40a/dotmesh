@@ -2,6 +2,7 @@ stages:
     - sync
     - build
     - merge
+    - teardown_finished
     - test
     - deploy
 
@@ -157,6 +158,14 @@ macos_docker_edge:
         - cd ../..
         - ./smoke.sh $(pwd)/binaries/Darwin/dm datamesh-server
         - docker system prune -fa
+
+teardown_finished:
+    stage: teardown_finished
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestTeardownFinished
 
 # run full dind tests on linux
 linux_single_node:

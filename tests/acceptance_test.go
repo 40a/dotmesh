@@ -14,6 +14,10 @@ Take a look at docs/dev-commands.md to see how to run these tests.
 
 */
 
+func TestTeardownFinished(t *testing.T) {
+	teardownFinishedTestRuns()
+}
+
 func TestSingleNode(t *testing.T) {
 	// single node tests
 	teardownFinishedTestRuns()
