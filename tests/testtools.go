@@ -135,6 +135,19 @@ func testSetup(f Federation, stamp int64) error {
 				systemctl daemon-reload
 				systemctl restart docker
 			'
+			if [[ $? -ne 0 ]]; then
+			    # Do it again
+				echo "Retrying..."
+				sleep 5
+				docker exec -t $NODE bash -c '
+					echo "%s '$(hostname)'.local" >> /etc/hosts
+					sed -i "s/rundocker/rundocker \
+						--insecure-registry '$(hostname)'.local:80/" \
+						/etc/systemd/system/docker.service.d/20-fs.conf
+					systemctl daemon-reload
+					systemctl restart docker
+				'
+			fi
 			docker cp ../binaries/Linux/dm $NODE:/usr/local/bin/dm
 			`, node, c.RunArgs(j), HOST_IP_FROM_CONTAINER))
 			if err != nil {
