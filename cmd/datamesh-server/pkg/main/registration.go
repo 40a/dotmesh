@@ -131,11 +131,6 @@ func NewRegistrationPayload(r *http.Request) (RegistrationPayload, error) {
 
 func (web *RegistrationServer) registerUser(payload *RegistrationPayload) error {
 	log.Printf("[RegistrationServer] registerUser: %v", payload)
-	kapi, err := getEtcdKeysApi()
-	if err != nil {
-		log.Printf("[RegistrationServer] Error talking to etcd: %v", err)
-		return err
-	}
 
 	// validate the second time because we have just loaded the UsernameError
 	if payload.Validate() {
