@@ -127,6 +127,7 @@ func testSetup(f Federation, stamp int64) error {
 			EXTRA_DOCKER_ARGS="-v /datamesh-test-pools:/datamesh-test-pools:rshared" \
 				../kubernetes/dind-cluster-v1.7.sh bare $NODE %s
 			sleep 1
+			echo "About to run docker exec"
 			docker exec -t $NODE bash -c '
 			    echo "%s '$(hostname)'.local" >> /etc/hosts
 				sed -i "s/rundocker/rundocker \
@@ -135,9 +136,11 @@ func testSetup(f Federation, stamp int64) error {
 				systemctl daemon-reload
 				systemctl restart docker
 			'
-			if [[ $? -ne 0 ]]; then
+			ret=$?
+			echo "Return code for docker exec was $ret"
+			if [[ $ret -ne 0 ]]; then
 			    # Do it again
-				echo "Retrying..."
+				echo "Retrying after 5 seconds..."
 				sleep 5
 				docker exec -t $NODE bash -c '
 					echo "%s '$(hostname)'.local" >> /etc/hosts
