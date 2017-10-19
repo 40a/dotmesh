@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,8 +8,6 @@ import (
 	"mime"
 	"net/http"
 	"strings"
-
-	"github.com/coreos/etcd/client"
 )
 
 // registration server, so that, if enabled with ALLOW_PUBLIC_REGISTRATION,
