@@ -9,7 +9,7 @@ sync_github:
     # push all commits to all branches to github for safe keeping
     stage: sync
     script:
-        - git log
+        - git log --pretty=oneline | head -n 5 || true
         - git remote rm github || true
         - git remote add github git@github.com:datamesh-io/datamesh
         - git checkout -b $CI_BUILD_REF_NAME || true
