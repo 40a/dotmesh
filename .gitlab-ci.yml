@@ -2,7 +2,6 @@ stages:
     - sync
     - build
     - merge
-    - teardown_finished
     - test
     - deploy
 
@@ -160,7 +159,9 @@ macos_docker_edge:
         - docker system prune -fa
 
 teardown_finished:
-    stage: teardown_finished
+    # it's safe to do this in parallel with the merge stage, which saves us a
+    # bit of time
+    stage: merge
     tags:
         - ubuntu-16.10
         - fast
