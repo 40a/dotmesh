@@ -92,6 +92,9 @@ build_frontend_test_runner:
 # so the tests use the image with the frontend
 merge_frontend:
     stage: merge
+    dependencies:
+        - build_server
+        - build_frontend
     tags:
         - ubuntu-16.10
         - fast
@@ -132,6 +135,9 @@ merge_frontend:
 
 macos_docker_stable:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_macos
     tags:
         - macos
         - docker-stable
@@ -146,6 +152,9 @@ macos_docker_stable:
 
 macos_docker_edge:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_macos
     tags:
         - macos
         - docker-edge
@@ -162,6 +171,7 @@ teardown_finished:
     # it's safe to do this in parallel with the merge stage, which saves us a
     # bit of time
     stage: merge
+    dependencies: []
     tags:
         - ubuntu-16.10
         - fast
@@ -171,6 +181,9 @@ teardown_finished:
 # run full dind tests on linux
 linux_single_node:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -179,6 +192,9 @@ linux_single_node:
 
 linux_two_nodes_same_cluster:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -187,6 +203,9 @@ linux_two_nodes_same_cluster:
 
 linux_deletion_simple:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -195,6 +214,9 @@ linux_deletion_simple:
 
 linux_deletion_complex:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -204,6 +226,9 @@ linux_deletion_complex:
 
 linux_two_single_node_clusters:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -212,6 +237,9 @@ linux_two_single_node_clusters:
 
 linux_three_single_node_clusters:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -220,6 +248,9 @@ linux_three_single_node_clusters:
 
 deploy_client_binaries:
     stage: deploy
+    dependencies:
+        - build_client_linux
+        - build_client_macos
     tags:
         - ubuntu-16.10
         - fast
@@ -230,6 +261,11 @@ deploy_client_binaries:
 
 deploy_server_docker_image:
     stage: deploy
+    dependencies:
+        # XXX we don't actually use this, do we? We're instead relying on the
+        # local docker image cache being consistent on the test runner. Could
+        # be out of date with a parallel build!
+        - build_server
     tags:
         - ubuntu-16.10
         - fast
@@ -255,4 +291,3 @@ frontend:
     artifacts:
         paths:
             - frontend_artifacts
-
