@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,8 +8,6 @@ import (
 	"mime"
 	"net/http"
 	"strings"
-
-	"github.com/coreos/etcd/client"
 )
 
 // registration server, so that, if enabled with ALLOW_PUBLIC_REGISTRATION,
@@ -134,43 +131,24 @@ func NewRegistrationPayload(r *http.Request) (RegistrationPayload, error) {
 
 func (web *RegistrationServer) registerUser(payload *RegistrationPayload) error {
 	log.Printf("[RegistrationServer] registerUser: %v", payload)
-	kapi, err := getEtcdKeysApi()
-	if err != nil {
-		log.Printf("[RegistrationServer] Error talking to etcd: %v", err)
-		return err
-	}
-
-	if payload.Validate() {
-		// lookup username in etcd, bail if it exists
-		_, err = kapi.Get(
-			context.Background(),
-			fmt.Sprintf(
-				"%s/users/%s", ETCD_PREFIX, payload.Name,
-			),
-			nil,
-		)
-		if !client.IsKeyNotFound(err) && err != nil {
-			log.Printf("[RegistrationServer] Error checking username %v: %v", payload.Name, err)
-			return err
-		}
-		if err == nil {
-			payload.NameError = "Name already exists, please choose another."
-		}
-	}
 
 	// validate the second time because we have just loaded the UsernameError
 	if payload.Validate() {
 		user, err := NewUser(payload.Name, payload.Email, payload.Password)
+		success := true
 		if err != nil {
 			log.Printf("[RegistrationServer] Error creating user %v: %v", payload.Name, err)
-			return err
+			success = false
+			payload.NameError = fmt.Sprintf("Error saving user: %v", err)
+		} else {
+			err = user.Save()
+			if err != nil {
+				log.Printf("[RegistrationServer] Error saving user %v: %v", payload.Name, err)
+				success = false
+				payload.NameError = fmt.Sprintf("Error saving user: %v", err)
+			}
 		}
-		err = user.Save()
-		if err != nil {
-			log.Printf("[RegistrationServer] Error saving user %v: %v", payload.Name, err)
-			return err
-		}
-		payload.Created = true
+		payload.Created = success
 	}
 
 	return nil

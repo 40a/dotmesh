@@ -18,7 +18,21 @@ func NewUser(name, email, apiKey string) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
-	// TODO enforce username and email address uniqueness
+	allUsers, err := AllUsers()
+	if err != nil {
+		return User{}, err
+	}
+	// TODO make email in error messages below configurable.
+	// XXX this way of enforcing username and email address uniqueness is racy
+	// with concurrent creation, need to use something CAS-y in etcd.
+	for _, user := range allUsers {
+		if user.Name == name {
+			return User{}, fmt.Errorf("Username already exists - contact help@datamesh.io")
+		}
+		if user.Email == email {
+			return User{}, fmt.Errorf("Email already exists - contact help@datamesh.io")
+		}
+	}
 	return User{Id: id.String(), Name: name, Email: email, ApiKey: apiKey}, nil
 }
 
@@ -130,4 +144,35 @@ func (t TopLevelFilesystem) authorize(ctx context.Context, includeCollab bool) (
 		}
 	}
 	return false, nil
+}
+
+func UserIsNamespaceAdministrator(userId, namespace string) (bool, error) {
+	// Admin gets to administer every namespace
+	if userId == ADMIN_USER_UUID {
+		return true, nil
+	}
+
+	// Otherwise, look up the user...
+	user, err := GetUserById(userId)
+	if err != nil {
+		return false, err
+	}
+
+	// ...and see if their name matches the namespace name. In future,
+	// this can be extended to cover more configurable rules.
+	if user.Name == namespace {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func AuthenticatedUserIsNamespaceAdministrator(ctx context.Context, namespace string) (bool, error) {
+	u := ctx.Value("authenticated-user-id").(string)
+	if u == "" {
+		return false, fmt.Errorf("No user found in context.")
+	}
+
+	a, err := UserIsNamespaceAdministrator(u, namespace)
+	return a, err
 }

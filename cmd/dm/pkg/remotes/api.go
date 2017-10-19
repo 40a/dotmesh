@@ -227,6 +227,27 @@ func (dm *DatameshAPI) VolumeExists(volumeName string) (bool, error) {
 	return ok, nil
 }
 
+func (dm *DatameshAPI) DeleteVolume(volumeName string) error {
+	namespace, name, err := ParseNamespacedVolume(volumeName)
+	if err != nil {
+		return err
+	}
+
+	var result bool
+	err = dm.client.CallRemote(
+		context.Background(), "DatameshRPC.DeleteVolume", VolumeName{namespace, name}, &result,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = dm.Configuration.DeleteStateForVolume(volumeName)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (dm *DatameshAPI) SwitchVolume(volumeName string) error {
 	return dm.setCurrentVolume(volumeName)
 }
@@ -486,7 +507,9 @@ func (dm *DatameshAPI) PollTransfer(transferId string, out io.Writer) error {
 			context.Background(), "DatameshRPC.GetTransfer", transferId, result,
 		)
 		if err != nil {
-			out.Write([]byte(fmt.Sprintf("Got error, trying again: %s\n", err)))
+			if !strings.Contains(fmt.Sprintf("%s", err), "No such intercluster transfer") {
+				out.Write([]byte(fmt.Sprintf("Got error, trying again: %s\n", err)))
+			}
 		}
 		if result.Size > 0 {
 			if !started {
@@ -527,6 +550,16 @@ func (dm *DatameshAPI) PollTransfer(transferId string, out io.Writer) error {
 			if started {
 				bar.FinishPrint("Done!")
 			}
+			// A terrible hack: many of the tests race the next 'dm log' or
+			// similar command against snapshots received by a push/pull/clone
+			// updating etcd which updates nodes' local caches of state. Give
+			// the etcd updates a 1 second head start, which might reduce the
+			// incidence of test flakes.
+			// TODO: In general, we need a better way to _request_ the current
+			// state of snapshots on a node, rather than always consulting
+			// potentially out-of-date global caches. This might help with
+			// scaling, too.
+			time.Sleep(time.Second)
 			return nil
 		}
 		if result.Status == "error" {
@@ -534,6 +567,8 @@ func (dm *DatameshAPI) PollTransfer(transferId string, out io.Writer) error {
 				bar.FinishPrint(fmt.Sprintf("error: %s", result.Message))
 			}
 			out.Write([]byte(result.Message + "\n"))
+			// A similarly terrible hack. See comment above.
+			time.Sleep(time.Second)
 			return fmt.Errorf(result.Message)
 		}
 	}

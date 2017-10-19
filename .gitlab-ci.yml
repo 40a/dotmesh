@@ -9,7 +9,7 @@ sync_github:
     # push all commits to all branches to github for safe keeping
     stage: sync
     script:
-        - git log
+        - git log --pretty=oneline | head -n 5 || true
         - git remote rm github || true
         - git remote add github git@github.com:datamesh-io/datamesh
         - git checkout -b $CI_BUILD_REF_NAME || true
@@ -92,6 +92,9 @@ build_frontend_test_runner:
 # so the tests use the image with the frontend
 merge_frontend:
     stage: merge
+    dependencies:
+        - build_server
+        - build_frontend
     tags:
         - ubuntu-16.10
         - fast
@@ -104,9 +107,37 @@ merge_frontend:
         - cd cmd/datamesh-server
         - ./mergebuild.sh
 
-# run sanity check that things still work on macOS
+# run sanity check that things still work on Windows and macOS
+#windows_docker_stable:
+#    stage: test
+#    tags:
+#        - windows
+#        - docker-stable
+#    before_script:
+#        - |
+#          bash -c "
+#          mkdir -p gopath
+#          export GOPATH=$(pwd)/gopath
+#          cd gopath
+#          mkdir -p src/github.com/datamesh-io
+#          ln -s `realpath ..` ./src/github.com/datamesh-io/datamesh
+#          cd src/github.com/datamesh-io/datamesh
+#          "
+#    script:
+#        - |
+#          bash -c "
+#          cd cmd/datamesh-server;
+#          docker build -t datamesh-server . || (sleep 30; docker build -t datamesh-server .)
+#          cd ../..
+#          ./smoke.sh $(pwd)/binaries/Linux/dm datamesh-server
+#          docker system prune -fa
+#          "
+
 macos_docker_stable:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_macos
     tags:
         - macos
         - docker-stable
@@ -121,6 +152,9 @@ macos_docker_stable:
 
 macos_docker_edge:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_macos
     tags:
         - macos
         - docker-edge
@@ -133,9 +167,23 @@ macos_docker_edge:
         - ./smoke.sh $(pwd)/binaries/Darwin/dm datamesh-server
         - docker container prune -f
 
+teardown_finished:
+    # it's safe to do this in parallel with the merge stage, which saves us a
+    # bit of time
+    stage: merge
+    dependencies: []
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestTeardownFinished
+
 # run full dind tests on linux
 linux_single_node:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -144,6 +192,9 @@ linux_single_node:
 
 linux_two_nodes_same_cluster:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -152,14 +203,44 @@ linux_two_nodes_same_cluster:
 
 linux_kubernetes:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
     script:
         - ./test.sh -run TestKubernetes
+    allow_failure: true
+
+linux_deletion_simple:
+    stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestDeletionSimple
+
+linux_deletion_complex:
+    stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestDeletionComplex
+    allow_failure: true
 
 linux_two_single_node_clusters:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -168,6 +249,9 @@ linux_two_single_node_clusters:
 
 linux_three_single_node_clusters:
     stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
     tags:
         - ubuntu-16.10
         - fast
@@ -176,6 +260,9 @@ linux_three_single_node_clusters:
 
 deploy_client_binaries:
     stage: deploy
+    dependencies:
+        - build_client_linux
+        - build_client_macos
     tags:
         - ubuntu-16.10
         - fast
@@ -186,6 +273,11 @@ deploy_client_binaries:
 
 deploy_server_docker_image:
     stage: deploy
+    dependencies:
+        # XXX we don't actually use this, do we? We're instead relying on the
+        # local docker image cache being consistent on the test runner. Could
+        # be out of date with a parallel build!
+        - build_server
     tags:
         - ubuntu-16.10
         - fast
@@ -211,4 +303,3 @@ frontend:
     artifacts:
         paths:
             - frontend_artifacts
-
