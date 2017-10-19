@@ -507,7 +507,9 @@ func (dm *DatameshAPI) PollTransfer(transferId string, out io.Writer) error {
 			context.Background(), "DatameshRPC.GetTransfer", transferId, result,
 		)
 		if err != nil {
-			out.Write([]byte(fmt.Sprintf("Got error, trying again: %s\n", err)))
+			if !strings.Contains(fmt.Sprintf("%s", err), "No such intercluster transfer") {
+				out.Write([]byte(fmt.Sprintf("Got error, trying again: %s\n", err)))
+			}
 		}
 		if result.Size > 0 {
 			if !started {
