@@ -294,9 +294,7 @@ func clusterCommonPreflight() error {
 	}
 	cv, err := semver.Make(strings.TrimSpace(string(clientVersion)))
 	if err != nil {
-		fmt.Printf("Unable to compare Docker versions: got '%v', maybe you're "+
-			"using a too-new version of docker that broke semver, presumably all future "+
-			"versions of Docker will work perfectly, continuing...\n", err)
+		fmt.Printf("assuming post-semver Docker client is sufficient.\n")
 	} else {
 		if cv.LT(v1_10_0) {
 			return fmt.Errorf("Docker client version is < 1.10.0, please upgrade")
@@ -312,9 +310,7 @@ func clusterCommonPreflight() error {
 	}
 	sv, err := semver.Make(strings.TrimSpace(string(serverVersion)))
 	if err != nil {
-		fmt.Printf("Unable to compare Docker versions: got '%v', maybe you're "+
-			"using a too-new version of docker that broke semver, presumably all future "+
-			"versions of Docker will work perfectly, continuing...\n", err)
+		fmt.Printf("assuming post-semver Docker server is sufficient.\n")
 	} else {
 		if sv.LT(v1_10_0) {
 			return fmt.Errorf("Docker server version is < 1.10.0, please upgrade")
@@ -524,7 +520,7 @@ func startDatameshContainer(pkiPath string) error {
 	var configFileExists bool
 	e, err := pathExists(configFile)
 	if err != nil {
-		fmt.Printf("we have an exists error: %s", err)
+		fmt.Printf("Error examining config file %s: %s", configFile, err)
 		return err
 	}
 	if e {
@@ -532,7 +528,6 @@ func startDatameshContainer(pkiPath string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("we have a file: %s", string(absoluteConfigPath))
 		configFileExists = true
 	}
 	args := []string{
@@ -561,7 +556,7 @@ func startDatameshContainer(pkiPath string) error {
 		"-e", fmt.Sprintf("ALLOW_PUBLIC_REGISTRATION=%s", regStr),
 		// Set env var so that sub-container executor can bind-mount the right
 		// certificates in.
-		"-e", fmt.Sprintf("PKI_PATH=%s", pkiPath),
+		"-e", fmt.Sprintf("PKI_PATH=%s", maybeEscapeLinuxEmulatedPathOnWindows(pkiPath)),
 		// And know their own identity, so they can respawn.
 		"-e", fmt.Sprintf("DATAMESH_DOCKER_IMAGE=%s", datameshDockerImage),
 		"-e", fmt.Sprintf("ASSETS_URL_PREFIX=%s", assetsURLPrefix),
@@ -586,7 +581,6 @@ func startDatameshContainer(pkiPath string) error {
 		// actual datamesh-server with an rshared bind-mount of /var/pool.
 		"/require_zfs.sh", "datamesh-server",
 	}...)
-	fmt.Printf("docker %s\n", strings.Join(args, " "))
 	fmt.Fprintf(logFile, "docker %s\n", strings.Join(args, " "))
 	resp, err := exec.Command("docker", args...).CombinedOutput()
 	if err != nil {
@@ -644,7 +638,7 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 		// hopefully it works well enough on docker for mac and docker machine.
 		// An alternative approach could be to pass in the cluster secret as an
 		// env var and download it and cache it in a docker volume.
-		"-v", fmt.Sprintf("%s:/pki", pkiPath),
+		"-v", fmt.Sprintf("%s:/pki", maybeEscapeLinuxEmulatedPathOnWindows(pkiPath)),
 		etcdDockerImage,
 		"etcd", "--name", hostnameString,
 		"--data-dir", "/var/lib/etcd",
@@ -814,9 +808,26 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 }
 
 func clusterReset(cmd *cobra.Command, args []string, out io.Writer) error {
+	// TODO this should gather a _list_ of errors, not just at-most-one!
 	var bailErr error
-	fmt.Printf("Deleting datamesh-etcd container... ")
+
+	fmt.Printf("Destroying all datamesh data... ")
 	resp, err := exec.Command(
+		"docker", "exec", "datamesh-server-inner",
+		"zfs", "destroy", "-r", "pool",
+	).CombinedOutput()
+	if err != nil {
+		if strings.Contains(string(resp), "dataset is busy") {
+			return fmt.Errorf("unable to destroy zfs pool because it was busy, please ensure all containers using datamesh volumes are deleted and then try again; use dm list to see them: %v", string(resp))
+		} else {
+			fmt.Printf("response: %s\n", resp)
+			bailErr = err
+		}
+	}
+	fmt.Printf("done.\n")
+
+	fmt.Printf("Deleting datamesh-etcd container... ")
+	resp, err = exec.Command(
 		"docker", "rm", "-v", "-f", "datamesh-etcd",
 	).CombinedOutput()
 	if err != nil {
@@ -928,6 +939,41 @@ func getPkiPath() string {
 	dirPath := filepath.Dir(configPath)
 	pkiPath := dirPath + "/pki"
 	return pkiPath
+}
+
+func maybeEscapeLinuxEmulatedPathOnWindows(path string) string {
+	// If the 'dm' client is running on Windows in WSL (Windows Subsystem for
+	// Linux), and the Linux docker client is installed in the WSL environment,
+	// and Docker for Windows is installed, we need to escape the WSL chroot
+	// path, before being passed to Docker as a Windows path. E.g.
+	//
+	// /home/$USER/.datamesh/pki
+	//   ->
+	// C:/Users/$USER/AppData/Local/lxss/home/$USER/.datamesh/pki
+	//
+	// We can determine whether this is necessary by reading /proc/version
+	// https://github.com/Microsoft/BashOnWindows/issues/423#issuecomment-221627364
+
+	version, err := ioutil.ReadFile("/proc/version")
+	if err != nil {
+		if os.IsNotExist(err) {
+			// normal on macOS
+			return path
+		} else {
+			panic(err)
+		}
+	}
+	user, err := exec.Command("whoami").CombinedOutput()
+	if err != nil {
+		panic(err)
+	}
+	if strings.Contains(string(version), "Microsoft") {
+		// In test environment, user was 'User' and Linux user was 'user'.
+		// Hopefully lowercasing is the only transformation.  Hopefully on the
+		// Windows (docker server) side, the path is case insensitive!
+		return "/c/Users/" + strings.TrimSpace(string(user)) + "/AppData/Local/lxss" + path
+	}
+	return path
 }
 
 func generatePKI(extantCA bool) error {

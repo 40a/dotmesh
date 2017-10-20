@@ -116,7 +116,7 @@ func testSetup(f Federation, stamp int64) error {
 			fmt.Printf(">>> Using RunArgs %s\n", c.RunArgs(i, j))
 			// XXX the following only works if overlay is working
 			err := system("bash", "-c", fmt.Sprintf(`
-			set -x
+			set -xe
 			mkdir -p /datamesh-test-pools
 			MOUNTPOINT=/datamesh-test-pools
 			NODE=%s
@@ -131,7 +131,9 @@ func testSetup(f Federation, stamp int64) error {
 			CNI_PLUGIN=weave \
 				../kubernetes/dind-cluster-v1.7.sh bare $NODE %s
 			sleep 1
+			echo "About to run docker exec on $NODE"
 			docker exec -t $NODE bash -c '
+				set -xe
 			    echo "%s '$(hostname)'.local" >> /etc/hosts
 				sed -i "s/rundocker/rundocker \
 					--insecure-registry '$(hostname)'.local:80/" \
@@ -139,6 +141,22 @@ func testSetup(f Federation, stamp int64) error {
 				systemctl daemon-reload
 				systemctl restart docker
 			'
+			ret=$?
+			echo "Return code for docker exec was $ret"
+			if [[ $ret -ne 0 ]]; then
+			    # Do it again
+				echo "Retrying after 5 seconds..."
+				sleep 5
+				docker exec -t $NODE bash -c '
+					set -xe
+					echo "%s '$(hostname)'.local" >> /etc/hosts
+					sed -i "s/rundocker/rundocker \
+						--insecure-registry '$(hostname)'.local:80/" \
+						/etc/systemd/system/docker.service.d/20-fs.conf
+					systemctl daemon-reload
+					systemctl restart docker
+				'
+			fi
 			docker cp ../binaries/Linux/dm $NODE:/usr/local/bin/dm
 			`, node, c.RunArgs(i, j), HOST_IP_FROM_CONTAINER))
 			if err != nil {
@@ -281,6 +299,10 @@ func teardownFinishedTestRuns() {
 				}
 			}
 		}()
+		out, err := exec.Command("docker", "volume", "prune", "-f").Output()
+		if err != nil {
+			fmt.Printf("unable to prune docker volumes: %s, %s\n", err, out)
+		}
 	}
 	err = system("docker", "container", "prune", "-f")
 	if err != nil {
@@ -459,6 +481,7 @@ type Node struct {
 
 type Cluster struct {
 	DesiredNodeCount int
+	Config           string
 	Nodes            []Node
 }
 
@@ -473,7 +496,16 @@ type Pair struct {
 }
 
 func NewCluster(desiredNodeCount int) *Cluster {
-	return &Cluster{DesiredNodeCount: desiredNodeCount}
+	return &Cluster{DesiredNodeCount: desiredNodeCount, Config: ""}
+}
+
+/*
+ Caller beware: the config string is put into a shell command in
+ single quotes, so please don't use single quotes inside it. If you
+ need to, them implement quoting where c.Config is mentioned below.
+*/
+func NewClusterWithConfig(desiredNodeCount int, config string) *Cluster {
+	return &Cluster{DesiredNodeCount: desiredNodeCount, Config: config}
 }
 
 func NewKubernetes(desiredNodeCount int) *Kubernetes {
@@ -813,10 +845,12 @@ func (c *Cluster) Start(t *testing.T, now int64, i int) error {
 		panic("no such thing as a zero-node cluster")
 	}
 	st, err := docker(
-		nodeName(now, i, 0), "dm cluster init "+localImageArgs()+
+		nodeName(now, i, 0), "echo '"+c.Config+"' > /tmp/datamesh.conf; dm cluster init "+localImageArgs()+
 			" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, 0)+
-			" --use-pool-name "+poolId(now, i, 0),
+			" --use-pool-name "+poolId(now, i, 0)+
+			" --config-file /tmp/datamesh.conf",
 	)
+
 	if err != nil {
 		return err
 	}
@@ -844,7 +878,8 @@ func (c *Cluster) Start(t *testing.T, now int64, i int) error {
 		// if c.Nodes is 3, this iterates over 1 and 2 (0 was the init'd
 		// node).
 		_, err = docker(nodeName(now, i, j), fmt.Sprintf(
-			"dm cluster join %s %s %s",
+			"echo '%s' > /tmp/datamesh.conf; dm cluster join --config-file /tmp/datamesh.conf %s %s %s",
+			c.Config,
 			localImageArgs()+" --use-pool-dir /datamesh-test-pools/"+poolId(now, i, j),
 			joinUrl,
 			" --use-pool-name "+poolId(now, i, j),

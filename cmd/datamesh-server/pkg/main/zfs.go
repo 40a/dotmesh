@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os/exec"
 	"strconv"
@@ -124,6 +126,22 @@ func findFilesystemIdsOnSystem() []string {
 		newLines = append(newLines, unfq(line))
 	}
 	return newLines
+}
+
+func deleteFilesystemInZFS(fs string) error {
+	cmd := exec.Command(ZFS, "destroy", "-r", fq(fs))
+	errBuffer := bytes.Buffer{}
+	cmd.Stderr = &errBuffer
+	err := cmd.Run()
+	if err != nil {
+		readErr, err := ioutil.ReadAll(&errBuffer)
+		if readErr != nil {
+			return fmt.Errorf("error reading error: %v", readErr)
+		}
+		return fmt.Errorf("error running zfs destroy on filesystem %s: %v, %v", fs, err, string(errBuffer.Bytes()))
+	}
+
+	return nil
 }
 
 func discoverSystem(fs string) (*filesystem, error) {

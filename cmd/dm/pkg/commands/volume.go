@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -46,6 +47,25 @@ func NewCmdVolumeShow(out io.Writer) *cobra.Command {
 	return cmd
 }
 
+func NewCmdVolumeDelete(out io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "delete",
+		Short: "Delete a volume",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := volumeDelete(cmd, args, out)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+		},
+	}
+	cmd.Flags().BoolVarP(
+		&forceMode, "force", "f", false,
+		"perform dangerous operations without requiring confirmation.",
+	)
+	return cmd
+}
+
 func NewCmdVolume(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "volume",
@@ -63,6 +83,7 @@ is used.`,
 
 	cmd.AddCommand(NewCmdVolumeSetUpstream(os.Stdout))
 	cmd.AddCommand(NewCmdVolumeShow(os.Stdout))
+	cmd.AddCommand(NewCmdVolumeDelete(os.Stdout))
 
 	return cmd
 }
@@ -108,6 +129,38 @@ func volumeSetUpstream(cmd *cobra.Command, args []string, out io.Writer) error {
 	}
 
 	dm.Configuration.SetDefaultRemoteVolumeFor(peer, localNamespace, localVolume, remoteNamespace, remoteVolume)
+	return nil
+}
+
+func volumeDelete(cmd *cobra.Command, args []string, out io.Writer) error {
+	dm, err := remotes.NewDatameshAPI(configPath)
+	if err != nil {
+		return err
+	}
+
+	var volume string
+	switch len(args) {
+	case 1:
+		volume = args[0]
+	default:
+		return fmt.Errorf("Please specify the volume to delete (the default volume is ignored for deletion, to avoid mistakes).")
+	}
+
+	if !forceMode {
+		fmt.Printf("Please confirm that you really want to delete the volume %s, including all branches and commits? (enter Y to continue): ", volume)
+		reader := bufio.NewReader(os.Stdin)
+		text, _ := reader.ReadString('\n')
+		if text != "Y\n" {
+			fmt.Printf("Aborted.\n")
+			return nil
+		}
+	}
+
+	err = dm.DeleteVolume(volume)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

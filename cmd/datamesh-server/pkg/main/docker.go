@@ -284,7 +284,7 @@ func (state *InMemoryState) runPlugin() {
 		for _, fs := range (*state).registry.Filesystems() {
 			log.Printf("Mountpoint for %s: %s", fs, containerMnt(fs))
 			response.Volumes = append(response.Volumes, ResponseListVolume{
-				Name:       fs.String(),
+				Name:       fs.StringWithoutAdmin(),
 				Mountpoint: containerMnt(fs),
 			})
 		}
