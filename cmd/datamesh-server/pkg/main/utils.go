@@ -145,8 +145,8 @@ func unmnt(p string) (string, error) {
 			return "", fmt.Errorf("Mount path %s does not start with %s/", p, mountPrefix)
 		}
 	} else {
-		if strings.HasPrefix(p, mountPrefix+"/"+ROOT_FS) {
-			return strings.TrimPrefix(p, mountPrefix+"/"+ROOT_FS), nil
+		if strings.HasPrefix(p, mountPrefix+"/"+ROOT_FS+"/") {
+			return strings.TrimPrefix(p, mountPrefix+"/"+ROOT_FS+"/"), nil
 		} else {
 			return "", fmt.Errorf("Mount path %s does not start with %s/%s", p, mountPrefix, ROOT_FS)
 		}
