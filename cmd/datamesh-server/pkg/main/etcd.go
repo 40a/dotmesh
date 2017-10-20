@@ -291,12 +291,6 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 			// there's no need to remove the registry entry for the whole
 			// volume. We only do that when deleting the toplevel filesystem.
 
-			// Ensure the toplevel filesystem's docker links are cleaned up. This has to happen on every node.
-			err := state.cleanupDockerFilesystemState(names.Name)
-			if err != nil {
-				errors = append(errors, err)
-			}
-
 			// Normally, the registry entry is deleted as soon as the volume
 			// is deleted, but in the event of a failure it might not have
 			// been. So we try again.

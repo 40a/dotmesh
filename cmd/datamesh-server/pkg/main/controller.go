@@ -91,8 +91,18 @@ func (s *InMemoryState) deleteFilesystem(filesystemId string) error {
 
 	// No need to worry about globalStateCache, as the fsmachine's termination will gracefully handle that
 
+	// Ensure the toplevel filesystem's docker links are cleaned
+	// up. This has to happen on every node. It only really needs to
+	// happen once, when (if) we delete the "current" filesystem that
+	// was checked out, but it's hard to tell when that case is so we
+	// call it every time.
+	err := s.cleanupDockerFilesystemState()
+	if err != nil {
+		errors = append(errors, err)
+	}
+
 	// Actually remove from ZFS
-	err := deleteFilesystemInZFS(filesystemId)
+	err = deleteFilesystemInZFS(filesystemId)
 	if err != nil {
 		errors = append(errors, err)
 	}
