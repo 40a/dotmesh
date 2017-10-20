@@ -134,6 +134,24 @@ func mnt(fs string) string {
 		return fmt.Sprintf("%s/%s/%s", mountPrefix, ROOT_FS, fs)
 	}
 }
+func unmnt(p string) (string, error) {
+	// From mount path to filesystem id
+	mountPrefix := os.Getenv("MOUNT_PREFIX")
+	if mountPrefix == "" {
+		mountPrefix = "/var"
+		if strings.HasPrefix(p, mountPrefix+"/") {
+			return unfq(strings.TrimPrefix(p, mountPrefix+"/")), nil
+		} else {
+			return "", fmt.Errorf("Mount path %s does not start with %s/", p, mountPrefix)
+		}
+	} else {
+		if strings.HasPrefix(p, mountPrefix+"/"+ROOT_FS) {
+			return strings.TrimPrefix(p, mountPrefix+"/"+ROOT_FS), nil
+		} else {
+			return "", fmt.Errorf("Mount path %s does not start with %s/%s", p, mountPrefix, ROOT_FS)
+		}
+	}
+}
 
 func containerMntParent(id VolumeName) string {
 	return CONTAINER_MOUNT_PREFIX + "/" + id.Namespace

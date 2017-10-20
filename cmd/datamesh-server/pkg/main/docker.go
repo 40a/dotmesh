@@ -539,7 +539,7 @@ func writeResponseErr(err error, w http.ResponseWriter) {
 
 func (state *InMemoryState) cleanupDockerFilesystemState(name VolumeName) error {
 	symlinkPath := containerMnt(name)
-	fi, err := os.Lstat(symlinkPath)
+	target, err := os.Readlink(symlinkPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// It's already gone, nothing to clean up.
@@ -548,14 +548,22 @@ func (state *InMemoryState) cleanupDockerFilesystemState(name VolumeName) error 
 			return err
 		}
 	} else {
-		// No error doing the LStat, so we might have a link to remove!
-		if fi.Mode()&os.ModeType == os.ModeSymlink {
+		fsid, err := unmnt(target)
+		if err != nil {
+			return err
+		}
+
+		deleted, err := isFilesystemDeletedInEtcd(fsid)
+		if err != nil {
+			return err
+		}
+
+		if deleted {
 			if err := os.Remove(symlinkPath); err != nil {
 				return err
 			}
 		} else {
-			return fmt.Errorf("Attempting to remove symlink %s failed due to it not being a symlink (type=%s)",
-				symlinkPath, fi.Mode)
+			// Do nothing; the symlink has been taken over by another filesystem, and points to a new non-deleted fs.
 		}
 	}
 
