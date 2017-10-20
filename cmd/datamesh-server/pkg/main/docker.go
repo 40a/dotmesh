@@ -536,3 +536,28 @@ func writeResponseErr(err error, w http.ResponseWriter) {
 	responseJSON, _ := json.Marshal(&ResponseSimple{Err: errString})
 	w.Write(responseJSON)
 }
+
+func (state *InMemoryState) cleanupDockerFilesystemState(name VolumeName) error {
+	symlinkPath := containerMnt(name)
+	fi, err := os.Lstat(symlinkPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// It's already gone, nothing to clean up.
+		} else {
+			// Some other error happened, that's not good.
+			return err
+		}
+	} else {
+		// No error doing the LStat, so we might have a link to remove!
+		if fi.Mode()&os.ModeType == os.ModeSymlink {
+			if err := os.Remove(symlinkPath); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("Attempting to remove symlink %s failed due to it not being a symlink (type=%s)",
+				symlinkPath, fi.Mode)
+		}
+	}
+
+	return nil
+}
