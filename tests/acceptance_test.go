@@ -808,12 +808,13 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		// Bob clones the branch
 		d(t, bobNode.Container, "dm clone cluster_0 alice/cress mustard --local-volume cress")
 		d(t, bobNode.Container, "dm switch cress")
-		time.Sleep(time.Second) // ABS FIXME: Does this fix the tests? if so, checkout-branch-right-after-clone is laggy
 		d(t, bobNode.Container, "dm checkout mustard")
-		time.Sleep(time.Second) // ABS FIXME: Does this fix the tests? if so, checkout-branch-right-after-clone is laggy
 
 		// Check we got both changes
-		resp := s(t, bobNode.Container, dockerRun("cress")+" ls /foo/")
+		// TODO: had to pin the branch here, seems like `dm switch V; dm
+		// checkout B; docker run C ... -v V:/...` doesn't result in V@B being
+		// mounted into C. this is probably surprising behaviour.
+		resp := s(t, bobNode.Container, dockerRun("cress@mustard")+" ls /foo/")
 		if !strings.Contains(resp, "alice") {
 			t.Error("We didn't get the master branch")
 		}
