@@ -654,6 +654,29 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 	})
 
+	t.Run("Bug74MissingMetadata", func(t *testing.T) {
+		fsname := uniqName()
+
+		// Commit 1
+		d(t, node1, dockerRun(fsname)+" touch /foo/X")
+		d(t, node1, "dm switch "+fsname)
+		d(t, node1, "dm commit -m 'hello'")
+
+		// Commit 2
+		d(t, node1, dockerRun(fsname)+" touch /foo/Y")
+		d(t, node1, "dm commit -m 'again'")
+
+		// Ahhh, push it! https://www.youtube.com/watch?v=vCadcBR95oU
+		d(t, node1, "dm push cluster_1 "+fsname)
+
+		// What do we get on node2?
+		d(t, node2, "dm switch "+fsname)
+		resp := s(t, node2, "dm log")
+		if !strings.Contains(resp, "hello") ||
+			!strings.Contains(resp, "again") {
+			t.Error("Some history went missing (if it's bug#74 again, probably the 'hello')")
+		}
+	})
 }
 
 func TestFrontend(t *testing.T) {

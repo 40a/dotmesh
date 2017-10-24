@@ -236,15 +236,15 @@ func (f *fsMachine) updateEtcdAboutSnapshots() error {
 			nil,
 		)
 		if err != nil {
-			// ISSUE: We don't always hear the echo in time, see
-			// issue https://github.com/datamesh-io/datamesh/issues/54
-			log.Printf(
-				"[updateEtcdAboutSnapshots] successfully set new snaps for %s on %s,"+
-					" will we hear an echo?",
-				f.filesystemId, f.state.myNodeId,
-			)
 			return err
 		}
+		// ISSUE: We don't always hear the echo in time, see
+		// issue https://github.com/datamesh-io/datamesh/issues/54
+		log.Printf(
+			"[updateEtcdAboutSnapshots] successfully set new snaps for %s on %s,"+
+				" will we hear an echo?",
+			f.filesystemId, f.state.myNodeId,
+		)
 	}
 
 	// wait until the state machine notifies us that it's changed the
