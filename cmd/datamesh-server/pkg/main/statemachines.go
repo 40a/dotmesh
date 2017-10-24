@@ -1808,9 +1808,6 @@ func (f *fsMachine) pull(
 	// TODO dedupe wrt push!!
 	// XXX This shouldn't be deduced here _and_ passed in as an argument (which
 	// is then thrown away), it just makes the code confusing.
-	log.Printf("ABS TEST: %s.pull(%s,%s,%s,%s) toFilesystemId = %s",
-		f.filesystemId,
-		fromFilesystemId, fromSnapshotId, toFilesystemId, toSnapshotId, pollResult.FilesystemId)
 	toFilesystemId = pollResult.FilesystemId
 	fromSnapshotId = pollResult.StartingSnapshot
 
@@ -1887,7 +1884,6 @@ func (f *fsMachine) pull(
 
 	// 2) Pulling node is trying to mount the master fsid and failing.
 
-	log.Printf("ABS TEST pull consistency: f.filesystemId = %s, toFilesystem = %s", f.filesystemId, toFilesystemId)
 	// cmd := exec.Command("zfs", "recv", fq(f.filesystemId))
 	cmd := exec.Command("zfs", "recv", fq(toFilesystemId))
 	pipeReader, pipeWriter := io.Pipe()
@@ -2895,8 +2891,7 @@ func (f *fsMachine) applyPath(
 			},
 		}, backoffState
 	}
-	log.Printf("[applyPath] ABS TEST: Got master, attempting to mount it for some reason: path.TopLevelFilesystemId=%s", path.TopLevelFilesystemId)
-	err := f.state.maybeMountFilesystem(path.TopLevelFilesystemId) // ABS NOTE: Why do this now, before we've been through the loop?
+	err := f.state.maybeMountFilesystem(path.TopLevelFilesystemId)
 	if err != nil {
 		return &Event{
 			Name: "error-maybe-mounting-filesystem",
@@ -2910,7 +2905,6 @@ func (f *fsMachine) applyPath(
 	}
 
 	for i, clone := range path.Clones {
-		log.Printf("[applyPath] ABS TEST: Thinking about clone %#v", clone)
 		// default empty-strings is fine
 		nextOrigin := Origin{}
 		// is there a next (i+1'th) item? (i is zero-indexed)
