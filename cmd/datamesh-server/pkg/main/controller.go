@@ -160,7 +160,10 @@ func (s *InMemoryState) calculatePrelude(toFilesystemId, toSnapshotId string) (P
 	}
 	pointerSnaps := []*snapshot{}
 	for _, s := range snaps {
-		pointerSnaps = append(pointerSnaps, &s)
+		// Take a copy of s to take a pointer of, rather than getting
+		// lots of pointers to so in the pointerSnaps slice...
+		snapshots := s
+		pointerSnaps = append(pointerSnaps, &snapshots)
 	}
 
 	prelude.SnapshotProperties, err = restrictSnapshots(pointerSnaps, toSnapshotId)
