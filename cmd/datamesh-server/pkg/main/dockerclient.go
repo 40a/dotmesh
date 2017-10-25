@@ -47,11 +47,13 @@ func (d *DockerClient) AllRelated() (map[string][]DockerContainer, error) {
 	if err != nil {
 		return relatedContainers, err
 	}
+	log.Printf("[AllRelated] got containers = %v", containers)
 	for _, c := range containers {
 		container, err := d.client.InspectContainer(c.ID)
 		if err != nil {
 			return relatedContainers, err
 		}
+		log.Printf("[AllRelated] inspect %v = %v", c, container)
 		if container.State.Running {
 			filesystems, err := d.relatedFilesystems(container)
 			if err != nil {
@@ -104,9 +106,8 @@ func (d *DockerClient) relatedFilesystems(container *docker.Container) ([]string
 			log.Printf("Error trying to read symlink '%s', skipping: %s", mount.Source, err)
 			continue
 		}
-		// mount.Source will be like
-		// /datamesh-test-pools/testpool_1486771012983148164_1
-		// /mnt/dmfs/7b4a6621-85cb-40c9-5686-ad2b301b178e
+		// target will be like
+		// /var/lib/docker/datamesh/mnt/dmfs/9e394010-0f2b-481d-779d-d81c2d4f51fb
 		log.Printf("[relatedFilesystems] target = %s\n", target)
 		shrapnel := strings.Split(target, "/")
 		if len(shrapnel) > 1 {
