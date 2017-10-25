@@ -36,6 +36,11 @@ type RequestMount struct {
 	Name string
 }
 
+type RequestGet struct {
+	// A request to get a volume for Docker
+	Name string
+}
+
 type RequestRemove struct {
 	// A request to remove a volume for Docker
 	Name string
@@ -56,12 +61,19 @@ type ResponseListVolume struct {
 	// Used in the JSON representation of ResponseList
 	Name       string
 	Mountpoint string
+	Status     map[string]string // TODO actually start using the status to report on things in dm
 }
 
 type ResponseList struct {
 	// A response which enumerates volumes for VolumeDriver.List
 	Volumes []ResponseListVolume
 	Err     string
+}
+
+type ResponseGet struct {
+	// A response which enumerates volumes for VolumeDriver.Get
+	Volume ResponseListVolume
+	Err    string
 }
 
 // create a symlink from /datamesh/:name[@:branch] into /dmfs/:filesystemId
@@ -435,6 +447,53 @@ func (state *InMemoryState) runPlugin() {
 				Name:       fs.StringWithoutAdmin(),
 				Mountpoint: containerMnt(fs),
 			})
+		}
+
+		responseJSON, _ := json.Marshal(response)
+		log.Printf("=> %s", string(responseJSON))
+		w.Write(responseJSON)
+		// asynchronously notify datamesh that the containers running on a
+		// volume may have changed
+		go func() { state.fetchRelatedContainersChan <- true }()
+	})
+	http.HandleFunc("/VolumeDriver.Get", func(w http.ResponseWriter, r *http.Request) {
+		log.Print("<= /VolumeDriver.Get")
+		requestJSON, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			writeResponseErr(err, w)
+			return
+		}
+		request := new(RequestMount)
+		if err := json.Unmarshal(requestJSON, request); err != nil {
+			writeResponseErr(err, w)
+			return
+		}
+		namespace, localName, err := parseNamespacedVolume(request.Name)
+		if err != nil {
+			writeResponseErr(err, w)
+			return
+		}
+
+		name := VolumeName{namespace, localName}
+
+		var response = ResponseGet{
+			Err: "",
+		}
+
+		// Technically, fetching the TopLevelFilesystem object from the
+		// registry isn't necessary, but maybe one day we'll get additional
+		// Status information from that call that we want to use here, so
+		// leaving it in for now rather than just hand-constructing the
+		// response from the name.
+		fs, err := (*state).registry.GetByName(name)
+		if err != nil {
+			response.Err = fmt.Sprintf("Error getting volume: %v", err)
+		}
+
+		log.Printf("Mountpoint for %s: %s", fs, containerMnt(fs.TopLevelVolume.Name))
+		response.Volume = ResponseListVolume{
+			Name:       fs.TopLevelVolume.Name.StringWithoutAdmin(),
+			Mountpoint: containerMnt(fs.TopLevelVolume.Name),
 		}
 
 		responseJSON, _ := json.Marshal(response)
