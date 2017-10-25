@@ -42,6 +42,7 @@ func (a AlreadyLocked) Error() string {
 // AllRelated returns every running container that is using any datamesh
 // filesystem, as a map from filesystem ids to lists of such containers
 func (d *DockerClient) AllRelated() (map[string][]DockerContainer, error) {
+	log.Printf("[AllRelated] starting AllRelated")
 	relatedContainers := map[string][]DockerContainer{}
 	containers, err := d.client.ListContainers(docker.ListContainersOptions{})
 	if err != nil {
