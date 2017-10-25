@@ -424,6 +424,12 @@ func (state *InMemoryState) runPlugin() {
 		// asynchronously notify datamesh that the containers running on a
 		// volume may have changed
 		go func() { state.fetchRelatedContainersChan <- true }()
+		go func() {
+			// Do this again a second later, to cope with Docker's lack of
+			// immediate consistency
+			time.Sleep(time.Second)
+			state.fetchRelatedContainersChan <- true
+		}()
 	})
 
 	http.HandleFunc("/VolumeDriver.Unmount", func(w http.ResponseWriter, r *http.Request) {
@@ -433,6 +439,12 @@ func (state *InMemoryState) runPlugin() {
 		// asynchronously notify datamesh that the containers running on a
 		// volume may have changed
 		go func() { state.fetchRelatedContainersChan <- true }()
+		go func() {
+			// Do this again a second later, to cope with Docker's lack of
+			// immediate consistency
+			time.Sleep(time.Second)
+			state.fetchRelatedContainersChan <- true
+		}()
 	})
 
 	http.HandleFunc("/VolumeDriver.List", func(w http.ResponseWriter, r *http.Request) {
