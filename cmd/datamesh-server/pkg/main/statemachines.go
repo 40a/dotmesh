@@ -236,15 +236,15 @@ func (f *fsMachine) updateEtcdAboutSnapshots() error {
 			nil,
 		)
 		if err != nil {
-			// ISSUE: We don't always hear the echo in time, see
-			// issue https://github.com/datamesh-io/datamesh/issues/54
-			log.Printf(
-				"[updateEtcdAboutSnapshots] successfully set new snaps for %s on %s,"+
-					" will we hear an echo?",
-				f.filesystemId, f.state.myNodeId,
-			)
 			return err
 		}
+		// ISSUE: We don't always hear the echo in time, see
+		// issue https://github.com/datamesh-io/datamesh/issues/54
+		log.Printf(
+			"[updateEtcdAboutSnapshots] successfully set new snaps for %s on %s,"+
+				" will we hear an echo?",
+			f.filesystemId, f.state.myNodeId,
+		)
 	}
 
 	// wait until the state machine notifies us that it's changed the
@@ -1783,6 +1783,17 @@ func (f *fsMachine) pull(
 	pollResult *TransferPollResult,
 	client *JsonRpcClient,
 ) (responseEvent *Event, nextState stateFn) {
+	// IMPORTANT NOTE:
+
+	// Avoid using f.filesystemId in this code path, unless you really
+	// mean it.  If the user clones a branch, then pull() will be
+	// called by applyPath to pull the master (and any intermediate
+	// branches) before it gets called for the branch that THIS
+	// fsMachine corresponds to. So we may well be operating on
+	// filesystems that AREN'T f.filesystemId. Any assumption that the
+	// filesystem being pulled here IS the one we're the fsmachine for
+	// may fail in interesting cases.
+
 	// TODO if we just created the filesystem, become the master for it. (or
 	// maybe this belongs in the metadata prenegotiation phase)
 	pollResult.Status = "calculating size"
@@ -1849,18 +1860,32 @@ func (f *fsMachine) pull(
 	getClient := new(http.Client)
 	resp, err := getClient.Do(req)
 	if err != nil {
-		log.Printf("Attempting to pull %s got %s", fromFilesystemId, err)
+		log.Printf("Attempting to pull %s got %s", toFilesystemId, err)
 		return &Event{
 			Name: "get-failed-pull",
-			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
+			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
 		}, backoffState
 	}
 	log.Printf(
-		"Debug: curl -u admin:[pw] http://%s:6969/filesystems/%s/%s/%s",
-		transferRequest.Peer, fromFilesystemId, fromSnapshotId, toSnapshotId,
+		"Debug: curl -u admin:[pw] %s",
+		url,
 	)
 	// TODO finish rewriting return values and update pollResult as the transfer happens...
-	cmd := exec.Command("zfs", "recv", fq(f.filesystemId))
+
+	// LUKE: Is this wrong?
+
+	// When we pull a branch and nothing already exists, we have the
+	// branch fsmachine doing the "pull" for the master and then then
+	// branch.  In this case, f.filesystemId is the branch fsid, but
+	// we're actually pulling the master branch (toFilesystemId)... but
+	// we're saving it under the branch's name in zfs? This might explain how we get the symptoms seen:
+
+	// 1) Pulling node has the branch fsid in zfs, but not the master fsid.
+
+	// 2) Pulling node is trying to mount the master fsid and failing.
+
+	// cmd := exec.Command("zfs", "recv", fq(f.filesystemId))
+	cmd := exec.Command("zfs", "recv", fq(toFilesystemId))
 	pipeReader, pipeWriter := io.Pipe()
 	defer pipeReader.Close()
 	defer pipeWriter.Close()
@@ -1873,7 +1898,7 @@ func (f *fsMachine) pull(
 
 	// TODO: make this update the pollResult
 	go pipe(
-		resp.Body, fmt.Sprintf("http response body for %s", f.filesystemId),
+		resp.Body, fmt.Sprintf("http response body for %s", toFilesystemId),
 		pipeWriter, "stdin of zfs recv",
 		finished,
 		f.innerRequests,
@@ -1904,7 +1929,7 @@ func (f *fsMachine) pull(
 	if err != nil {
 		return &Event{
 			Name: "consume-prelude-failed",
-			Args: &EventArgs{"err": err, "filesystemId": f.filesystemId},
+			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
 		}, backoffState
 	}
 	log.Printf("[pull] Got prelude %v", prelude)
@@ -1916,24 +1941,22 @@ func (f *fsMachine) pull(
 	_ = <-finished
 	f.transitionedTo("receiving", "finished pipe")
 
-	// XXX why f.filesystemId used and sometimes fromFilesystemId?
-
 	if err != nil {
 		log.Printf(
 			"Got error %s when running zfs recv for %s, check zfs-recv-stderr.log",
-			err, f.filesystemId,
+			err, toFilesystemId,
 		)
 		return &Event{
 			Name: "get-failed-pull",
-			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
+			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
 		}, backoffState
 	}
 	log.Printf("[pull] about to start applying prelude on %v", pipeReader)
-	err = applyPrelude(prelude, fq(f.filesystemId))
+	err = applyPrelude(prelude, fq(toFilesystemId))
 	if err != nil {
 		return &Event{
 			Name: "failed-applying-prelude",
-			Args: &EventArgs{"err": err, "filesystemId": fromFilesystemId},
+			Args: &EventArgs{"err": err, "filesystemId": toFilesystemId},
 		}, backoffState
 	}
 	pollResult.Status = "finished"
@@ -2835,6 +2858,9 @@ func (f *fsMachine) applyPath(
 	var responseEvent *Event
 	var nextState stateFn
 	var firstSnapshot string
+
+	log.Printf("[applyPath] applying path %#v", path)
+
 	if len(path.Clones) == 0 {
 		// just pushing a master branch to its latest snapshot
 		// do a push with empty origin and empty target snapshot

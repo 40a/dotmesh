@@ -92,8 +92,18 @@ func (s *InMemoryState) deleteFilesystem(filesystemId string) error {
 
 	// No need to worry about globalStateCache, as the fsmachine's termination will gracefully handle that
 
+	// Ensure the toplevel filesystem's docker links are cleaned
+	// up. This has to happen on every node. It only really needs to
+	// happen once, when (if) we delete the "current" filesystem that
+	// was checked out, but it's hard to tell when that case is so we
+	// call it every time.
+	err := s.cleanupDockerFilesystemState()
+	if err != nil {
+		errors = append(errors, err)
+	}
+
 	// Actually remove from ZFS
-	err := deleteFilesystemInZFS(filesystemId)
+	err = deleteFilesystemInZFS(filesystemId)
 	if err != nil {
 		errors = append(errors, err)
 	}
@@ -151,7 +161,10 @@ func (s *InMemoryState) calculatePrelude(toFilesystemId, toSnapshotId string) (P
 	}
 	pointerSnaps := []*snapshot{}
 	for _, s := range snaps {
-		pointerSnaps = append(pointerSnaps, &s)
+		// Take a copy of s to take a pointer of, rather than getting
+		// lots of pointers to so in the pointerSnaps slice...
+		snapshots := s
+		pointerSnaps = append(pointerSnaps, &snapshots)
 	}
 
 	prelude.SnapshotProperties, err = restrictSnapshots(pointerSnaps, toSnapshotId)

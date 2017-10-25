@@ -656,6 +656,29 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 		}
 	})
 
+	t.Run("Bug74MissingMetadata", func(t *testing.T) {
+		fsname := uniqName()
+
+		// Commit 1
+		d(t, node1, dockerRun(fsname)+" touch /foo/X")
+		d(t, node1, "dm switch "+fsname)
+		d(t, node1, "dm commit -m 'hello'")
+
+		// Commit 2
+		d(t, node1, dockerRun(fsname)+" touch /foo/Y")
+		d(t, node1, "dm commit -m 'again'")
+
+		// Ahhh, push it! https://www.youtube.com/watch?v=vCadcBR95oU
+		d(t, node1, "dm push cluster_1 "+fsname)
+
+		// What do we get on node2?
+		d(t, node2, "dm switch "+fsname)
+		resp := s(t, node2, "dm log")
+		if !strings.Contains(resp, "hello") ||
+			!strings.Contains(resp, "again") {
+			t.Error("Some history went missing (if it's bug#74 again, probably the 'hello')")
+		}
+	})
 }
 
 func TestFrontend(t *testing.T) {
@@ -776,6 +799,52 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 		resp = s(t, aliceNode.Container, dockerRun("bob-apples")+" ls /foo/")
 		if !strings.Contains(resp, "bob2") {
 			t.Error("Filesystem bob-apples had the wrong content")
+		}
+	})
+
+	t.Run("ShareBranches", func(t *testing.T) {
+		// Alice pushes
+		d(t, aliceNode.Container, dockerRun("cress")+" touch /foo/alice")
+		d(t, aliceNode.Container, "dm switch cress")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits'")
+		d(t, aliceNode.Container, "dm push cluster_0 cress --remote-volume alice/cress")
+
+		// Generate branch and push
+		d(t, aliceNode.Container, "dm checkout -b mustard")
+		d(t, aliceNode.Container, dockerRun("cress")+" touch /foo/mustard")
+		d(t, aliceNode.Container, "dm commit -m'Alice commits mustard'")
+		d(t, aliceNode.Container, "dm push cluster_0 cress mustard --remote-volume alice/cress")
+		/*
+		   COMMON
+		   testpool-1508755395558066569-0-node-0/dmfs/61f356f0-39a4-4e0e-6286-e04d25744344                                         19K  9.63G    19K  legacy
+		   testpool-1508755395558066569-0-node-0/dmfs/61f356f0-39a4-4e0e-6286-e04d25744344@b8b3c196-2caa-4562-6995-51df3b4bc494      0      -    19K  -
+
+		   ALICE
+		   testpool-1508755395558066569-1-node-0/dmfs/05652ba4-acb8-4349-4711-956bd0c88c8c                                          9K  9.63G    19K  legacy
+		   testpool-1508755395558066569-1-node-0/dmfs/61f356f0-39a4-4e0e-6286-e04d25744344                                         19K  9.63G    19K  legacy
+		   testpool-1508755395558066569-1-node-0/dmfs/61f356f0-39a4-4e0e-6286-e04d25744344@b8b3c196-2caa-4562-6995-51df3b4bc494      0      -    19K  -
+
+		   BOB
+		   testpool-1508755395558066569-2-node-0                                                                                  142K  9.63G    19K  /datamesh-test-pools/testpool-1508755395558066569-2-node-0/mnt
+		   testpool-1508755395558066569-2-node-0/dmfs                                                                              38K  9.63G    19K  legacy
+		   testpool-1508755395558066569-2-node-0/dmfs/05652ba4-acb8-4349-4711-956bd0c88c8c                                         19K  9.63G    19K  legacy
+		   testpool-1508755395558066569-2-node-0/dmfs/05652ba4-acb8-4349-4711-956bd0c88c8c@b8b3c196-2caa-4562-6995-51df3b4bc494      0      -    19K  -
+		*/
+		// Bob clones the branch
+		d(t, bobNode.Container, "dm clone cluster_0 alice/cress mustard --local-volume cress")
+		d(t, bobNode.Container, "dm switch cress")
+		d(t, bobNode.Container, "dm checkout mustard")
+
+		// Check we got both changes
+		// TODO: had to pin the branch here, seems like `dm switch V; dm
+		// checkout B; docker run C ... -v V:/...` doesn't result in V@B being
+		// mounted into C. this is probably surprising behaviour.
+		resp := s(t, bobNode.Container, dockerRun("cress@mustard")+" ls /foo/")
+		if !strings.Contains(resp, "alice") {
+			t.Error("We didn't get the master branch")
+		}
+		if !strings.Contains(resp, "mustard") {
+			t.Error("We didn't get the mustard branch")
 		}
 	})
 
@@ -929,6 +998,7 @@ func TestThreeSingleNodeClusters(t *testing.T) {
 			t.Error("Didn't find bob/prune on the common node - but alice should have been able to create that using her admin account!")
 		}
 	})
+
 }
 
 func TestKubernetes(t *testing.T) {

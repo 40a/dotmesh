@@ -826,6 +826,10 @@ func clusterReset(cmd *cobra.Command, args []string, out io.Writer) error {
 	}
 	fmt.Printf("done.\n")
 
+	// TODO consider wiping out /var/run/docker/datamesh/* including mnt
+	// TODO investigate why /var/run/docker/datamesh/mnt can ever have non-zfs
+	// mounted directories in it
+
 	fmt.Printf("Deleting datamesh-etcd container... ")
 	resp, err = exec.Command(
 		"docker", "rm", "-v", "-f", "datamesh-etcd",

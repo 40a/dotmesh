@@ -285,15 +285,15 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 		del(fmt.Sprintf("%s/filesystems/dirty/%s", ETCD_PREFIX, fsId))
 		del(fmt.Sprintf("%s/filesystems/masters/%s", ETCD_PREFIX, fsId))
 
-		// Normally, the registry entry is deleted as soon as the volume
-		// is deleted, but in the event of a failure it might not have
-		// been. So we try again.
-
 		if names.Name.Namespace != "" && names.Name.Name != "" {
 			// The name might be blank in the audit trail - this is used
-			// to indicate that this was a branch, NOT the master, so
+			// to indicate that this was a clone, NOT the toplevel filesystem, so
 			// there's no need to remove the registry entry for the whole
-			// volume. We only do that when deleting master.
+			// volume. We only do that when deleting the toplevel filesystem.
+
+			// Normally, the registry entry is deleted as soon as the volume
+			// is deleted, but in the event of a failure it might not have
+			// been. So we try again.
 			key := fmt.Sprintf(
 				"%s/registry/filesystems/%s/%s",
 				ETCD_PREFIX,
@@ -336,6 +336,10 @@ func (state *InMemoryState) cleanupDeletedFilesystems() error {
 		}
 
 		if names.Clone != "" {
+			// The clone name might be blank in the audit trail - this is
+			// used to indicate that this was the toplevel filesystem
+			// rather than a clone. But when a clone name is specified,
+			// we need to delete a clone record from etc.
 			del(fmt.Sprintf(
 				"%s/registry/clones/%s/%s", ETCD_PREFIX,
 				names.TopLevelFilesystemId, names.Clone))
