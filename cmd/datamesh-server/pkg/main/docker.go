@@ -13,8 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
 )
 
 const PLUGINS_DIR = "/run/docker/plugins"
