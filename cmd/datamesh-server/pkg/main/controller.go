@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/client"
 	"github.com/nu7hatch/gouuid"
