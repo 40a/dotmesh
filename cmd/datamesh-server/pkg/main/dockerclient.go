@@ -48,13 +48,13 @@ func (d *DockerClient) AllRelated() (map[string][]DockerContainer, error) {
 	if err != nil {
 		return relatedContainers, err
 	}
-	log.Printf("[AllRelated] got containers = %v", containers)
+	log.Printf("[AllRelated] got containers = %+v", containers)
 	for _, c := range containers {
 		container, err := d.client.InspectContainer(c.ID)
 		if err != nil {
 			return relatedContainers, err
 		}
-		log.Printf("[AllRelated] inspect %v = %v", c, container)
+		log.Printf("[AllRelated] inspect %+v = %+v", c, container)
 		if container.State.Running {
 			filesystems, err := d.relatedFilesystems(container)
 			if err != nil {

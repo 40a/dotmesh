@@ -352,6 +352,9 @@ func (s *InMemoryState) fetchRelatedContainers() error {
 		}
 		// wait for the next hint that containers have changed
 		_ = <-s.fetchRelatedContainersChan
+		// wait a moment after being notified that things have changed, Docker
+		// notoriously doesn't immediately tell us about new containers...
+		time.Sleep(time.Second)
 	}
 }
 
