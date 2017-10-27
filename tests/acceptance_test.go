@@ -1191,16 +1191,21 @@ apiVersion: storage.k8s.io/v1
 metadata:
   name: datamesh
 provisioner: datamesh/datamesh-dynamic-provisioner
+parameters:
+  # Also available: datameshUser (defaults to admin), datameshNamespace (defaults to datameshUser)
+  datameshNode: "`+node1.IP+`"
+  datameshApiKey: "`+node1.ApiKey+`"
 `)
 
-		// run a pod with a PVC which lists the data (web server)
-		// check that the output of querying the pod is that we can see
-		// that the apples are on the tree
+		// Ok, now we have the plumbing set up, try creating a PVC and see if it gets a PV dynamically provisioned
 		kubectlApply(t, node1.Container, `
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: admin-grapes-pvc
+  annotations:
+    # Also available: datameshNamespace (defaults to the one from the storage class)
+    datameshVolume: dynamic-grapes
 spec:
   storageClassName: datamesh
   accessModes:
@@ -1212,11 +1217,20 @@ spec:
 
 		err = tryUntilSucceeds(func() error {
 			result := s(t, node1.Container, "kubectl get pv")
-			fmt.Printf("ABS TEST 1 GOT '%s'\n", result)
-			return fmt.Errorf("The bit of the test that checks the PV gets created hasn't been written yet")
+			// We really want a line like:
+			// "pvc-85b6beb0-bb1f-11e7-8633-0242ff9ba756   1Gi        RWO           Delete          Bound     default/admin-grapes-pvc   datamesh                 15s"
+			if !strings.Contains(result, "default/admin-grapes-pvc") {
+				return fmt.Errorf("grapes PV didn't get created")
+			}
+			return nil
 		}, "finding the grapes PV")
 		if err != nil {
 			t.Error(err)
+		}
+
+		result := s(t, node1.Container, "dm list")
+		if !strings.Contains(result, "dynamic-grapes") {
+			t.Error(fmt.Errorf("dynamic-grapes DM volume didn't get created"))
 		}
 	})
 

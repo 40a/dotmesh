@@ -17,14 +17,17 @@ limitations under the License.
 package main
 
 import (
-	"errors"
+	"bytes"
 	"flag"
-	"os"
-	"path"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"time"
 
-	"github.com/golang/glog"                                          // kill it?
-	"github.com/kubernetes-incubator/external-storage/lib/controller" // Won't go get?
+	"github.com/gorilla/rpc/v2/json2"
+
+	"github.com/golang/glog"
+	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -44,31 +47,109 @@ const (
 	termLimit                 = controller.DefaultTermLimit
 )
 
-type hostPathProvisioner struct {
-	// The directory to create PV-backing directories in
-	pvDir string
-
-	// Identity of this hostPathProvisioner, set to node's name. Used to identify
-	// "this" provisioner's PVs.
-	identity string
+type datameshProvisioner struct {
 }
 
-// NewHostPathProvisioner creates a new hostpath provisioner
-func NewHostPathProvisioner() controller.Provisioner {
-	nodeName := "test"
-	return &hostPathProvisioner{
-		pvDir:    "/tmp/hostpath-provisioner",
-		identity: nodeName,
+// NewDatameshProvisioner creates a new datamesh provisioner
+func NewDatameshProvisioner() controller.Provisioner {
+	return &datameshProvisioner{}
+}
+
+var _ controller.Provisioner = &datameshProvisioner{}
+
+func doRPC(hostname, user, apiKey, method string, args interface{}, result interface{}) error {
+	url := fmt.Sprintf("http://%s:6969/rpc", hostname)
+	message, err := json2.EncodeClientRequest(method, args)
+	if err != nil {
+		return err
 	}
-}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(message))
+	if err != nil {
+		return err
+	}
 
-var _ controller.Provisioner = &hostPathProvisioner{}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(user, apiKey)
+	client := new(http.Client)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Printf("Test RPC FAIL: %+v -> %s -> %+v\n", args, method, err)
+		return err
+	}
+
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Test RPC FAIL: %+v -> %s -> %+v\n", args, method, err)
+		return fmt.Errorf("Error reading body: %s", err)
+	}
+	err = json2.DecodeClientResponse(bytes.NewBuffer(b), &result)
+	if err != nil {
+		fmt.Printf("Test RPC FAIL: %+v -> %s -> %+v\n", args, method, err)
+		return fmt.Errorf("Couldn't decode response '%s': %s", string(b), err)
+	}
+	fmt.Printf("Test RPC: %+v -> %s -> %+v\n", args, method, result)
+	return nil
+}
 
 // Provision creates a storage asset and returns a PV object representing it.
-func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
-	path := path.Join(p.pvDir, options.PVName)
+func (p *datameshProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
+	// PV name: options.PVName
+	// options is a https://godoc.org/github.com/kubernetes-incubator/external-storage/lib/controller#VolumeOptions
+	// options.PVC is a https://godoc.org/k8s.io/kubernetes/pkg/api#PersistentVolumeClaim
+	// options.Parameters = the storage class parameters
 
-	if err := os.MkdirAll(path, 0777); err != nil {
+	// options.PVC.ObjectMeta.Annotations = the PVC annotations
+
+	// Read storage class options
+	datameshNode, ok := options.Parameters["datameshNode"]
+	if !ok {
+		datameshNode = "127.0.0.1"
+	}
+
+	user, ok := options.Parameters["datameshUser"]
+	if !ok {
+		user = "admin"
+	}
+
+	apiKey := options.Parameters["datameshApiKey"]
+
+	namespace, ok := options.Parameters["datameshNamespace"]
+	if !ok {
+		namespace = user
+	}
+
+	// Read PVC annotations, which can override some options
+
+	annotations := options.PVC.ObjectMeta.Annotations
+
+	pvcNamespace, ok := annotations["datameshNamespace"]
+	if ok {
+		namespace = pvcNamespace
+	}
+
+	name, ok := annotations["datameshVolume"]
+	if !ok {
+		// No name specified? Default to PVC name.
+		name = options.PVC.ObjectMeta.Name
+	}
+
+	var mountPath string
+
+	err := doRPC(
+		datameshNode,
+		user,
+		apiKey,
+		"DatameshRPC.Procure",
+		map[string]string{
+			"Name":      name,
+			"Namespace": namespace,
+		},
+		&mountPath,
+	)
+	if err != nil {
 		return nil, err
 	}
 
@@ -76,7 +157,12 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
 			Annotations: map[string]string{
-				"hostPathProvisionerIdentity": p.identity,
+				// Record some stuff we have, in case it's useful for debugging or anything
+				// But not the API key, obviously.
+				"datameshNode":      datameshNode,
+				"datameshUser":      user,
+				"datameshNamespace": namespace,
+				"datameshVolume":    options.PVName,
 			},
 		},
 		Spec: v1.PersistentVolumeSpec{
@@ -85,9 +171,13 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 			Capacity: v1.ResourceList{
 				v1.ResourceName(v1.ResourceStorage): options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)],
 			},
+			// Ok, this is weird. v1.PersistentVolumeSource is a big list of known volume sources, and Datamesh isn't on it,
+			// so I cheat.
+			// https://godoc.org/k8s.io/kubernetes/pkg/api#PersistentVolumeSource
+			// What are the implications of this?
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				HostPath: &v1.HostPathVolumeSource{
-					Path: path,
+					Path: mountPath,
 				},
 			},
 		},
@@ -98,19 +188,19 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 
 // Delete removes the storage asset that was created by Provision represented
 // by the given PV.
-func (p *hostPathProvisioner) Delete(volume *v1.PersistentVolume) error {
-	ann, ok := volume.Annotations["hostPathProvisionerIdentity"]
-	if !ok {
-		return errors.New("identity annotation not found on PV")
-	}
-	if ann != p.identity {
-		return &controller.IgnoredError{Reason: "identity annotation on PV does not match ours"}
-	}
+func (p *datameshProvisioner) Delete(volume *v1.PersistentVolume) error {
+	/*
+		      volume.Annotations["datameshProvisionerNamespace"]
+		      volume.Annotations["datameshProvisionerVolume"]
+				ann, ok := volume.Annotations["datameshProvisionerIdentity"]
+				if !ok {
+					return errors.New("identity annotation not found on PV")
+				}
 
-	path := path.Join(p.pvDir, volume.Name)
-	if err := os.RemoveAll(path); err != nil {
-		return err
-	}
+		               Delete DM volume?
+					      Or do nothing as we just "detach"?
+					      Look up the actual use case here.
+	*/
 
 	return nil
 }
@@ -143,10 +233,10 @@ func main() {
 
 	// Create the provisioner: it implements the Provisioner interface expected by
 	// the controller
-	hostPathProvisioner := NewHostPathProvisioner()
+	datameshProvisioner := NewDatameshProvisioner()
 
-	// Start the provision controller which will dynamically provision hostPath
+	// Start the provision controller which will dynamically provision datamesh
 	// PVs
-	pc := controller.NewProvisionController(clientset, resyncPeriod, provisionerName, hostPathProvisioner, serverVersion.GitVersion, exponentialBackOffOnError, failedRetryThreshold, leasePeriod, renewDeadline, retryPeriod, termLimit)
+	pc := controller.NewProvisionController(clientset, resyncPeriod, provisionerName, datameshProvisioner, serverVersion.GitVersion, exponentialBackOffOnError, failedRetryThreshold, leasePeriod, renewDeadline, retryPeriod, termLimit)
 	pc.Run(wait.NeverStop)
 }
