@@ -34,9 +34,9 @@ function fetch_zfs {
     echo "Successfully loaded downloaded ZFS for $KERN :)"
 }
 
-# Put the data file inside /var/lib/docker so that we end up on the big
-# partition if we're in a boot2docker env
-DIR=${USE_POOL_DIR:-/var/lib/docker/datamesh}
+# Put the data file inside /var/lib so that we end up on the big
+# partition if we're in a LinuxKit env.
+DIR=${USE_POOL_DIR:-/var/lib/datamesh}
 FILE=${DIR}/datamesh_data
 POOL=${USE_POOL_NAME:-pool}
 MOUNTPOINT=${MOUNTPOINT:-$DIR/mnt}
@@ -71,9 +71,9 @@ if [ ! -d $DIR ]; then
     mkdir -p $DIR
 fi
 
-if [ -n "`lsmod|grep zfs`" ]; then 
+if [ -n "`lsmod|grep zfs`" ]; then
     echo "ZFS already loaded :)"
-else 
+else
     depmod -b /system-lib || true
     if ! modprobe -d /system-lib zfs; then
         fetch_zfs
@@ -175,7 +175,7 @@ if [ -f /etc/datamesh/config.yaml ]; then
 fi
 
 docker run -i $rm_opt --privileged --name=datamesh-server-inner \
-    -v /var/lib/docker:/var/lib/docker \
+    -v /var/lib/datamesh:/var/lib/datamesh \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /run/docker/plugins:/run/docker/plugins \
     -v $MOUNTPOINT:$MOUNTPOINT:rshared \
