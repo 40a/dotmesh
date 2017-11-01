@@ -153,6 +153,8 @@ func (p *datameshProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 		return nil, err
 	}
 
+	// FIXME: Now unmount the mountPath, we don't need it yet
+
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
@@ -162,7 +164,7 @@ func (p *datameshProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 				"datameshNode":      datameshNode,
 				"datameshUser":      user,
 				"datameshNamespace": namespace,
-				"datameshVolume":    options.PVName,
+				"datameshVolume":    name,
 			},
 		},
 		Spec: v1.PersistentVolumeSpec{
@@ -171,13 +173,16 @@ func (p *datameshProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 			Capacity: v1.ResourceList{
 				v1.ResourceName(v1.ResourceStorage): options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)],
 			},
-			// Ok, this is weird. v1.PersistentVolumeSource is a big list of known volume sources, and Datamesh isn't on it,
-			// so I cheat.
+			// This big struct is documented here:
 			// https://godoc.org/k8s.io/kubernetes/pkg/api#PersistentVolumeSource
-			// What are the implications of this?
 			PersistentVolumeSource: v1.PersistentVolumeSource{
-				HostPath: &v1.HostPathVolumeSource{
-					Path: mountPath,
+				FlexVolume: &v1.FlexVolumeSource{
+					Driver: "datamesh.io/dm",
+					FSType: "zfs",
+					Options: map[string]string{
+						"name":      name,
+						"namespace": namespace,
+					},
 				},
 			},
 		},
