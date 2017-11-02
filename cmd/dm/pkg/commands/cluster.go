@@ -536,7 +536,10 @@ func startDatameshContainer(pkiPath string) error {
 		"-d", "--name=datamesh-server",
 		"-v", "/lib:/system-lib/lib",
 		"-v", "datamesh-kernel-modules:/bundled-lib",
-		"-v", "/var/lib/docker:/var/lib/docker",
+		// so that we can create /var/lib/datamesh in require_zfs.sh and have
+		// it manifest on the host so that ZFS in the kernel can find the path
+		// that the zpool command passes it!
+		"-v", "/var/lib:/var/lib",
 		"-v", "/run/docker:/run/docker",
 		"-v", "/var/run/docker.sock:/var/run/docker.sock",
 		// Find bundled zfs bins and libs if exists
