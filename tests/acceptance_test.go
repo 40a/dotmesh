@@ -1129,7 +1129,6 @@ spec:
 
 		// Tell Kubernetes about our provisioner
 		// FIXME: Put this in the "datamesh" namespace
-		// FIXME: Use Deployment rather than Pod for the provisioner
 		// FIXME: Be resilient to etcd being down in CreateFilesystem, so we don't need this:
 		time.Sleep(10 * time.Second)
 
@@ -1176,16 +1175,28 @@ roleRef:
 `)
 
 		kubectlApply(t, node1.Container, `
-kind: Pod
-apiVersion: v1
+#apiVersion: apps/v1beta2 # for versions before 1.8.0 use apps/v1beta1
+apiVersion: apps/v1beta1 # for versions before 1.8.0 use apps/v1beta1
+kind: Deployment
 metadata:
   name: datamesh-dynamic-provisioner
+  labels:
+    app: datamesh-dynamic-provisioner
 spec:
-  serviceAccount: dm-provisioner
-  containers:
-    - name: datamesh-dynamic-provisioner
-      image: nixos.local:80/datamesh/datamesh-dynamic-provisioner:latest
-      imagePullPolicy: "IfNotPresent"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datamesh-dynamic-provisioner
+  template:
+    metadata:
+      labels:
+        app: datamesh-dynamic-provisioner
+    spec:
+      serviceAccount: dm-provisioner
+      containers:
+      - name: datamesh-dynamic-provisioner
+        image: nixos.local:80/datamesh/datamesh-dynamic-provisioner:latest
+        imagePullPolicy: "IfNotPresent"
 `)
 
 		kubectlApply(t, node1.Container, `
