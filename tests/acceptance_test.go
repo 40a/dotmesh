@@ -1129,6 +1129,9 @@ spec:
 
 		// Tell Kubernetes about our provisioner
 		// FIXME: Put this in the "datamesh" namespace
+		// FIXME: Use Deployment rather than Pod for the provisioner
+		// FIXME: Be resilient to etcd being down in CreateFilesystem, so we don't need this:
+		time.Sleep(10 * time.Second)
 
 		kubectlApply(t, node1.Container, `
 apiVersion: v1
