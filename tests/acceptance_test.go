@@ -1128,7 +1128,6 @@ spec:
 		d(t, node1.Container, "dm list")
 
 		// Tell Kubernetes about our provisioner
-		// FIXME: Put this in the "datamesh" namespace
 		// FIXME: Be resilient to etcd being down in CreateFilesystem, so we don't need this:
 		time.Sleep(10 * time.Second)
 
@@ -1136,6 +1135,7 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  namespace: datamesh
   name: dm-provisioner
 `)
 
@@ -1167,7 +1167,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: dm-provisioner
-    namespace: default
+    namespace: datamesh
 roleRef:
   kind: ClusterRole
   name: dm-provisioner-runner
@@ -1175,11 +1175,12 @@ roleRef:
 `)
 
 		kubectlApply(t, node1.Container, `
-#apiVersion: apps/v1beta2 # for versions before 1.8.0 use apps/v1beta1
-apiVersion: apps/v1beta1 # for versions before 1.8.0 use apps/v1beta1
+#apiVersion: apps/v1beta2 # for versions >=1.8.0
+apiVersion: apps/v1beta1 # for versions <1.8.0
 kind: Deployment
 metadata:
   name: datamesh-dynamic-provisioner
+  namespace: datamesh
   labels:
     app: datamesh-dynamic-provisioner
 spec:
