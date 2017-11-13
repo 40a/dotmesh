@@ -1247,6 +1247,70 @@ spec:
 		if !strings.Contains(result, "dynamic-grapes") {
 			t.Error(fmt.Errorf("dynamic-grapes DM volume didn't get created"))
 		}
+
+		// Now let's see if a container can see it, and put content there that a k8s container can pick up
+
+		d(t, node1.Container,
+			"docker run --rm -i -v dynamic-grapes:/foo --volume-driver dm "+
+				"busybox sh -c \"echo 'grapes' > /foo/on-the-vine\"",
+		)
+
+		kubectlApply(t, node1.Container, `
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: grape-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: grape-server
+    spec:
+      volumes:
+      - name: grape-storage
+        persistentVolumeClaim:
+         claimName: admin-grapes-pvc
+      containers:
+      - name: grape-server
+        image: nginx:1.12.1
+        volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: grape-storage
+`)
+
+		kubectlApply(t, node1.Container, `
+apiVersion: v1
+kind: Service
+metadata:
+   name: grape-service
+spec:
+   type: NodePort
+   selector:
+       app: grape-server
+   ports:
+     - port: 80
+       nodePort: 30003
+`)
+
+		err = tryUntilSucceeds(func() error {
+			resp, err := http.Get(fmt.Sprintf("http://%s:30003/on-the-vine", node1.IP))
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			if !strings.Contains(string(body), "grapes") {
+				return fmt.Errorf("No grapes on the vine, got this instead: %v", string(body))
+			}
+			return nil
+		}, "finding grapes on the vine")
+		if err != nil {
+			t.Error(err)
+		}
 	})
 
 }
