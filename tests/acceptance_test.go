@@ -1198,6 +1198,12 @@ spec:
       - name: datamesh-dynamic-provisioner
         image: nixos.local:80/datamesh/datamesh-dynamic-provisioner:latest
         imagePullPolicy: "IfNotPresent"
+        env:
+        - name: DATAMESH_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: datamesh
+              key: datamesh-admin-password.txt
 `)
 
 		kubectlApply(t, node1.Container, `
@@ -1209,7 +1215,6 @@ provisioner: datamesh/datamesh-dynamic-provisioner
 parameters:
   # Also available: datameshUser (defaults to admin), datameshNamespace (defaults to datameshUser)
   datameshNode: "`+node1.IP+`"
-  datameshApiKey: "`+node1.ApiKey+`"
 `)
 
 		// Ok, now we have the plumbing set up, try creating a PVC and see if it gets a PV dynamically provisioned

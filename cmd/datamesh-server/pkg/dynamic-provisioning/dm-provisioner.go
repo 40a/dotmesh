@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/rpc/v2/json2"
@@ -103,6 +104,11 @@ func (p *datameshProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 
 	// options.PVC.ObjectMeta.Annotations = the PVC annotations
 
+	// Read API key from environment
+
+	apiKey := os.Getenv("DATAMESH_API_KEY")
+	fmt.Printf("API KEY: '%s'\n", apiKey)
+
 	// Read storage class options
 	datameshNode, ok := options.Parameters["datameshNode"]
 	if !ok {
@@ -113,8 +119,6 @@ func (p *datameshProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 	if !ok {
 		user = "admin"
 	}
-
-	apiKey := options.Parameters["datameshApiKey"]
 
 	namespace, ok := options.Parameters["datameshNamespace"]
 	if !ok {

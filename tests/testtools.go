@@ -771,7 +771,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		nodeName(now, i, 0),
 		"kubectl apply -f /datamesh-kube-yaml/weave-net.yaml && "+
 			"kubectl create namespace datamesh && "+
-			"echo 'secret123' > datamesh-admin-password.txt && "+
+			"echo -n 'secret123' > datamesh-admin-password.txt && "+
 			"kubectl create secret generic datamesh "+
 			"    --from-file=datamesh-admin-password.txt -n datamesh && "+
 			"rm datamesh-admin-password.txt && "+
