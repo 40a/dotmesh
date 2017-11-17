@@ -285,6 +285,8 @@ deploy_server_docker_image:
         - docker login -u $QUAY_USER -p $QUAY_PASSWORD quay.io
         - docker tag $(hostname).local:80/datamesh/datamesh-server:latest quay.io/datamesh/datamesh-server:latest
         - docker push quay.io/datamesh/datamesh-server:latest
+        - docker tag $(hostname).local:80/datamesh/datamesh-dynamic-provisioner:latest quay.io/datamesh/datamesh-dynamic-provisioner:latest
+        - docker push quay.io/datamesh/datamesh-dynamic-provisioner:latest
     only:
         - master
 

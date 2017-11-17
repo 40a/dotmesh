@@ -48,6 +48,18 @@ items:
       - kind: ServiceAccount
         name: datamesh
         namespace: datamesh
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: datamesh
+      namespace: datamesh
+    spec:
+      type: ClusterIP
+      ports:
+      - port: 6969
+        protocol: TCP
+      selector:
+        name: datamesh
   - apiVersion: extensions/v1beta1
     kind: DaemonSet
     metadata:
