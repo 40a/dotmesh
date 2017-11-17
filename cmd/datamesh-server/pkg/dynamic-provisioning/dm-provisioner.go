@@ -137,28 +137,58 @@ func (p *datameshProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 	name, ok := annotations["datameshVolume"]
 	if !ok {
 		// No name specified? Default to PVC name.
+
+		// NOTE: This may be a useful indicator as to whether we're
+		// using k8s to attach to a "datamesh-managed" volume, or we're
+		// using k8s to just ask DM to make me a volume - in the latter
+		// case, we should be hastier to delete things. So maybe set a
+		// boolean in this case and store it in the PV annotations and
+		// look for it in Delete?
 		name = options.PVC.ObjectMeta.Name
 	}
+	/*
+		// Cover two cases: Creating a new volume, or connecting to an existing volume
 
-	var mountPath string
+		var alreadyExists bool
 
-	err := doRPC(
-		datameshNode,
-		user,
-		apiKey,
-		"DatameshRPC.Procure",
-		map[string]string{
-			"Name":      name,
-			"Namespace": namespace,
-		},
-		&mountPath,
-	)
-	if err != nil {
-		return nil, err
-	}
+		err := doRPC(
+			datameshNode,
+			user,
+			apiKey,
+			"DatameshRPC.Exists",
+			map[string]string{
+				"TopLevelFilesystemName": name,
+				"Namespace":              namespace,
+				"CloneName":              "",
+			},
+			&alreadyExists,
+		)
+		if err != nil {
+			return nil, err
+		}
 
-	// FIXME: Now unmount the mountPath, we don't need it yet
+		if !alreadyExists {
+			// There's a race condition if somebody else creates it in the
+			// meantime; it would be better to interpret the Create error to
+			// not complain if it's "already exists".
+			var createResult bool
 
+			err := doRPC(
+				datameshNode,
+				user,
+				apiKey,
+				"DatameshRPC.Create",
+				map[string]string{
+					"Name":      name,
+					"Namespace": namespace,
+				},
+				&createResult,
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
+	*/
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
@@ -201,7 +231,6 @@ func (p *datameshProvisioner) Delete(volume *v1.PersistentVolume) error {
 	/*
 		      volume.Annotations["datameshProvisionerNamespace"]
 		      volume.Annotations["datameshProvisionerVolume"]
-				ann, ok := volume.Annotations["datameshProvisionerIdentity"]
 				if !ok {
 					return errors.New("identity annotation not found on PV")
 				}

@@ -1162,11 +1162,6 @@ spec:
 			t.Error(err)
 		}
 
-		result := s(t, node1.Container, "dm list")
-		if !strings.Contains(result, "dynamic-grapes") {
-			t.Error(fmt.Errorf("dynamic-grapes DM volume didn't get created"))
-		}
-
 		// Now let's see if a container can see it, and put content there that a k8s container can pick up
 
 		d(t, node1.Container,

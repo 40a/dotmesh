@@ -72,4 +72,7 @@ items:
       name: datamesh
     provisioner: datamesh/datamesh-dynamic-provisioner
     parameters:
+      # Sensible defaults
       datameshNode: "datamesh"
+      datameshUser: "admin"
+      datameshNamespace: "admin"
