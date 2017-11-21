@@ -1127,10 +1127,6 @@ spec:
 		// dm list should succeed in connecting to the datamesh cluster
 		d(t, node1.Container, "dm list")
 
-		// Tell Kubernetes about our provisioner
-		// FIXME: Be resilient to etcd being down in CreateFilesystem, so we don't need this:
-		time.Sleep(10 * time.Second)
-
 		// Ok, now we have the plumbing set up, try creating a PVC and see if it gets a PV dynamically provisioned
 		kubectlApply(t, node1.Container, `
 kind: PersistentVolumeClaim
