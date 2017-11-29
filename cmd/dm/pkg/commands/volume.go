@@ -207,6 +207,12 @@ func volumeShow(cmd *cobra.Command, args []string, out io.Writer) error {
 		return fmt.Errorf("Unable to find volume '%s'", localVolume)
 	}
 
+	if scriptingMode {
+		fmt.Fprintf(out, "topLevelFilesystemId\t%s\n", datameshVolume.Id)
+	} else {
+		fmt.Fprintf(out, "Top-level filesystem ID (ID of the master branch): %s\n", datameshVolume.Id)
+	}
+
 	activeQualified, err := dm.CurrentVolume()
 	if err != nil {
 		return err

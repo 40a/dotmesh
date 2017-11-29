@@ -994,7 +994,8 @@ func (d *DatameshRPC) AllVolumesAndClones(
 		if err != nil {
 			switch err := err.(type) {
 			default:
-				return err
+				log.Printf("[AllVolumesAndClones] ERROR in getOne(%v): %v, continuing...", tlfId, err)
+				continue
 			case PermissionDenied:
 				continue
 			}

@@ -880,7 +880,6 @@ func (s *InMemoryState) fetchAndWatchEtcd() error {
 							(*s.globalStateCache)[server][filesystem],
 							node,
 						)
-						s.globalStateCacheLock.Unlock()
 						return nil
 					}
 				}
