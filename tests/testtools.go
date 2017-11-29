@@ -702,11 +702,11 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 			`MASTER=%s
 			docker exec $MASTER mkdir /datamesh-kube-yaml
 			for X in ../kubernetes/*.yaml; do docker cp $X $MASTER:/datamesh-kube-yaml/; done
-			docker exec $MASTER sed -i 's/quay.io\/datamesh\/datamesh-server:latest/'$(hostname)'.local:80\/datamesh\/datamesh-server:latest/' /datamesh-kube-yaml/datamesh-ds.yaml
-			docker exec $MASTER sed -i 's/quay.io\/datamesh\/datamesh-dynamic-provisioner:latest/'$(hostname)'.local:80\/datamesh\/datamesh-dynamic-provisioner:latest/' /datamesh-kube-yaml/datamesh-dp.yaml
-			docker exec $MASTER sed -i 's/value: pool/value: %s-\#HOSTNAME\#/' /datamesh-kube-yaml/datamesh-ds.yaml
-			docker exec $MASTER sed -i 's/value: \/var\/lib\/docker\/datamesh/value: %s-\#HOSTNAME\#/' /datamesh-kube-yaml/datamesh-ds.yaml
-			docker exec $MASTER sed -i 's/"" \# LOG_ADDR/%s/' /datamesh-kube-yaml/datamesh-ds.yaml
+			docker exec $MASTER sed -i 's/quay.io\/datamesh\/datamesh-server:latest/'$(hostname)'.local:80\/datamesh\/datamesh-server:latest/' /datamesh-kube-yaml/datamesh.yaml
+			docker exec $MASTER sed -i 's/quay.io\/datamesh\/datamesh-dynamic-provisioner:latest/'$(hostname)'.local:80\/datamesh\/datamesh-dynamic-provisioner:latest/' /datamesh-kube-yaml/datamesh.yaml
+			docker exec $MASTER sed -i 's/value: pool/value: %s-\#HOSTNAME\#/' /datamesh-kube-yaml/datamesh.yaml
+			docker exec $MASTER sed -i 's/value: \/var\/lib\/docker\/datamesh/value: %s-\#HOSTNAME\#/' /datamesh-kube-yaml/datamesh.yaml
+			docker exec $MASTER sed -i 's/"" \# LOG_ADDR/%s/' /datamesh-kube-yaml/datamesh.yaml
 			`,
 			nodeName(now, i, 0),
 			// need to somehow number the instances, did this by modifying
@@ -776,9 +776,13 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 			"kubectl create secret generic datamesh "+
 			"    --from-file=datamesh-admin-password.txt -n datamesh && "+
 			"rm datamesh-admin-password.txt && "+
+			// install etcd operator on the cluster
+			"kubectl apply -f /datamesh-kube-yaml/etcd-operator-clusterrole.yaml && "+
+			"kubectl apply -f /datamesh-kube-yaml/etcd-operator-dep.yaml && "+
 			// install datamesh once on the master (retry because etcd operator
 			// needs to initialize)
-			"while ! kubectl apply -f /datamesh-kube-yaml; do sleep 1; done",
+			"sleep 1 && "+
+			"while ! kubectl apply -f /datamesh-kube-yaml/datamesh.yaml; do sleep 1; done",
 	)
 	if err != nil {
 		return err
