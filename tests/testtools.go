@@ -809,8 +809,11 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 	// removing this will be a good test of that issue :-)
 	fmt.Printf("Waiting for etcd...\n")
 	for {
-		resp := s(t, c.Nodes[0].Container, "kubectl describe etcd datamesh-etcd-cluster -n datamesh")
-		if strings.Contains(resp, "Size:\t\t3") {
+		resp := s(t, c.Nodes[0].Container, "kubectl describe etcd datamesh-etcd-cluster -n datamesh | grep Type:")
+		if err != nil {
+			return err
+		}
+		if strings.Contains(resp, "Ready") {
 			fmt.Printf("etcd is up!\n")
 			break
 		}
