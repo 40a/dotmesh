@@ -1200,11 +1200,11 @@ spec:
        app: grape-server
    ports:
      - port: 80
-       nodePort: 30003
+       nodePort: 30050
 `)
 
 		err = tryUntilSucceeds(func() error {
-			resp, err := http.Get(fmt.Sprintf("http://%s:30003/on-the-vine", node1.IP))
+			resp, err := http.Get(fmt.Sprintf("http://%s:30050/on-the-vine", node1.IP))
 			if err != nil {
 				return err
 			}
