@@ -2,18 +2,36 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
 	"github.com/coreos/etcd/client"
 	"github.com/nu7hatch/gouuid"
+	//	"golang.org/x/crypto/scrypt"
 )
 
 // special admin user with global privs
 const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
 
+// How many bytes of entropy in an API key
+const API_KEY_BYTES = 32
+
+// And in a salt
+const SALT_BYTES = 32
+
+// And in a password hash
+const HASH_BYTES = 32
+
+// Scrypt parameters, these are considered good as of 2017 according to https://godoc.org/golang.org/x/crypto/scrypt
+const SCRYPT_N = 32768
+const SCRYPT_R = 8
+const SCRYPT_P = 1
+
 // Create a brand new user, with a new user id
-func NewUser(name, email, apiKey string) (User, error) {
+func NewUser(name, email, password string) (User, error) {
 	id, err := uuid.NewV4()
 	if err != nil {
 		return User{}, err
@@ -33,7 +51,73 @@ func NewUser(name, email, apiKey string) (User, error) {
 			return User{}, fmt.Errorf("Email already exists - contact help@datamesh.io")
 		}
 	}
-	return User{Id: id.String(), Name: name, Email: email, ApiKey: apiKey}, nil
+	salt := make([]byte, SALT_BYTES)
+	_, err = rand.Read(salt)
+	if err != nil {
+		return User{}, err
+	}
+
+	//	hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
+	// FIXME:
+	hashedPassword :=
+		[]byte(password + string(salt))
+
+	if err != nil {
+		return User{}, err
+	}
+
+	apiKeyBytes := make([]byte, API_KEY_BYTES)
+	_, err = rand.Read(apiKeyBytes)
+	if err != nil {
+		return User{}, err
+	}
+
+	apiKey := hex.EncodeToString(apiKeyBytes)
+	return User{Id: id.String(), Name: name, Email: email, Salt: salt, Password: hashedPassword, ApiKey: apiKey}, nil
+}
+
+// Returns salt, password, apiKey, err
+func getPasswords(user string) ([]byte, []byte, string, error) {
+	users, err := AllUsers()
+	if err != nil {
+		return []byte{}, []byte{}, "", err
+	}
+	for _, u := range users {
+		if u.Name == user {
+			return u.Salt, u.Password, u.ApiKey, nil
+		}
+	}
+	return []byte{}, []byte{}, "", fmt.Errorf("Unable to find user %v", user)
+}
+
+func CheckPassword(username, password string) (bool, error) {
+	salt, hash, apiKey, err := getPasswords(username)
+	if err != nil {
+		return false, err
+	} else {
+		// TODO think more about timing attacks
+
+		// See if API key matches
+		apiKeyMatch := subtle.ConstantTimeCompare(
+			[]byte(apiKey),
+			[]byte(password)) == 1
+
+		// See if password matches hash
+		// hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
+		// FIXME:
+		hashedPassword :=
+			[]byte(password + string(salt))
+
+		if err != nil {
+			return false, err
+		}
+
+		passwordMatch := subtle.ConstantTimeCompare(
+			[]byte(hash),
+			[]byte(hashedPassword)) == 1
+
+		return (apiKeyMatch || passwordMatch), nil
+	}
 }
 
 // Write the user object to etcd

@@ -1347,7 +1347,7 @@ func receivingState(f *fsMachine) stateFn {
 	// that works.
 	peerAddress := addresses[0]
 
-	pw, err := getPassword("admin")
+	_, _, apiKey, err := getPasswords("admin")
 	if err != nil {
 		log.Printf("Attempting to pull %s got %s", f.filesystemId, err)
 		return backoffState
@@ -1364,7 +1364,7 @@ func receivingState(f *fsMachine) stateFn {
 		log.Printf("Attempting to pull %s got %s", f.filesystemId, err)
 		return backoffState
 	}
-	req.SetBasicAuth("admin", pw)
+	req.SetBasicAuth("admin", apiKey)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {

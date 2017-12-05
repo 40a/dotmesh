@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -258,27 +257,6 @@ func authHandlerFunc(f func(w http.ResponseWriter, r *http.Request)) func(w http
 	}
 }
 
-func getPassword(user string) (string, error) {
-	users, err := AllUsers()
-	if err != nil {
-		return "", err
-	}
-	for _, u := range users {
-		if u.Name == user {
-			return u.ApiKey, nil
-		}
-	}
-	return "", fmt.Errorf("Unable to find user %v", user)
-}
-
 func check(u, p string) (bool, error) {
-	password, err := getPassword(u)
-	if err != nil {
-		return false, err
-	} else {
-		// TODO think more about timing attacks
-		return (subtle.ConstantTimeCompare(
-			[]byte(password),
-			[]byte(p)) == 1), nil
-	}
+	return CheckPassword(u, p)
 }

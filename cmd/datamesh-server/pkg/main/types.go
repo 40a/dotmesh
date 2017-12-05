@@ -10,6 +10,8 @@ type User struct {
 	Id          string
 	Name        string
 	Email       string
+	Salt        []byte
+	Password    []byte
 	ApiKey      string
 	CustomerId  string
 	CurrentPlan string
