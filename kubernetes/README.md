@@ -41,3 +41,35 @@ TODO: StorageClass example using Datamesh for dynamic provisioning (how to get a
 TODO: a TPR for datamesh volumes to experiment with fancy stuff?
 Examples of declarative config for e.g. regular backups?
 Federation API server volume implementation?
+
+
+## Notes from installing on GKE / AWS
+
+gke instances don't let you create a `/datamesh-test-pools` folder on the root because `/` is read-only
+TODO: allow the path of the `/datamesh-test-pools` to be configurable.
+
+gke cluster must be run in alpha to enable the `rbac.authorization.k8s.io/v1alpha1` apiVersion
+
+aws cluster uses `4.4.102-k8s` kernel version and we got a 404 on `https://get.datamesh.io/zfs/zfs-4.4.102-k8s.tar.gz`
+
+## Installing on gcloud
+
+
+NOTE: on each node you need to:
+
+```bash
+sudo mkdir -p /datamesh-test-pools
+sudo mount --bind /datamesh-test-pools /datamesh-test-pools
+sudo mount --make-shared /datamesh-test-pools
+```
+
+```bash
+gcloud alpha container clusters create testdm --enable-kubernetes-alpha
+gcloud container clusters get-credentials testdm
+kubectl create namespace datamesh
+echo "secret123" > datamesh-admin-password.txt
+kubectl create secret generic datamesh --from-file=datamesh-admin-password.txt -n datamesh
+rm datamesh-admin-password.txt
+cat etcd-operator-dep.yaml | kubectl apply -f -
+cat datamesh.yaml | kubectl apply -f -
+```
