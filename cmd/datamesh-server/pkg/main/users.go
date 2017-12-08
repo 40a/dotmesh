@@ -10,10 +10,12 @@ import (
 
 	"github.com/coreos/etcd/client"
 	"github.com/nu7hatch/gouuid"
-	//	FIXME "golang.org/x/crypto/scrypt"
+	"golang.org/x/crypto/scrypt"
 )
 
 // The following consts MUST MATCH those defined in cmd/dm/pkg/commands/cluster.go
+//
+// FIXME: When we have a shared library betwixt client and server, we can put all this in there.
 
 // special admin user with global privs
 const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
@@ -41,10 +43,7 @@ func HashPassword(password string) ([]byte, []byte, error) {
 		return []byte{}, []byte{}, err
 	}
 
-	//	hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
-	// FIXME:
-	hashedPassword :=
-		[]byte(password + string(salt))
+	hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
 
 	if err != nil {
 		return []byte{}, []byte{}, err

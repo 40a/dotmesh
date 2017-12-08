@@ -25,12 +25,14 @@ import (
 	"github.com/datamesh-io/datamesh/cmd/dm/pkg/pki"
 	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
-	//	FIXME "golang.org/x/crypto/scrypt"
+	"golang.org/x/crypto/scrypt"
 )
 
 const DATAMESH_DOCKER_IMAGE = "quay.io/datamesh/datamesh-server:latest"
 
 // The following consts MUST MATCH those defined in cmd/datamesh-server/pkg/main/users.go
+//
+// FIXME: When we have a shared library betwixt client and server, we can put all this in there.
 const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
 
 // How many bytes of entropy in an API key
@@ -466,10 +468,7 @@ func setTokenIfNotExists(adminPassword, adminKey string) error {
 		return err
 	}
 
-	//	hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
-	// FIXME:
-	hashedPassword :=
-		[]byte(adminPassword + string(salt))
+	hashedPassword, err := scrypt.Key([]byte(adminPassword), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
 
 	kapi, err := getEtcd()
 	if err != nil {
