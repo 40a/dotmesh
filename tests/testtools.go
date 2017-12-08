@@ -477,6 +477,7 @@ type Node struct {
 	Container   string
 	IP          string
 	ApiKey      string
+	Password    string
 }
 
 type Cluster struct {
@@ -543,6 +544,7 @@ func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Nod
 		Container:   nodeName(now, i, j),
 		IP:          nodeIP,
 		ApiKey:      m.Remotes.Local.ApiKey,
+		Password:    s(t, nodeName(now, i, j), "cat /root/.datamesh/admin-password.txt"),
 	}
 }
 
@@ -773,9 +775,11 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		"kubectl apply -f /datamesh-kube-yaml/weave-net.yaml && "+
 			"kubectl create namespace datamesh && "+
 			"echo -n 'secret123' > datamesh-admin-password.txt && "+
+			"echo -n 'secret123' > datamesh-admin-api-key.txt && "+
 			"kubectl create secret generic datamesh "+
-			"    --from-file=datamesh-admin-password.txt -n datamesh && "+
+			"    --from-file=datamesh-admin-password.txt --from-file=datamesh-api-key.txt -n datamesh && "+
 			"rm datamesh-admin-password.txt && "+
+			"rm datamesh-api-key.txt && "+
 			// install etcd operator on the cluster
 			"kubectl apply -f /datamesh-kube-yaml/etcd-operator-clusterrole.yaml && "+
 			"kubectl apply -f /datamesh-kube-yaml/etcd-operator-dep.yaml && "+
@@ -1060,7 +1064,7 @@ func doRPC(hostname, user, apiKey, method string, args interface{}, result inter
 	}
 	err = json2.DecodeClientResponse(bytes.NewBuffer(b), &result)
 	if err != nil {
-		fmt.Printf("Test RPC FAIL: %+v -> %s -> %+v\n", args, method, err)
+		fmt.Printf("Test RPC FAIL: %+v -> %s -> %+v / %+v\n", args, method, string(b), err)
 		return fmt.Errorf("Couldn't decode response '%s': %s", string(b), err)
 	}
 	fmt.Printf("Test RPC: %+v -> %s -> %+v\n", args, method, result)

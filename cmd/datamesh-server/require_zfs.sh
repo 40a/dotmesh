@@ -173,7 +173,8 @@ fi
 secret=""
 if [[ "$INITIAL_ADMIN_PASSWORD_FILE" != "" && -e $INITIAL_ADMIN_PASSWORD_FILE ]]; then
     pw=$(cat $INITIAL_ADMIN_PASSWORD_FILE |tr -d '\n' |base64 -w 0)
-    secret="-e INITIAL_ADMIN_PASSWORD=$pw"
+    ak=$(cat $INITIAL_ADMIN_API_KEY_FILE |tr -d '\n' |base64 -w 0)
+    secret="-e INITIAL_ADMIN_PASSWORD=$pw -e INITIAL_ADMIN_API_KEY=$ak"
     echo "set secret: $secret"
 fi
 

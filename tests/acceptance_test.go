@@ -179,6 +179,80 @@ func TestSingleNode(t *testing.T) {
 		}
 	})
 
+	t.Run("ApiKeys", func(t *testing.T) {
+		apiKey := f[0].GetNode(0).ApiKey
+		password := f[0].GetNode(0).Password
+
+		var resp struct {
+			ApiKey string
+		}
+
+		err := doRPC(f[0].GetNode(0).IP, "admin", apiKey,
+			"DatameshRPC.GetApiKey",
+			struct {
+			}{},
+			&resp)
+		if err != nil {
+			t.Error(err)
+		}
+		if resp.ApiKey != apiKey {
+			t.Errorf("Got API key %v, expected %v", resp.ApiKey, apiKey)
+		}
+
+		err = doRPC(f[0].GetNode(0).IP, "admin", apiKey,
+			"DatameshRPC.ResetApiKey",
+			struct {
+			}{},
+			&resp)
+		if err == nil {
+			t.Errorf("Was able to reset API key without a password")
+		}
+
+		err = doRPC(f[0].GetNode(0).IP, "admin", password,
+			"DatameshRPC.ResetApiKey",
+			struct {
+			}{},
+			&resp)
+		if err != nil {
+			t.Error(err)
+		}
+		if resp.ApiKey == apiKey {
+			t.Errorf("Got API key %v, expected a new one!", resp.ApiKey, apiKey)
+		}
+
+		var user struct {
+			Id          string
+			Name        string
+			Email       string
+			EmailHash   string
+			CustomerId  string
+			CurrentPlan string
+		}
+
+		fmt.Printf("About to expect failure...\n")
+		// Use old API key, expect failure
+		err = doRPC(f[0].GetNode(0).IP, "admin", apiKey,
+			"DatameshRPC.CurrentUser",
+			struct {
+			}{},
+			&resp)
+		if err == nil {
+			t.Errorf("Successfully used old API key")
+		}
+
+		fmt.Printf("About to expect success...\n")
+		// Use new API key, expect success
+		err = doRPC(f[0].GetNode(0).IP, "admin", resp.ApiKey,
+			"DatameshRPC.CurrentUser",
+			struct {
+			}{},
+			&user)
+		if err != nil {
+			t.Error(err)
+		}
+
+		// FIXME: Update GetNode(0).ApiKey and on-disk remote API key so later tests don't fail!
+	})
 }
 
 func checkDeletionWorked(t *testing.T, fsname string, delay time.Duration, node1 string, node2 string) {

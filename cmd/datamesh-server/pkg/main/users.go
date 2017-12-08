@@ -4,14 +4,16 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
-	"encoding/hex"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 
 	"github.com/coreos/etcd/client"
 	"github.com/nu7hatch/gouuid"
-	//	"golang.org/x/crypto/scrypt"
+	//	FIXME "golang.org/x/crypto/scrypt"
 )
+
+// The following consts MUST MATCH those defined in cmd/dm/pkg/commands/cluster.go
 
 // special admin user with global privs
 const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
@@ -29,6 +31,27 @@ const HASH_BYTES = 32
 const SCRYPT_N = 32768
 const SCRYPT_R = 8
 const SCRYPT_P = 1
+
+// Returns salt, password hash, error
+func HashPassword(password string) ([]byte, []byte, error) {
+	salt := make([]byte, SALT_BYTES)
+	_, err := rand.Read(salt)
+
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+
+	//	hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
+	// FIXME:
+	hashedPassword :=
+		[]byte(password + string(salt))
+
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+
+	return salt, hashedPassword, nil
+}
 
 // Create a brand new user, with a new user id
 func NewUser(name, email, password string) (User, error) {
@@ -51,16 +74,8 @@ func NewUser(name, email, password string) (User, error) {
 			return User{}, fmt.Errorf("Email already exists - contact help@datamesh.io")
 		}
 	}
-	salt := make([]byte, SALT_BYTES)
-	_, err = rand.Read(salt)
-	if err != nil {
-		return User{}, err
-	}
 
-	//	hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
-	// FIXME:
-	hashedPassword :=
-		[]byte(password + string(salt))
+	salt, hashedPassword, err := HashPassword(password)
 
 	if err != nil {
 		return User{}, err
@@ -72,8 +87,18 @@ func NewUser(name, email, password string) (User, error) {
 		return User{}, err
 	}
 
-	apiKey := hex.EncodeToString(apiKeyBytes)
+	apiKey := base32.StdEncoding.EncodeToString(apiKeyBytes)
 	return User{Id: id.String(), Name: name, Email: email, Salt: salt, Password: hashedPassword, ApiKey: apiKey}, nil
+}
+
+func (u *User) ResetApiKey() error {
+	keyBytes := make([]byte, API_KEY_BYTES)
+	_, err := rand.Read(keyBytes)
+	if err != nil {
+		return err
+	}
+	u.ApiKey = base32.StdEncoding.EncodeToString(keyBytes)
+	return nil
 }
 
 // Returns salt, password, apiKey, err
@@ -90,10 +115,12 @@ func getPasswords(user string) ([]byte, []byte, string, error) {
 	return []byte{}, []byte{}, "", fmt.Errorf("Unable to find user %v", user)
 }
 
-func CheckPassword(username, password string) (bool, error) {
+// Returns whether the login was good, whether it was done with the password (as opposed to API key), error
+func CheckPassword(username, password string) (bool, bool, error) {
 	salt, hash, apiKey, err := getPasswords(username)
+
 	if err != nil {
-		return false, err
+		return false, false, err
 	} else {
 		// TODO think more about timing attacks
 
@@ -109,14 +136,14 @@ func CheckPassword(username, password string) (bool, error) {
 			[]byte(password + string(salt))
 
 		if err != nil {
-			return false, err
+			return false, false, err
 		}
 
 		passwordMatch := subtle.ConstantTimeCompare(
 			[]byte(hash),
 			[]byte(hashedPassword)) == 1
 
-		return (apiKeyMatch || passwordMatch), nil
+		return (apiKeyMatch || passwordMatch), passwordMatch, nil
 	}
 }
 

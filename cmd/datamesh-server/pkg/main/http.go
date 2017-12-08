@@ -207,7 +207,7 @@ func auth(w http.ResponseWriter, r *http.Request) (*http.Request, error) {
 		return r, fmt.Errorf("Permission denied.")
 	}
 	// ok, user has provided u/p, try to log them in
-	authorized, err := check(user, pass)
+	authorized, passworded, err := CheckPassword(user, pass)
 	if err != nil {
 		log.Printf(
 			"[AuthHandler] Error running check on %s: %s:",
@@ -229,7 +229,8 @@ func auth(w http.ResponseWriter, r *http.Request) (*http.Request, error) {
 		return r, fmt.Errorf("Permission denied.")
 	}
 	r = r.WithContext(
-		context.WithValue(r.Context(), "authenticated-user-id", u.Id),
+		context.WithValue(context.WithValue(r.Context(), "authenticated-user-id", u.Id),
+			"password-authenticated", passworded),
 	)
 	return r, nil
 }
@@ -255,8 +256,4 @@ func authHandlerFunc(f func(w http.ResponseWriter, r *http.Request)) func(w http
 		}
 		f(w, r)
 	}
-}
-
-func check(u, p string) (bool, error) {
-	return CheckPassword(u, p)
 }

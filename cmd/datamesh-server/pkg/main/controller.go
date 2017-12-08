@@ -302,7 +302,8 @@ func (s *InMemoryState) getCurrentState(filesystemId string) (string, error) {
 
 func (s *InMemoryState) insertInitialAdminPassword() error {
 
-	if os.Getenv("INITIAL_ADMIN_PASSWORD") == "" {
+	if os.Getenv("INITIAL_ADMIN_PASSWORD") == "" ||
+		os.Getenv("INITIAL_ADMIN_API_KEY") == "" {
 		return nil
 	}
 
@@ -313,19 +314,35 @@ func (s *InMemoryState) insertInitialAdminPassword() error {
 		return err
 	}
 
+	adminKey, err := base64.StdEncoding.DecodeString(
+		os.Getenv("INITIAL_ADMIN_API_KEY"),
+	)
+	if err != nil {
+		return err
+	}
+
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		return err
 	}
+
+	salt, hashedPassword, err := HashPassword(string(adminPassword))
+	if err != nil {
+		return err
+	}
+
 	user := struct {
-		Id     string
-		Name   string
-		ApiKey string
-	}{Id: ADMIN_USER_UUID, Name: "admin", ApiKey: string(adminPassword)}
+		Id       string
+		Name     string
+		Salt     []byte
+		Password []byte
+		ApiKey   string
+	}{Id: ADMIN_USER_UUID, Name: "admin", Salt: salt, Password: hashedPassword, ApiKey: string(adminKey)}
 	encoded, err := json.Marshal(user)
 	if err != nil {
 		return err
 	}
+
 	_, err = kapi.Set(
 		context.Background(),
 		fmt.Sprintf("/datamesh.io/users/%s", ADMIN_USER_UUID),

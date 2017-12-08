@@ -54,16 +54,72 @@ func (d *DatameshRPC) Config(
 	return nil
 }
 
+func requirePassword(r *http.Request) error {
+	// Reject the request with an error if the request was
+	// authenticated with an API key rather than a password. Use this
+	// to protect RPC methods that require a password.
+
+	if r.Context().Value("password-authenticated").(bool) {
+		return nil
+	} else {
+		return fmt.Errorf("Password authentication is required for this method.")
+	}
+}
+
 func (d *DatameshRPC) CurrentUser(
 	r *http.Request, args *struct{}, result *SafeUser,
 ) error {
-
 	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
 	if err != nil {
 		return err
 	}
 
 	*result = safeUser(user)
+	return nil
+}
+
+func (d *DatameshRPC) GetApiKey(
+	r *http.Request, args *struct{}, result *struct{ ApiKey string },
+) error {
+	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
+	if err != nil {
+		return err
+	}
+
+	result.ApiKey = user.ApiKey
+	return nil
+}
+
+func (d *DatameshRPC) ResetApiKey(
+	r *http.Request, args *struct{}, result *struct{ ApiKey string },
+) error {
+	err := requirePassword(r)
+	if err != nil {
+		return err
+	}
+
+	user, err := GetUserById(r.Context().Value("authenticated-user-id").(string))
+	if err != nil {
+		return err
+	}
+
+	err = user.ResetApiKey()
+	if err != nil {
+		return err
+	}
+
+	err = user.Save()
+	if err != nil {
+		return err
+	}
+
+	result.ApiKey = user.ApiKey
+
+	err = user.Save()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

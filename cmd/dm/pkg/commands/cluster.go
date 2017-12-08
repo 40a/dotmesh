@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -24,10 +25,27 @@ import (
 	"github.com/datamesh-io/datamesh/cmd/dm/pkg/pki"
 	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
+	//	FIXME "golang.org/x/crypto/scrypt"
 )
 
 const DATAMESH_DOCKER_IMAGE = "quay.io/datamesh/datamesh-server:latest"
+
+// The following consts MUST MATCH those defined in cmd/datamesh-server/pkg/main/users.go
 const ADMIN_USER_UUID = "00000000-0000-0000-0000-000000000000"
+
+// How many bytes of entropy in an API key
+const API_KEY_BYTES = 32
+
+// And in a salt
+const SALT_BYTES = 32
+
+// And in a password hash
+const HASH_BYTES = 32
+
+// Scrypt parameters, these are considered good as of 2017 according to https://godoc.org/golang.org/x/crypto/scrypt
+const SCRYPT_N = 32768
+const SCRYPT_R = 8
+const SCRYPT_P = 1
 
 var (
 	serverCount              int
@@ -432,25 +450,39 @@ func getToken() (string, error) {
 		return "", err
 	}
 	// just extract the field we need
-	var s struct{ ApiKey string }
+	var s struct{ ApiKey string } // This MUST be a subset of the type User defined in cmd/datamesh-server/pkg/main/types.go
 	err = json.Unmarshal([]byte(encoded.Node.Value), &s)
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("password: %s\n", s.ApiKey)
 	return s.ApiKey, nil
 }
 
-func setTokenIfNotExists(adminPassword string) error {
+func setTokenIfNotExists(adminPassword, adminKey string) error {
+	salt := make([]byte, SALT_BYTES)
+	_, err := rand.Read(salt)
+
+	if err != nil {
+		return err
+	}
+
+	//	hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
+	// FIXME:
+	hashedPassword :=
+		[]byte(adminPassword + string(salt))
+
 	kapi, err := getEtcd()
 	if err != nil {
 		return err
 	}
+	// This MUST be a subset of the type User defined in cmd/datamesh-server/pkg/main/types.go
 	user := struct {
-		Id     string
-		Name   string
-		ApiKey string
-	}{Id: ADMIN_USER_UUID, Name: "admin", ApiKey: adminPassword}
+		Id       string
+		Name     string
+		Salt     []byte
+		Password []byte
+		ApiKey   string
+	}{Id: ADMIN_USER_UUID, Name: "admin", Salt: salt, Password: hashedPassword, ApiKey: adminKey}
 	encoded, err := json.Marshal(user)
 	if err != nil {
 		return err
@@ -605,7 +637,7 @@ func exists(path string) (bool, error) {
 	return true, err
 }
 
-func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string) error {
+func clusterCommonSetup(clusterUrl, adminPassword, adminKey, pkiPath, clusterSecret string) error {
 	// - Start etcd with discovery token on non-standard ports (to avoid
 	//   conflicting with an existing etcd).
 	fmt.Printf("Guessing docker host's IPv4 address (should be routable from other cluster nodes)... ")
@@ -698,20 +730,25 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 	}
 	fmt.Printf("done.\n")
 
-	if adminPassword != "" {
-		// we are to try and initialize the first admin password
+	if adminPassword != "" && adminKey != "" {
+		// we are to try and initialize the first admin passwords
 		// try 10 times with exponentially increasing delay in between.
 		// panic if the adminPassword already exists
 		delay := 1
 		var err error
 		for i := 1; i <= 10; i++ {
 			time.Sleep(time.Duration(delay) * 5 * time.Second)
-			err = setTokenIfNotExists(adminPassword)
+			err = setTokenIfNotExists(adminPassword, adminKey)
 			if err == nil {
+				path, _ := filepath.Split(configPath)
+				passwordPath := filepath.Join(path, "admin-password.txt")
 				fmt.Printf(
-					"Succeeded setting initial admin password to '%s'\n",
+					"Succeeded setting initial admin password to '%s' - writing it to %s\n",
 					adminPassword,
+					passwordPath,
 				)
+				// Mode 0400 to make it owner-only-readable
+				err = ioutil.WriteFile(passwordPath, []byte(adminPassword), 0400)
 				break
 			}
 			delay *= 2
@@ -724,23 +761,23 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 			return err
 		}
 	} else {
-		// GET adminPassword from our local etcd
+		// GET adminKey from our local etcd
 		// TODO refactor tryUntil
 		delay := 1
 		var err error
 		for i := 1; i <= 10; i++ {
 			time.Sleep(time.Duration(delay) * 5 * time.Second)
-			adminPassword, err = getToken()
+			adminKey, err = getToken()
 			if err == nil {
 				fmt.Printf(
-					"Succeeded getting initial admin password '%s'\n",
-					adminPassword,
+					"Succeeded getting initial admin API key '%s'\n",
+					adminKey,
 				)
 				break
 			}
 			delay *= 2
 			fmt.Printf(
-				"Can't get initial admin password yet (%s), retrying in %ds...\n",
+				"Can't get initial admin API key yet (%s), retrying in %ds...\n",
 				err, delay,
 			)
 		}
@@ -754,7 +791,7 @@ func clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret string
 	if err != nil {
 		return err
 	}
-	err = config.AddRemote("local", "admin", getHostFromEnv(), adminPassword)
+	err = config.AddRemote("local", "admin", getHostFromEnv(), adminKey)
 	if err != nil {
 		return err
 	}
@@ -1078,8 +1115,13 @@ func clusterInit(cmd *cobra.Command, args []string, out io.Writer) error {
 	}
 	//fmt.Printf("Response: %s\n", r)
 
-	// - Generate admin password, and insert it into etcd
+	// - Generate admin creds, and insert them into etcd
 	adminPassword, err := RandToken(32)
+	if err != nil {
+		return err
+	}
+
+	adminKey, err := RandToken(32)
 	if err != nil {
 		return err
 	}
@@ -1101,7 +1143,7 @@ func clusterInit(cmd *cobra.Command, args []string, out io.Writer) error {
 
 	// - Run clusterCommonSetup.
 	err = clusterCommonSetup(
-		strings.TrimSpace(string(body)), adminPassword, pkiPath, clusterSecret,
+		strings.TrimSpace(string(body)), adminPassword, adminKey, pkiPath, clusterSecret,
 	)
 	if err != nil {
 		return err
@@ -1132,6 +1174,7 @@ func clusterJoin(cmd *cobra.Command, args []string, out io.Writer) error {
 	clusterSecret := shrapnel[len(shrapnel)-1]
 
 	adminPassword := "" // aka "don't attempt to set it in etcd"
+	adminKey := ""      // aka "don't attempt to set it in etcd"
 	pkiPath := getPkiPath()
 	// Now get PKI assets from discovery service.
 	// TODO: discovery service should mint new credentials just for us, rather
@@ -1194,7 +1237,7 @@ func clusterJoin(cmd *cobra.Command, args []string, out io.Writer) error {
 	}
 	fmt.Printf("done!\n")
 	// - Run clusterCommonSetup.
-	err = clusterCommonSetup(clusterUrl, adminPassword, pkiPath, clusterSecret)
+	err = clusterCommonSetup(clusterUrl, adminPassword, adminKey, pkiPath, clusterSecret)
 	if err != nil {
 		return err
 	}
