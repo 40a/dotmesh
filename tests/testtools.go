@@ -544,7 +544,9 @@ func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Nod
 		Container:   nodeName(now, i, j),
 		IP:          nodeIP,
 		ApiKey:      m.Remotes.Local.ApiKey,
-		Password:    s(t, nodeName(now, i, j), "cat /root/.datamesh/admin-password.txt"),
+		// FIXME: Extract this from the master like we do with the api key.
+		// s(t, nodeName(now, i, j), "cat /root/.datamesh/admin-password.txt") doesn't work :-(
+		Password: "secret123",
 	}
 }
 
@@ -775,9 +777,9 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		"kubectl apply -f /datamesh-kube-yaml/weave-net.yaml && "+
 			"kubectl create namespace datamesh && "+
 			"echo -n 'secret123' > datamesh-admin-password.txt && "+
-			"echo -n 'secret123' > datamesh-admin-api-key.txt && "+
+			"echo -n 'secret123' > datamesh-api-key.txt && "+
 			"kubectl create secret generic datamesh "+
-			"    --from-file=datamesh-admin-password.txt --from-file=datamesh-api-key.txt -n datamesh && "+
+			"    --from-file=./datamesh-admin-password.txt --from-file=./datamesh-api-key.txt -n datamesh && "+
 			"rm datamesh-admin-password.txt && "+
 			"rm datamesh-api-key.txt && "+
 			// install etcd operator on the cluster
