@@ -29,13 +29,13 @@ func NewDatameshRPC(state *InMemoryState) *DatameshRPC {
 }
 
 func (d *DatameshRPC) Procure(
-	r *http.Request, args *VolumeName, result *string) error {
+	r *http.Request, args *VolumeName, subvolume string, result *string) error {
 	ctx := r.Context()
 	filesystemId, err := d.state.procureFilesystem(ctx, *args)
 	if err != nil {
 		return err
 	}
-	mountpoint, err := newContainerMountSymlink(*args, filesystemId)
+	mountpoint, err := newContainerMountSymlink(*args, filesystemId, subvolume)
 	*result = mountpoint
 	return err
 }

@@ -161,6 +161,14 @@ func containerMnt(id VolumeName) string {
 	return containerMntParent(id) + "/" + id.Name
 }
 
+func containerMntSubvolume(id VolumeName, subvolume string) string {
+	if subvolume != "" {
+		return containerMnt(id) + "/" + subvolume
+	} else {
+		return containerMnt(id)
+	}
+}
+
 func returnCode(name string, arg ...string) (int, error) {
 	// Run a command and either get the returncode or an error if the command
 	// failed to execute, based on
@@ -449,6 +457,31 @@ func parseNamespacedVolume(name string) (string, string, error) {
 		return parts[0], parts[1], nil
 	default: // Too many slashes!
 		return "", "", fmt.Errorf("Volume names must be of the form NAMESPACE/VOLUME or just VOLUME: '%s'", name)
+	}
+}
+
+func parseNamespacedVolumeWithSubvolumes(name string) (string, string, string, error) {
+	parts := strings.Split(name, ":")
+	switch len(parts) {
+	case 0: // name was empty
+		return "", "", "", nil
+	case 1: // volume with no subvolume
+		namespace, name, err := parseNamespacedVolume(parts[0])
+		if err != nil {
+			return "", "", "", err
+		}
+		return namespace, name, "", nil
+	case 2: // volume with subvolume
+		namespace, name, err := parseNamespacedVolume(parts[0])
+		if err != nil {
+			return "", "", "", err
+		}
+		if strings.ContainsAny(parts[1], ":/.@") {
+			return "", "", "", fmt.Errorf("Subvolume names must not contain :, /, ., or @: '%s'", name)
+		}
+		return namespace, name, parts[1], nil
+	default: // Too many colons!
+		return "", "", "", fmt.Errorf("Volume names must be of the form [NAMESPACE/]VOLUME[:SUBVOLUME]: '%s'", name)
 	}
 }
 

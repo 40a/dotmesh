@@ -76,7 +76,7 @@ type ResponseGet struct {
 }
 
 // create a symlink from /datamesh/:name[@:branch] into /dmfs/:filesystemId
-func newContainerMountSymlink(name VolumeName, filesystemId string) (string, error) {
+func newContainerMountSymlink(name VolumeName, filesystemId string, subvolume string) (string, error) {
 	if _, err := os.Stat(CONTAINER_MOUNT_PREFIX); err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(CONTAINER_MOUNT_PREFIX, 0700); err != nil {
@@ -95,12 +95,29 @@ func newContainerMountSymlink(name VolumeName, filesystemId string) (string, err
 			return "", err
 		}
 	}
-	result := containerMnt(name)
-	// Only create it if it doesn't already exist. Otherwise just hand it back
-	// (the target of it may have been updated elsewhere).
+
+	// Raw ZFS mountpoint
+	mountpoint := containerMnt(name)
+
+	// ...and either that, or a subvolume within
+	result := containerMntSubvolume(name, subvolume)
+
+	// Do we need to create the subvolume directory?
 	if _, err := os.Stat(result); err != nil {
 		if os.IsNotExist(err) {
-			err = os.Symlink(mnt(filesystemId), result)
+			if err := os.MkdirAll(result, 0700); err != nil {
+				return "", err
+			}
+		} else {
+			return "", err
+		}
+	}
+
+	// Only create symlink if it doesn't already exist. Otherwise just hand it back
+	// (the target of it may have been updated elsewhere).
+	if _, err := os.Stat(mountpoint); err != nil {
+		if os.IsNotExist(err) {
+			err = os.Symlink(mnt(filesystemId), mountpoint)
 			if err != nil {
 				return "", err
 			}
@@ -108,6 +125,7 @@ func newContainerMountSymlink(name VolumeName, filesystemId string) (string, err
 			return "", err
 		}
 	}
+
 	return result, nil
 }
 
@@ -159,7 +177,8 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		namespace, localName, err := parseNamespacedVolume(request.Name)
+
+		namespace, localName, _, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
 			return
@@ -208,17 +227,19 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		namespace, localName, err := parseNamespacedVolume(request.Name)
+
+		namespace, localName, subvolume, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
 			return
 		}
 
 		name := VolumeName{namespace, localName}
+		mountPoint := containerMntSubvolume(name, subvolume)
 
-		log.Printf("Mountpoint for %s: %s", name, containerMnt(name))
+		log.Printf("Mountpoint for %s: %s", name, mountPoint)
 		responseJSON, _ := json.Marshal(&ResponseMount{
-			Mountpoint: containerMnt(name),
+			Mountpoint: mountPoint,
 			Err:        "",
 		})
 		log.Printf("=> %s", string(responseJSON))
@@ -241,7 +262,8 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		namespace, localName, err := parseNamespacedVolume(request.Name)
+
+		namespace, localName, subvolume, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
 			return
@@ -254,7 +276,7 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		mountpoint, err := newContainerMountSymlink(name, filesystemId)
+		mountpoint, err := newContainerMountSymlink(name, filesystemId, subvolume)
 		if err != nil {
 			writeResponseErr(err, w)
 			return
@@ -334,7 +356,8 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		namespace, localName, err := parseNamespacedVolume(request.Name)
+
+		namespace, localName, subvolume, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
 			return
@@ -356,10 +379,11 @@ func (state *InMemoryState) runPlugin() {
 			response.Err = fmt.Sprintf("Error getting volume: %v", err)
 		}
 
-		log.Printf("Mountpoint for %s: %s", fs, containerMnt(fs.TopLevelVolume.Name))
+		mountpoint := containerMntSubvolume(fs.TopLevelVolume.Name, subvolume)
+		log.Printf("Mountpoint for %s: %s", fs, mountpoint)
 		response.Volume = ResponseListVolume{
 			Name:       fs.TopLevelVolume.Name.StringWithoutAdmin(),
-			Mountpoint: containerMnt(fs.TopLevelVolume.Name),
+			Mountpoint: mountpoint,
 		}
 
 		responseJSON, _ := json.Marshal(response)
@@ -410,17 +434,18 @@ func (state *InMemoryState) runErrorPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-		namespace, localName, err := parseNamespacedVolume(request.Name)
+
+		namespace, localName, subvolume, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
 			return
 		}
 
 		name := VolumeName{namespace, localName}
-
-		log.Printf("Mountpoint for %s: %s", name, containerMnt(name))
+		mountpoint := containerMntSubvolume(name, subvolume)
+		log.Printf("Mountpoint for %s: %s", name, mountpoint)
 		responseJSON, _ := json.Marshal(&ResponseMount{
-			Mountpoint: containerMnt(name),
+			Mountpoint: mountpoint,
 			Err:        "",
 		})
 		log.Printf("=> %s", string(responseJSON))
