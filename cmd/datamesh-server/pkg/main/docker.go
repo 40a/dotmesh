@@ -99,7 +99,22 @@ func newContainerMountSymlink(name VolumeName, filesystemId string, subvolume st
 	// Raw ZFS mountpoint
 	mountpoint := containerMnt(name)
 
-	// ...and either that, or a subvolume within
+	// Only create symlink if it doesn't already exist. Otherwise just hand it back
+	// (the target of it may have been updated elsewhere).
+	if _, err := os.Stat(mountpoint); err != nil {
+		if os.IsNotExist(err) {
+			err = os.Symlink(mnt(filesystemId), mountpoint)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			return "", err
+		}
+	} else {
+		// FIXME: Check it really is a symlink. Various bugs lead to a raw directory being here, which then silently breaks things.
+	}
+
+	// ...and we return either that raw mountpoint, or a subvolume within
 	result := containerMntSubvolume(name, subvolume)
 
 	// Do we need to create the subvolume directory?
@@ -113,18 +128,7 @@ func newContainerMountSymlink(name VolumeName, filesystemId string, subvolume st
 		}
 	}
 
-	// Only create symlink if it doesn't already exist. Otherwise just hand it back
-	// (the target of it may have been updated elsewhere).
-	if _, err := os.Stat(mountpoint); err != nil {
-		if os.IsNotExist(err) {
-			err = os.Symlink(mnt(filesystemId), mountpoint)
-			if err != nil {
-				return "", err
-			}
-		} else {
-			return "", err
-		}
-	}
+	log.Printf("ABS TEST mount symlink: %s -> %s (%s %s)", mnt(filesystemId), mountpoint, subvolume, result)
 
 	return result, nil
 }
@@ -263,6 +267,7 @@ func (state *InMemoryState) runPlugin() {
 			return
 		}
 
+		log.Printf("Mount name = %s", request.Name)
 		namespace, localName, subvolume, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
@@ -380,7 +385,7 @@ func (state *InMemoryState) runPlugin() {
 		}
 
 		mountpoint := containerMntSubvolume(fs.TopLevelVolume.Name, subvolume)
-		log.Printf("Mountpoint for %s: %s", fs, mountpoint)
+		log.Printf("Mountpoint for %s (%+v): %s", request.Name, fs, mountpoint)
 		response.Volume = ResponseListVolume{
 			Name:       fs.TopLevelVolume.Name.StringWithoutAdmin(),
 			Mountpoint: mountpoint,

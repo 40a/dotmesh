@@ -454,12 +454,12 @@ func dockerRun(v ...string) string {
 	}
 	if len(v) > 1 {
 		return fmt.Sprintf(
-			"docker run -i -v %s:%s --volume-driver dm %s %s.local:80/%s",
+			"docker run -i -v '%s:%s' --volume-driver dm %s %s.local:80/%s",
 			v[0], path, v[1], hostname, image,
 		)
 	} else {
 		return fmt.Sprintf(
-			"docker run -i -v %s:%s --volume-driver dm %s.local:80/%s",
+			"docker run -i -v '%s:%s' --volume-driver dm %s.local:80/%s",
 			v[0], path, hostname, image,
 		)
 	}

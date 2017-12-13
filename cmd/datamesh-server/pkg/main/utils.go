@@ -461,7 +461,7 @@ func parseNamespacedVolume(name string) (string, string, error) {
 }
 
 func parseNamespacedVolumeWithSubvolumes(name string) (string, string, string, error) {
-	parts := strings.Split(name, ":")
+	parts := strings.Split(name, "$")
 	switch len(parts) {
 	case 0: // name was empty
 		return "", "", "", nil
@@ -476,12 +476,12 @@ func parseNamespacedVolumeWithSubvolumes(name string) (string, string, string, e
 		if err != nil {
 			return "", "", "", err
 		}
-		if strings.ContainsAny(parts[1], ":/.@") {
-			return "", "", "", fmt.Errorf("Subvolume names must not contain :, /, ., or @: '%s'", name)
+		if strings.ContainsAny(parts[1], "$:/.@") {
+			return "", "", "", fmt.Errorf("Subvolume names must not contain $, :, /, ., or @: '%s'", name)
 		}
 		return namespace, name, parts[1], nil
 	default: // Too many colons!
-		return "", "", "", fmt.Errorf("Volume names must be of the form [NAMESPACE/]VOLUME[:SUBVOLUME]: '%s'", name)
+		return "", "", "", fmt.Errorf("Volume names must be of the form [NAMESPACE/]VOLUME[$SUBVOLUME]: '%s'", name)
 	}
 }
 

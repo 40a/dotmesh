@@ -179,6 +179,18 @@ func TestSingleNode(t *testing.T) {
 		}
 	})
 
+	t.Run("Subvolumes", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname+"$frogs")+" touch /foo/HELLO-FROGS")
+		d(t, node1, dockerRun(fsname+"$eat")+" touch /foo/HELLO-EAT")
+		d(t, node1, dockerRun(fsname+"$flies")+" touch /foo/HELLO-FLIES")
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-ROOT")
+		st := s(t, node1, dockerRun(fsname)+" ls /foo/HELLO* /foo/*/HELLO*")
+		if st != "" {
+			t.Errorf("Subvolumes didn't work out: %s", st)
+		}
+	})
+
 }
 
 func checkDeletionWorked(t *testing.T, fsname string, delay time.Duration, node1 string, node2 string) {
