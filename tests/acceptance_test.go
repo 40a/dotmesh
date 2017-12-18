@@ -179,14 +179,50 @@ func TestSingleNode(t *testing.T) {
 		}
 	})
 
+	t.Run("BranchPinning", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-ORIGINAL")
+		d(t, node1, "dm switch "+fsname)
+		d(t, node1, "dm commit -m original")
+
+		d(t, node1, "dm checkout -b branch1")
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-BRANCH1")
+		d(t, node1, "dm commit -m branch1commit1")
+
+		d(t, node1, "dm checkout master")
+		d(t, node1, "dm checkout -b branch2")
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-BRANCH2")
+		d(t, node1, "dm commit -m branch2commit1")
+
+		d(t, node1, "dm checkout master")
+		d(t, node1, "dm checkout -b branch3")
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-BRANCH3")
+		d(t, node1, "dm commit -m branch3commit1")
+
+		st := s(t, node1, dockerRun(fsname+"@branch1")+" ls /foo")
+		if st != "HELLO-BRANCH1\nHELLO-ORIGINAL\n" {
+			t.Errorf("Wrong content in branch 1: '%s'", st)
+		}
+
+		st = s(t, node1, dockerRun(fsname+"@branch2")+" ls /foo")
+		if st != "HELLO-BRANCH2\nHELLO-ORIGINAL\n" {
+			t.Errorf("Wrong content in branch 2: '%s'", st)
+		}
+
+		st = s(t, node1, dockerRun(fsname+"@branch3")+" ls /foo")
+		if st != "HELLO-BRANCH3\nHELLO-ORIGINAL\n" {
+			t.Errorf("Wrong content in branch 3: '%s'", st)
+		}
+	})
+
 	t.Run("Subvolumes", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname+"$frogs")+" touch /foo/HELLO-FROGS")
 		d(t, node1, dockerRun(fsname+"$eat")+" touch /foo/HELLO-EAT")
 		d(t, node1, dockerRun(fsname+"$flies")+" touch /foo/HELLO-FLIES")
 		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-ROOT")
-		st := s(t, node1, dockerRun(fsname)+" ls /foo/HELLO* /foo/*/HELLO*")
-		if st != "" {
+		st := s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
+		if st != "/foo/HELLO-ROOT\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
 			t.Errorf("Subvolumes didn't work out: %s", st)
 		}
 	})

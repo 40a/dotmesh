@@ -128,8 +128,6 @@ func newContainerMountSymlink(name VolumeName, filesystemId string, subvolume st
 		}
 	}
 
-	log.Printf("ABS TEST mount symlink: %s -> %s (%s %s)", mnt(filesystemId), mountpoint, subvolume, result)
-
 	return result, nil
 }
 
@@ -181,7 +179,6 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-
 		namespace, localName, _, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
@@ -231,7 +228,6 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-
 		namespace, localName, subvolume, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
@@ -267,7 +263,6 @@ func (state *InMemoryState) runPlugin() {
 			return
 		}
 
-		log.Printf("Mount name = %s", request.Name)
 		namespace, localName, subvolume, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
@@ -361,7 +356,6 @@ func (state *InMemoryState) runPlugin() {
 			writeResponseErr(err, w)
 			return
 		}
-
 		namespace, localName, subvolume, err := parseNamespacedVolumeWithSubvolumes(request.Name)
 		if err != nil {
 			writeResponseErr(err, w)
@@ -387,7 +381,7 @@ func (state *InMemoryState) runPlugin() {
 		mountpoint := containerMntSubvolume(fs.TopLevelVolume.Name, subvolume)
 		log.Printf("Mountpoint for %s (%+v): %s", request.Name, fs, mountpoint)
 		response.Volume = ResponseListVolume{
-			Name:       fs.TopLevelVolume.Name.StringWithoutAdmin(),
+			Name:       request.Name,
 			Mountpoint: mountpoint,
 		}
 
