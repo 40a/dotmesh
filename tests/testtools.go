@@ -534,6 +534,12 @@ func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Nod
 	)
 	fmt.Printf("dm config on %s: %s\n", nodeName(now, i, j), config)
 
+	password := s(t,
+		nodeName(now, i, j),
+		"cat /root/.datamesh/admin-password.txt",
+	)
+	fmt.Printf("dm password on %s: %s\n", nodeName(now, i, j), password)
+
 	m := struct {
 		Remotes struct{ Local struct{ ApiKey string } }
 	}{}
@@ -544,9 +550,7 @@ func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Nod
 		Container:   nodeName(now, i, j),
 		IP:          nodeIP,
 		ApiKey:      m.Remotes.Local.ApiKey,
-		// FIXME: Extract this from the master like we do with the api key.
-		// s(t, nodeName(now, i, j), "cat /root/.datamesh/admin-password.txt") doesn't work :-(
-		Password: "secret123",
+		Password:    password,
 	}
 }
 
