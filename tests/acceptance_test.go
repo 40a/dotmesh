@@ -227,6 +227,21 @@ func TestSingleNode(t *testing.T) {
 		}
 	})
 
+	t.Run("ConcurrentSubvolumes", func(t *testing.T) {
+		fsname := uniqName()
+
+		d(t, node1, dockerRunDetached(fsname+"$frogs")+" sh -c 'touch /foo/HELLO-FROGS; sleep 30'")
+		d(t, node1, dockerRunDetached(fsname+"$eat")+" sh -c 'touch /foo/HELLO-EAT; sleep 30'")
+		d(t, node1, dockerRunDetached(fsname+"$flies")+" sh -c 'touch /foo/HELLO-FLIES; sleep 30'")
+		d(t, node1, dockerRunDetached(fsname)+" sh -c 'touch /foo/HELLO-ROOT; sleep 30'")
+		// Let everything get started
+		time.Sleep(5)
+		st := s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
+		if st != "/foo/HELLO-ROOT\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
+			t.Errorf("Subvolumes didn't work out: %s", st)
+		}
+	})
+
 }
 
 func checkDeletionWorked(t *testing.T, fsname string, delay time.Duration, node1 string, node2 string) {

@@ -465,6 +465,36 @@ func dockerRun(v ...string) string {
 	}
 }
 
+func dockerRunDetached(v ...string) string {
+	// supports either 1 or 2 args. in 1-arg case, just takes a volume name.
+	// in 2-arg case, takes volume name and arguments to pass to docker run.
+	// in 3-arg case, third arg is image in "$(hostname).local:80/$image".
+	// in 4-arg case, fourth arg is volume target.
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	image := "busybox"
+	if len(v) == 3 {
+		image = v[2]
+	}
+	path := "/foo"
+	if len(v) == 4 {
+		path = v[3]
+	}
+	if len(v) > 1 {
+		return fmt.Sprintf(
+			"docker run -d -v '%s:%s' --volume-driver dm %s %s.local:80/%s",
+			v[0], path, v[1], hostname, image,
+		)
+	} else {
+		return fmt.Sprintf(
+			"docker run -d -v '%s:%s' --volume-driver dm %s.local:80/%s",
+			v[0], path, hostname, image,
+		)
+	}
+}
+
 var uniqNumber int
 
 func uniqName() string {
