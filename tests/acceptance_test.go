@@ -236,9 +236,31 @@ func TestSingleNode(t *testing.T) {
 		d(t, node1, dockerRunDetached(fsname)+" sh -c 'touch /foo/HELLO-ROOT; sleep 30'")
 		// Let everything get started
 		time.Sleep(5)
+
+		// Check combined state
 		st := s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
 		if st != "/foo/HELLO-ROOT\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
 			t.Errorf("Subvolumes didn't work out: %s", st)
+		}
+
+		// Check commits and branches work
+		d(t, node1, "dm switch "+fsname)
+		d(t, node1, "dm commit -m pod-commit")
+		d(t, node1, "dm checkout -b branch")
+		d(t, node1, dockerRun(fsname+"$again")+" touch /foo/HELLO-AGAIN")
+		d(t, node1, "dm commit -m branch-commit")
+
+		// Check branch state
+		st = s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
+		if st != "/foo/HELLO-ROOT\n/foo/again/HELLO-AGAIN\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
+			t.Errorf("Subvolumes didn't work out on branch: %s", st)
+		}
+
+		// Check master state
+		d(t, node1, "dm checkout master")
+		st = s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
+		if st != "/foo/HELLO-ROOT\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
+			t.Errorf("Subvolumes didn't work out back on master: %s", st)
 		}
 	})
 
