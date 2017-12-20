@@ -253,6 +253,91 @@ func TestSingleNode(t *testing.T) {
 
 		// FIXME: Update GetNode(0).ApiKey and on-disk remote API key so later tests don't fail!
 	})
+
+	t.Run("BranchPinning", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-ORIGINAL")
+		d(t, node1, "dm switch "+fsname)
+		d(t, node1, "dm commit -m original")
+
+		d(t, node1, "dm checkout -b branch1")
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-BRANCH1")
+		d(t, node1, "dm commit -m branch1commit1")
+
+		d(t, node1, "dm checkout master")
+		d(t, node1, "dm checkout -b branch2")
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-BRANCH2")
+		d(t, node1, "dm commit -m branch2commit1")
+
+		d(t, node1, "dm checkout master")
+		d(t, node1, "dm checkout -b branch3")
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-BRANCH3")
+		d(t, node1, "dm commit -m branch3commit1")
+
+		st := s(t, node1, dockerRun(fsname+"@branch1")+" ls /foo")
+		if st != "HELLO-BRANCH1\nHELLO-ORIGINAL\n" {
+			t.Errorf("Wrong content in branch 1: '%s'", st)
+		}
+
+		st = s(t, node1, dockerRun(fsname+"@branch2")+" ls /foo")
+		if st != "HELLO-BRANCH2\nHELLO-ORIGINAL\n" {
+			t.Errorf("Wrong content in branch 2: '%s'", st)
+		}
+
+		st = s(t, node1, dockerRun(fsname+"@branch3")+" ls /foo")
+		if st != "HELLO-BRANCH3\nHELLO-ORIGINAL\n" {
+			t.Errorf("Wrong content in branch 3: '%s'", st)
+		}
+	})
+
+	t.Run("Subvolumes", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, dockerRun(fsname+"$frogs")+" touch /foo/HELLO-FROGS")
+		d(t, node1, dockerRun(fsname+"$eat")+" touch /foo/HELLO-EAT")
+		d(t, node1, dockerRun(fsname+"$flies")+" touch /foo/HELLO-FLIES")
+		d(t, node1, dockerRun(fsname)+" touch /foo/HELLO-ROOT")
+		st := s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
+		if st != "/foo/HELLO-ROOT\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
+			t.Errorf("Subvolumes didn't work out: %s", st)
+		}
+	})
+
+	t.Run("ConcurrentSubvolumes", func(t *testing.T) {
+		fsname := uniqName()
+
+		d(t, node1, dockerRunDetached(fsname+"$frogs")+" sh -c 'touch /foo/HELLO-FROGS; sleep 30'")
+		d(t, node1, dockerRunDetached(fsname+"$eat")+" sh -c 'touch /foo/HELLO-EAT; sleep 30'")
+		d(t, node1, dockerRunDetached(fsname+"$flies")+" sh -c 'touch /foo/HELLO-FLIES; sleep 30'")
+		d(t, node1, dockerRunDetached(fsname)+" sh -c 'touch /foo/HELLO-ROOT; sleep 30'")
+		// Let everything get started
+		time.Sleep(5)
+
+		// Check combined state
+		st := s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
+		if st != "/foo/HELLO-ROOT\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
+			t.Errorf("Subvolumes didn't work out: %s", st)
+		}
+
+		// Check commits and branches work
+		d(t, node1, "dm switch "+fsname)
+		d(t, node1, "dm commit -m pod-commit")
+		d(t, node1, "dm checkout -b branch")
+		d(t, node1, dockerRun(fsname+"$again")+" touch /foo/HELLO-AGAIN")
+		d(t, node1, "dm commit -m branch-commit")
+
+		// Check branch state
+		st = s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
+		if st != "/foo/HELLO-ROOT\n/foo/again/HELLO-AGAIN\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
+			t.Errorf("Subvolumes didn't work out on branch: %s", st)
+		}
+
+		// Check master state
+		d(t, node1, "dm checkout master")
+		st = s(t, node1, dockerRun(fsname)+" find /foo -type f | sort")
+		if st != "/foo/HELLO-ROOT\n/foo/eat/HELLO-EAT\n/foo/flies/HELLO-FLIES\n/foo/frogs/HELLO-FROGS\n" {
+			t.Errorf("Subvolumes didn't work out back on master: %s", st)
+		}
+	})
 }
 
 func checkDeletionWorked(t *testing.T, fsname string, delay time.Duration, node1 string, node2 string) {
