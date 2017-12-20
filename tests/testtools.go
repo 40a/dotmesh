@@ -534,10 +534,15 @@ func NodeFromNodeName(t *testing.T, now int64, i, j int, clusterName string) Nod
 	)
 	fmt.Printf("dm config on %s: %s\n", nodeName(now, i, j), config)
 
+	// /root/.datamesh/admin-password.txt is created on docker
+	// clusters, but k8s clusters are configured from k8s secrets so
+	// there's no automatic password generation; the value we show here
+	// is what we hardcode as the password.
 	password := s(t,
 		nodeName(now, i, j),
-		"cat /root/.datamesh/admin-password.txt",
+		"sh -c 'if [ -f /root/.datamesh/admin-password.txt ]; then cat /root/.datamesh/admin-password.txt; else echo -n FAKEAPIKEY; fi'",
 	)
+
 	fmt.Printf("dm password on %s: %s\n", nodeName(now, i, j), password)
 
 	m := struct {
@@ -781,7 +786,7 @@ func (c *Kubernetes) Start(t *testing.T, now int64, i int) error {
 		"kubectl apply -f /datamesh-kube-yaml/weave-net.yaml && "+
 			"kubectl create namespace datamesh && "+
 			"echo -n 'secret123' > datamesh-admin-password.txt && "+
-			"echo -n 'secret123' > datamesh-api-key.txt && "+
+			"echo -n 'FAKEAPIKEY' > datamesh-api-key.txt && "+
 			"kubectl create secret generic datamesh "+
 			"    --from-file=./datamesh-admin-password.txt --from-file=./datamesh-api-key.txt -n datamesh && "+
 			"rm datamesh-admin-password.txt && "+
