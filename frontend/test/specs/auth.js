@@ -9,7 +9,7 @@ module.exports = {
   loadHomepage: (browser) => {
     const home = browser.page.home().navigate()
     home.waitForElementVisible('@title', 2000)
-    home.expect.element('@title').text.to.equal('Datamesh Console')
+    home.expect.element('@title').text.to.equal('Datamesh Cloud')
     browser.pause(300)
     utils.screenshot(browser, '/homepage.png')
   },

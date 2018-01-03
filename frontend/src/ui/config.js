@@ -30,7 +30,7 @@ const icons = {
 }
 
 const config = {
-  title:'Datamesh Console',
+  title:'Datamesh Cloud',
   basepath:'/ui',
   rpcNamespace: 'DatameshRPC',
   devmodePlanName: 'developer',

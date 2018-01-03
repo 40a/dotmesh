@@ -23,7 +23,7 @@ module.exports = {
 
     // wait for loading and click register link
     home.waitForElementVisible('@title', 2000)
-    home.expect.element('@title').text.to.equal('Datamesh Console')
+    home.expect.element('@title').text.to.equal('Datamesh Cloud')
     browser.pause(2000)
     home.click('@registerLink')
 
@@ -122,7 +122,7 @@ module.exports = {
     home.navigate()
     // wait for loading and click register link
     home.waitForElementVisible('@title', 2000)
-    home.expect.element('@title').text.to.equal('Datamesh Console')
+    home.expect.element('@title').text.to.equal('Datamesh Cloud')
     browser.pause(2000)
     home.click('@registerLink')
 

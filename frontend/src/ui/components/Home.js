@@ -10,7 +10,7 @@ class Home extends Component {
       <Grid fluid>
         <Row>
           <Col xs={12}>
-            <p>Welcome to DataMesh!</p>
+            <p>Welcome to Datamesh!</p>
           </Col>
           <Col xs={12} className={ spacing.marginTop }>
             <LinkButton
