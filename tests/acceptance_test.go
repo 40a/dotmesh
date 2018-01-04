@@ -44,6 +44,21 @@ func TestSingleNode(t *testing.T) {
 		}
 	})
 
+	t.Run("InitDuplicate", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, node1, "dm init "+fsname)
+
+		resp := s(t, node1, "if dm init "+fsname+"; then false; else true; fi ")
+		if !strings.Contains(resp, fmt.Sprintf("Error: %s exists already", fsname)) {
+			t.Error("Didn't get an error when attempting to re-create the volume")
+		}
+
+		resp = s(t, node1, "dm list")
+		if !strings.Contains(resp, fsname) {
+			t.Error("unable to find volume name in ouput")
+		}
+	})
+
 	t.Run("Commit", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" touch /foo/X")

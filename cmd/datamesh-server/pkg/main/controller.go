@@ -698,24 +698,61 @@ func (state *InMemoryState) procureFilesystem(ctx context.Context, name VolumeNa
 func (s *InMemoryState) CreateFilesystem(
 	ctx context.Context, filesystemName *VolumeName,
 ) (*fsMachine, chan *Event, error) {
-	id, err := uuid.NewV4()
-	if err != nil {
-		return nil, nil, err
-	}
-	filesystemId := id.String()
-	log.Printf("[CreateFilesystem] called with name=%+v, assigned id=%s", filesystemName, filesystemId)
-	err = s.registry.RegisterFilesystem(ctx, *filesystemName, filesystemId)
-	if err != nil {
-		log.Printf(
-			"[CreateFilesystem] Error while trying to register filesystem name %s => id %s: %s",
-			filesystemName, filesystemId, err,
-		)
-		return nil, nil, err
-	}
+
 	kapi, err := getEtcdKeysApi()
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Check to see if it already partially exists, eg. in the registry but without a master
+	var filesystemId string
+
+	re, err := kapi.Get(
+		context.Background(),
+		fmt.Sprintf("%s/registry/filesystems/%s/%s", ETCD_PREFIX, filesystemName.Namespace, filesystemName.Name),
+		&client.GetOptions{},
+	)
+	if err != nil && !client.IsKeyNotFound(err) {
+		return nil, nil, err
+	} else if err != nil && client.IsKeyNotFound(err) {
+		// Doesn't already exist, we can proceed as usual
+		id, err := uuid.NewV4()
+		if err != nil {
+			return nil, nil, err
+		}
+		filesystemId = id.String()
+
+		log.Printf("[CreateFilesystem] called with name=%+v, assigned id=%s", filesystemName, filesystemId)
+		err = s.registry.RegisterFilesystem(ctx, *filesystemName, filesystemId)
+		if err != nil {
+			log.Printf(
+				"[CreateFilesystem] Error while trying to register filesystem name %s => id %s: %s",
+				filesystemName, filesystemId, err,
+			)
+			return nil, nil, err
+		}
+		// Proceed to set up master mapping
+	} else {
+		// Key already exists
+		filesystemId = re.Node.Nodes[0].Value
+		log.Printf("[CreateFilesystem] called with name=%+v, examining existing id %s", filesystemName, filesystemId)
+
+		// Check for an existing master mapping
+		_, err := kapi.Get(
+			context.Background(),
+			fmt.Sprintf("%s/filesystems/masters/%s", ETCD_PREFIX, filesystemId),
+			&client.GetOptions{},
+		)
+		if err != nil && !client.IsKeyNotFound(err) {
+			return nil, nil, err
+		} else if err != nil && client.IsKeyNotFound(err) {
+			// Key not found, proceed to set up new master mapping
+		} else {
+			// Existing master mapping, we're trying to create an already-existing volume! Abort!
+			return nil, nil, fmt.Errorf("A volume called %s already exists with id %s", filesystemName, filesystemId)
+		}
+	}
+
 	// synchronize with etcd first, setting master to us only if the key
 	// didn't previously exist, **before actually creating the filesystem**
 	_, err = kapi.Set(
