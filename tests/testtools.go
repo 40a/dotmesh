@@ -1112,6 +1112,27 @@ func doRPC(hostname, user, apiKey, method string, args interface{}, result inter
 	return nil
 }
 
+func doSetDebugFlag(hostname, user, apikey, flag, value string) (string, error) {
+	var result string
+
+	err := doRPC(hostname, user, apikey,
+		"DatameshRPC.SetDebugFlag",
+		struct {
+			FlagName  string
+			FlagValue string
+		}{
+			FlagName:  flag,
+			FlagValue: value,
+		},
+		&result)
+
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
+}
+
 func doAddCollaborator(hostname, user, apikey, namespace, volume, collaborator string) error {
 	// FIXME: Duplicated types, see issue #44
 	type VolumeName struct {

@@ -1326,3 +1326,44 @@ func (d *DatameshRPC) DeleteVolume(
 	*result = true
 	return nil
 }
+
+func handleBooleanFlag(bool *flag, value string, oldValue *string) {
+	if *flag {
+		*oldValue = "true"
+	} else {
+		*oldValue = "false"
+	}
+
+	if value == "true" {
+		*flag = true
+	} else {
+		*flag = false
+	}
+}
+
+func (d *DatameshRPC) SetDebugFlag(
+	r *http.Request,
+	args *struct {
+		FlagName  string
+		FlagValue string
+	},
+	result *string,
+) error {
+	if r.Context().Value("authenticated-user-id").(string) != ADMIN_USER_UUID {
+		*result = ""
+		return fmt.Errorf("Debug flags may only be controlled by the admin user")
+	}
+
+	log.Printf("DEBUG FLAG: %s -> %s (was %s)", args.FlagName, args.FlagValue, *result)
+
+	switch args.FlagName {
+	case "PartialFailCreateFilesystem":
+		handleBooleanFlag(&d.state.debugPartialFailCreateFilesystem, args.FlagValue, result)
+	default:
+		*result = ""
+		return fmt.Errorf("Unknown debug flag %s", args.FlagName)
+	}
+
+	log.Printf("DEBUG FLAG: %s <- %s (was %s)", args.FlagName, args.FlagValue, *result)
+	return nil
+}

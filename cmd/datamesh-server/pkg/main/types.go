@@ -170,6 +170,8 @@ type InMemoryState struct {
 	interclusterTransfersLock  *sync.Mutex
 	globalDirtyCacheLock       *sync.Mutex
 	globalDirtyCache           *map[string]dirtyInfo
+
+	debugPartialFailCreateFilesystem bool
 }
 
 type fsMap map[string]*fsMachine

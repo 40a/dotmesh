@@ -59,6 +59,33 @@ func TestSingleNode(t *testing.T) {
 		}
 	})
 
+	t.Run("InitCrashSafety", func(t *testing.T) {
+		fsname := uniqName()
+
+		_, err := doSetDebugFlag(f[0].GetNode(0).IP, "admin", f[0].GetNode(0).ApiKey, "PartialFailCreateFilesystem", "true")
+		if err != nil {
+			t.Error(err)
+		}
+
+		resp := s(t, node1, "if dm init "+fsname+"; then false; else true; fi ")
+		if !strings.Contains(resp, "Injected fault") {
+			t.Error("Couldn't inject fault into CreateFilesystem")
+		}
+
+		_, err = doSetDebugFlag(f[0].GetNode(0).IP, "admin", f[0].GetNode(0).ApiKey, "PartialFailCreateFilesystem", "false")
+		if err != nil {
+			t.Error(err)
+		}
+
+		// Now try again, and check it recovers and creates the volume
+		d(t, node1, "dm init "+fsname)
+
+		resp = s(t, node1, "dm list")
+		if !strings.Contains(resp, fsname) {
+			t.Error("unable to find volume name in ouput")
+		}
+	})
+
 	t.Run("Commit", func(t *testing.T) {
 		fsname := uniqName()
 		d(t, node1, dockerRun(fsname)+" touch /foo/X")
