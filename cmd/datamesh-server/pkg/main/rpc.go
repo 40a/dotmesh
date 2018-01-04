@@ -1327,7 +1327,7 @@ func (d *DatameshRPC) DeleteVolume(
 	return nil
 }
 
-func handleBooleanFlag(bool *flag, value string, oldValue *string) {
+func handleBooleanFlag(flag *bool, value string, oldValue *string) {
 	if *flag {
 		*oldValue = "true"
 	} else {
