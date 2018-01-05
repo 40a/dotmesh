@@ -888,6 +888,37 @@ func TestTwoSingleNodeClusters(t *testing.T) {
 			t.Error("Some history went missing (if it's bug#74 again, probably the 'hello')")
 		}
 	})
+
+	t.Run("VolumeNameValidityChecking", func(t *testing.T) {
+		// 1) dm init
+		resp := s(t, node1, "if dm init @; then false; else true; fi ")
+		if !strings.Contains(resp, "Invalid volume name") {
+			t.Error("Didn't get an error when attempting to dm init an invalid volume name")
+		}
+
+		// 2) pull/clone it
+		fsname := uniqName()
+
+		d(t, node2, dockerRun(fsname)+" touch /foo/X")
+		d(t, node2, "dm switch "+fsname)
+		d(t, node2, "dm commit -m 'hello'")
+
+		resp = s(t, node1, "if dm clone cluster_0 "+fsname+" --local-volume @; then false; else true; fi ")
+		if !strings.Contains(resp, "Invalid volume name") {
+			t.Error("Didn't get an error when attempting to dm clone to an invalid volume name")
+		}
+
+		resp = s(t, node1, "if dm pull cluster_0 @ --remote-volume "+fsname+"; then false; else true; fi ")
+		if !strings.Contains(resp, "Invalid volume name") {
+			t.Error("Didn't get an error when attempting to dm pull to an invalid volume name")
+		}
+
+		// 3) push it
+		resp = s(t, node2, "if dm push cluster_0 "+fsname+" --remote-volume @; then false; else true; fi ")
+		if !strings.Contains(resp, "Invalid volume name") {
+			t.Error("Didn't get an error when attempting to dm push to an invalid volume name")
+		}
+	})
 }
 
 func TestFrontend(t *testing.T) {

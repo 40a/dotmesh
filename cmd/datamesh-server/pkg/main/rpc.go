@@ -28,9 +28,42 @@ func NewDatameshRPC(state *InMemoryState) *DatameshRPC {
 	return &DatameshRPC{state: state}
 }
 
+func requireValidVolumeName(name VolumeName) error {
+	// Reject the request with an error if the volume name is invalid
+	// This function allows only pure volume names - no volume@branch$subvolume or similar!
+
+	// Bad chars in namespace names are:
+
+	// : - because Docker uses it as a separator in -v <volume name>:<container path>
+	// / - for namespaces
+
+	if strings.ContainsAny(name.Namespace, ":/") {
+		return fmt.Errorf("Invalid namespace name %v - it must not contain : or /", name.Namespace)
+	}
+
+	// Bad chars in volume names are:
+
+	// $ - for subvolumes
+	// @ - for branch/snapshot
+	// : - because Docker uses it as a separator in -v <volume name>:<container path>
+	// / - for namespaces
+
+	if strings.ContainsAny(name.Name, "$@:/") {
+		return fmt.Errorf("Invalid volume name %v - it must not contain $, @, : or /", name.Name)
+	}
+
+	return nil
+}
+
 func (d *DatameshRPC) Procure(
 	r *http.Request, args *VolumeName, subvolume string, result *string) error {
 	ctx := r.Context()
+
+	err := requireValidVolumeName(*args)
+	if err != nil {
+		return err
+	}
+
 	filesystemId, err := d.state.procureFilesystem(ctx, *args)
 	if err != nil {
 		return err
@@ -233,6 +266,12 @@ func (d *DatameshRPC) List(
 
 func (d *DatameshRPC) Create(
 	r *http.Request, filesystemName *VolumeName, result *bool) error {
+
+	err := requireValidVolumeName(*filesystemName)
+	if err != nil {
+		return err
+	}
+
 	_, ch, err := d.state.CreateFilesystem(r.Context(), filesystemName)
 	if err != nil {
 		return err
@@ -290,6 +329,7 @@ func (d *DatameshRPC) Containers(
 	result *[]DockerContainer,
 ) error {
 	log.Printf("[Containers] called with %+v", *args)
+
 	filesystemId, err := d.state.registry.MaybeCloneFilesystemId(
 		VolumeName{args.Namespace, args.TopLevelFilesystemName},
 		args.CloneName,
@@ -675,6 +715,11 @@ func (d *DatameshRPC) RegisterFilesystem(
 ) error {
 	log.Printf("[RegisterFilesystem] called with args: %+v", args)
 
+	err := requireValidVolumeName(VolumeName{args.Namespace, args.TopLevelFilesystemName})
+	if err != nil {
+		return err
+	}
+
 	isAdmin, err := AuthenticatedUserIsNamespaceAdministrator(r.Context(), args.Namespace)
 	if err != nil {
 		return err
@@ -779,6 +824,19 @@ func (d *DatameshRPC) Transfer(
 	client := NewJsonRpcClient(args.User, args.Peer, args.ApiKey)
 
 	log.Printf("[Transfer] starting with %+v", safeArgs(*args))
+
+	switch args.Direction {
+	case "push":
+		err := requireValidVolumeName(VolumeName{args.RemoteNamespace, args.RemoteFilesystemName})
+		if err != nil {
+			return err
+		}
+	case "pull":
+		err := requireValidVolumeName(VolumeName{args.LocalNamespace, args.LocalFilesystemName})
+		if err != nil {
+			return err
+		}
+	}
 
 	var remoteFilesystemId string
 	err := client.CallRemote(r.Context(),
