@@ -1464,3 +1464,37 @@ spec:
 	})
 
 }
+
+func TestLargeCluster(t *testing.T) {
+	teardownFinishedTestRuns()
+
+	// Tests in this suite should not assume how many nodes we have in
+	// the cluster, and iterate over f[0].GetNodes, so that we can
+	// scale it to the test hardware we have. Might even pick up the
+	// cluster size from an env variable.
+	f := Federation{
+		NewCluster(5),
+	}
+	startTiming()
+	err := f.Start(t)
+	defer testMarkForCleanup(f)
+	if err != nil {
+		t.Error(err)
+	}
+	commonNode := f[0].GetNode(0)
+
+	t.Run("HandoverStressTest", func(t *testing.T) {
+		fsname := uniqName()
+		d(t, commonNode.Container, dockerRun(fsname)+" sh -c 'echo STUFF > /foo/whatever'")
+
+		for iteration := 0; iteration <= 10; iteration++ {
+			for nid, node := range f[0].GetNodes() {
+				runId := fmt.Sprintf("%d/%d", iteration, nid)
+				st := s(t, node.Container, dockerRun(fsname)+" sh -c 'echo "+runId+"; cat /foo/whatever'")
+				if !strings.Contains(st, "STUFF") {
+					t.Error(fmt.Sprintf("We didn't see the STUFF we expected"))
+				}
+			}
+		}
+	})
+}

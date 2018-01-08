@@ -258,6 +258,17 @@ linux_three_single_node_clusters:
     script:
         - ./test.sh -run TestThreeSingleNodeClusters
 
+linux_large_cluster:
+    stage: test
+    dependencies:
+        - build_server
+        - build_client_linux
+    tags:
+        - ubuntu-16.10
+        - fast
+    script:
+        - ./test.sh -run TestLargeCluster
+
 deploy_client_binaries:
     stage: deploy
     dependencies:
