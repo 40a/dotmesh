@@ -26,8 +26,7 @@ import (
 	"github.com/datamesh-io/datamesh/cmd/dm/pkg/pki"
 	"github.com/datamesh-io/datamesh/cmd/dm/pkg/remotes"
 	"github.com/spf13/cobra"
-	// FIXME: scrypt
-	// "golang.org/x/crypto/scrypt"
+	"golang.org/x/crypto/scrypt"
 )
 
 const DATAMESH_DOCKER_IMAGE = "quay.io/datamesh/datamesh-server:latest"
@@ -470,11 +469,7 @@ func setTokenIfNotExists(adminPassword, adminKey string) error {
 		return err
 	}
 
-	// FIXME: scrypt
-	// hashedPassword, err := scrypt.Key([]byte(adminPassword), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
-	err = nil
-	hashedPassword :=
-		[]byte(adminPassword + string(salt))
+	hashedPassword, err := scrypt.Key([]byte(adminPassword), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
 
 	kapi, err := getEtcd()
 	if err != nil {

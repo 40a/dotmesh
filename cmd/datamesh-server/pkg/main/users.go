@@ -10,8 +10,7 @@ import (
 
 	"github.com/coreos/etcd/client"
 	"github.com/nu7hatch/gouuid"
-	// FIXME: scrypt
-	// "golang.org/x/crypto/scrypt"
+	"golang.org/x/crypto/scrypt"
 )
 
 // The following consts MUST MATCH those defined in cmd/dm/pkg/commands/cluster.go
@@ -44,11 +43,7 @@ func HashPassword(password string) ([]byte, []byte, error) {
 		return []byte{}, []byte{}, err
 	}
 
-	// FIXME: Scrypt
-	// hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
-	err = nil
-	hashedPassword :=
-		[]byte(password + string(salt))
+	hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
 
 	if err != nil {
 		return []byte{}, []byte{}, err
@@ -135,11 +130,7 @@ func CheckPassword(username, password string) (bool, bool, error) {
 
 		// See if password matches hash
 
-		// FIXME: scrypt
-		// hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
-		err = nil
-		hashedPassword :=
-			[]byte(password + string(salt))
+		hashedPassword, err := scrypt.Key([]byte(password), salt, SCRYPT_N, SCRYPT_R, SCRYPT_P, HASH_BYTES)
 
 		if err != nil {
 			return false, false, err
