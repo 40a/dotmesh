@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"golang.org/x/sys/unix"
 
 	"github.com/blang/semver"
 	"github.com/coreos/etcd/client"
@@ -751,8 +752,17 @@ func clusterCommonSetup(clusterUrl, adminPassword, adminKey, pkiPath, clusterSec
 					adminPassword,
 					passwordPath,
 				)
-				// Mode 0400 to make it owner-only-readable
-				err = ioutil.WriteFile(passwordPath, []byte(adminPassword), 0400)
+				// Mode 0600 to make it owner-only
+				err = ioutil.WriteFile(passwordPath, []byte(adminPassword), 0600)
+
+				if err == nil {
+					// Try to limit that to 0400 (read-only) now we've written it
+					err2 := unix.Chmod(passwordPath, 0400)
+					if err2 != nil {
+						// Non-fatal error
+						fmt.Printf("WARNING: Could not make admin password file %s read-only: %v\n", passwordPath, err2)
+					}
+				}
 				break
 			}
 			delay *= 2
