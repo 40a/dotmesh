@@ -277,6 +277,14 @@
 			"Rev": "3c0d69f1777220f1a1d2ec373cb94a282f03eb42"
 		},
 		{
+			"ImportPath": "golang.org/x/crypto/pbkdf2",
+			"Rev": "3c0d69f1777220f1a1d2ec373cb94a282f03eb42"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/scrypt",
+			"Rev": "3c0d69f1777220f1a1d2ec373cb94a282f03eb42"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/ssh",
 			"Rev": "3c0d69f1777220f1a1d2ec373cb94a282f03eb42"
 		},
