@@ -204,11 +204,15 @@ To run the test suite, run:
 
 ```
 cd $GOPATH/src/github.com/datamesh-io/datamesh
-./prep-tests.sh && ./test.sh
+./prep-tests.sh && ./test.sh -short
 ```
 
 You can pass `SKIP_FRONTEND=true` to `prep-tests.sh` if you want to trade having
 a working frontend for slightly faster builds (this will break `TestFrontend`).
+
+You can omit `-short` to `test.sh` if you want to run the stress
+tests, which take a while. You may need to also pass `-timeout 30m` or
+so as well...
 
 To run just an individual set of tests, run:
 ```
