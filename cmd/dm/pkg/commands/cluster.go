@@ -747,6 +747,13 @@ func clusterCommonSetup(clusterUrl, adminPassword, adminKey, pkiPath, clusterSec
 					adminPassword,
 					passwordPath,
 				)
+
+				// Delete any previous admin password; ignore errors as we
+				// don't care if it wasn't there, and if there's something
+				// more exotic wrong with the filesystem (eg, permissions,
+				// IO error) the attempt to write will report it:
+				os.Remove(passwordPath)
+
 				// Mode 0600 to make it owner-only
 				err = ioutil.WriteFile(passwordPath, []byte(adminPassword), 0600)
 
