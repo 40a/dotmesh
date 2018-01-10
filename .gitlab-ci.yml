@@ -258,20 +258,17 @@ linux_three_single_node_clusters:
     script:
         - ./test.sh -run TestThreeSingleNodeClusters
 
-# Disabled as it's not found useful bugs, and takes so long that it
-# fails due to the timeout on a test runner that's doing anything else
-# in parallel.
-#
-#linux_large_cluster:
-#    stage: test
-#    dependencies:
-#        - build_server
-#        - build_client_linux
-#    tags:
-#        - ubuntu-16.10
-#        - fast
-#    script:
-#        - ./test.sh -run TestLargeCluster
+linux_large_cluster:
+   stage: test
+   dependencies:
+       - build_server
+       - build_client_linux
+   tags:
+       - ubuntu-16.10
+       - fast
+   script:
+       - ./test.sh -timeout 30m -run TestLargeCluster
+   when: manual
 
 deploy_client_binaries:
     stage: deploy

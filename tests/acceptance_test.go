@@ -1465,7 +1465,11 @@ spec:
 
 }
 
-func TestLargeCluster(t *testing.T) {
+func TestStress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping stress tests in short mode.")
+	}
+
 	teardownFinishedTestRuns()
 
 	// Tests in this suite should not assume how many nodes we have in
